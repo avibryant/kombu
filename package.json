@@ -1,0 +1,9 @@
+{
+  "name": "kombu",                      
+  "type": "module",
+  "source": "src/api.ts",
+  "unpkg": "./dist/kombu.js",
+  "scripts": {
+    "build": "microbundle"
+  }
+}
