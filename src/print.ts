@@ -104,26 +104,19 @@ function printProductBuf(xa: Array<XA>, buf: String[]) {
 }
 
 function printBoundsBuf(b: Bounds, buf: String[]) {
-    if (!b) {
-        buf.push("{undefined}")
-        return
-    }
-
     if (b.lower == -Infinity && b.upper == Infinity)
         return
 
     if(b.lower == b.upper)
         return
 
-    buf.push("{")
+    buf.push("\\in \\{")
     if (b.lower != -Infinity) {
         buf.push(b.lower.toString())
-        buf.push("<=")
     }
-    buf.push("_")
+    buf.push("\\dots")
     if (b.upper != Infinity) {
-        buf.push("<=")
         buf.push(b.upper.toString())
     }
-    buf.push("}")
+    buf.push("\\}")
 }
