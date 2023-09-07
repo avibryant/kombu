@@ -2,8 +2,10 @@ import * as t from './types'
 import * as c from './construct'
 import * as n from './num'
 
-export function derive(parameters: Array<t.Param>, output: t.Num): Array<t.Num> {
+export function gradient(output: t.Num): Map<t.Param,t.Num> {
     const diffs = new Map<t.Num, CompoundDiff>()
+    const params = new Set<t.Param>()
+    
     function diff(num: t.Num): CompoundDiff {
         const res = diffs.get(num)
         if (res)
@@ -31,6 +33,7 @@ export function derive(parameters: Array<t.Param>, output: t.Num): Array<t.Num> 
                 case t.NumType.Constant:
                     break
                 case t.NumType.Param:
+                    params.add(num)
                     break
                 case t.NumType.Unary:
                     diff(num.term).parts.push({
@@ -75,7 +78,11 @@ export function derive(parameters: Array<t.Param>, output: t.Num): Array<t.Num> 
     }
     visit(output)
 
-    return parameters.map((n) => { return toNum(diff(n)) })
+    const g = new Map<t.Param, t.Num>()
+    params.forEach((p) => {
+        g.set(p, toNum(diff(p)))
+    })
+    return g
 }
 
 
