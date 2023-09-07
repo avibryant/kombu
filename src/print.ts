@@ -13,7 +13,9 @@ interface XA {
     a: number
 }
 
-function printNumBuf(n: t.Num, buf: String[]) {
+function printNumBuf(n: t.Num, buf: String[], parens: boolean = false) {
+    const pos: Array<XA> = []
+    const neg: Array<XA> = []
     switch (n.type) {
         case t.NumType.Param:
             buf.push(n.name)
@@ -22,19 +24,33 @@ function printNumBuf(n: t.Num, buf: String[]) {
             buf.push(n.value.toString())
             break
         case t.NumType.Sum:
-            if(n.k != 0 || n.firstTerm.nextTerm)
+            splitNodes(n.firstTerm, pos, neg)
+            let count = pos.length + neg.length
+            if(n.k != 0)
+                count += 1
+            if(parens && count > 1)
                 buf.push("(")
-            printSumBuf(n.firstTerm, buf)
-            if (n.k != 0) {
+
+            const first = pos.shift()
+            if(first) {
+                if(first.a != 1)
+                    buf.push(first.a.toString())
+                printNumBuf(first.x, buf)
+            }
+            printSumBuf(pos, "+", buf)
+            printSumBuf(neg, "-", buf)
+
+            if (n.k > 0) {
                 buf.push("+")
                 buf.push(n.k.toString())
+            } else if(n.k < 0) {
+                buf.push("-")
+                buf.push((n.k * -1).toString())
             }
-            if(n.k != 0 || n.firstTerm.nextTerm)
+            if(parens && count > 1)
                 buf.push(")")
             break
         case t.NumType.Product:
-            const pos: Array<XA> = []
-            const neg: Array<XA> = []
             splitNodes(n.firstTerm, pos, neg)
             if(neg.length == 0)
                 printProductBuf(pos, buf)
@@ -67,22 +83,21 @@ function splitNodes<T extends t.ProductTerm | t.SumTerm>(
             splitNodes(node.nextTerm, pos, neg)
 }
 
-function printSumBuf(node: t.TermNode<t.SumTerm>, buf: String[]) {
-    if (node.a != 1) {
-        buf.push(node.a.toString())
-    }
+function printSumBuf(xa: Array<XA>, op: String, buf: String[]) {
+    xa.forEach((node) => {
+        buf.push(op)
+        if (node.a != 1) {
+            buf.push(node.a.toString())
+        }
 
-    printNumBuf(node.x, buf)
-    if (node.nextTerm) {
-        buf.push("+")
-        printSumBuf(node.nextTerm, buf)
-    }
+        printNumBuf(node.x, buf)
+    })
 }
 
 function printProductBuf(xa: Array<XA>, buf: String[]) {
     xa.forEach((node) => {
         if (node.a > 1) {
-            printNumBuf(node.x, buf)
+            printNumBuf(node.x, buf, true)
             buf.push("^{")
             buf.push(node.a.toString())
             buf.push("}")
@@ -98,7 +113,7 @@ function printProductBuf(xa: Array<XA>, buf: String[]) {
             printNumBuf(node.x, buf)
             buf.push("}")
         } else {
-            printNumBuf(node.x, buf)
+            printNumBuf(node.x, buf, true)
         }
     })
 }
