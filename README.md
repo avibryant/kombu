@@ -13,3 +13,4 @@ See https://observablehq.com/d/0d501ad8981f9d9c
 * WASM compilation
 * gradient descent in WASM
 * LBFGS in WASM
+* numerical stability (bigint coefficients?)
