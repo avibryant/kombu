@@ -145,6 +145,26 @@ function toNum(d: Diff): t.Num {
                     return n.mul(
                         toNum(d.gradient),
                         n.sign(d.child.term))
+                case "sin":
+                    return n.mul(
+                        toNum(d.gradient),
+                        n.cos(d.child.term)
+                    )
+                case "cos":
+                    return n.mul(toNum(d.gradient),
+                    n.neg(n.sin(d.child.term)))
+                case "tan":
+                    return n.div(toNum(d.gradient),
+                    n.pow(n.cos(d.child.term), 2)) 
+                case "asin":
+                    return n.div(toNum(d.gradient),
+                    n.sqrt(n.sub(c.one, n.pow(d.child.term, 2))))
+                case "acos":
+                    return n.div(n.neg(toNum(d.gradient)),
+                    n.sqrt(n.sub(c.one, n.pow(d.child.term, 2))))
+                case "atan":
+                    return n.div(toNum(d.gradient),
+                    n.add(c.one, n.pow(d.child.term, 2)))
             }
     }
 }

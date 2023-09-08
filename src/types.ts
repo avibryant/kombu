@@ -45,7 +45,16 @@ export interface Product {
     bounds: Bounds
 }
 
-export type UnaryFn = "sign" | "abs"
+export type UnaryFn = 
+    "sign" |
+    "abs" |
+    "cos" |
+    "sin" |
+    "tan" |
+    "acos" |
+    "asin" |
+    "atan"
+    
 export interface Unary {
     type: NumType.Unary
     id: number

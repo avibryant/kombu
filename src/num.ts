@@ -47,3 +47,27 @@ export function abs(x: AnyNum): t.Num {
 export function sign(x: AnyNum): t.Num {
     return u.signNum(num(x))
 }
+
+export function cos(x: AnyNum): t.Num {
+    return u.cosNum(num(x))
+}
+
+export function sin(x: AnyNum): t.Num {
+    return u.sinNum(num(x))
+}
+
+export function tan(x: AnyNum): t.Num {
+    return u.tanNum(num(x))
+}
+
+export function acos(x: AnyNum): t.Num {
+    return u.acosNum(num(x))
+}
+
+export function asin(x: AnyNum): t.Num {
+    return u.asinNum(num(x))
+}
+
+export function atan(x: AnyNum): t.Num {
+    return u.atanNum(num(x))
+}
