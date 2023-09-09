@@ -1,7 +1,7 @@
 import * as t from './types'
 import { Bounds } from './bounds'
 
-export function printNum(n: t.Num): String {
+export function tex(n: t.Num): String {
     const buf = []
     printNumBuf(n, buf)
     printBoundsBuf(n.bounds, buf)
