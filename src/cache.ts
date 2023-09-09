@@ -1,5 +1,6 @@
 import * as t from './types'
 
+//use WeakRef, GC op that deletes expired refs
 const map = new Map<string,t.Num>()
 export function cacheNum<T extends t.Num>(n: T): T {
     const sig = signature(n)
