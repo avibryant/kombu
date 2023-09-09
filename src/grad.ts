@@ -47,7 +47,7 @@ export function gradient(output: t.Num): Map<t.Param,t.Num> {
                     visitSumTerm(num.firstTerm, diff(num))
                     break
                 case t.NumType.Product:
-                    visitProductTerm(num.firstTerm, diff(num))
+                    visitProductTerm(num, num.firstTerm, diff(num))
                     break
             }
 
@@ -65,16 +65,17 @@ export function gradient(output: t.Num): Map<t.Param,t.Num> {
             visitSumTerm(term.nextTerm, gradient)
     }
 
-    function visitProductTerm(term: t.TermNode<t.ProductTerm>, gradient: Diff) {
+    function visitProductTerm(num: t.Num, term: t.TermNode<t.ProductTerm>, gradient: Diff) {
         diff(term.x).parts.push({
             type: DiffType.Exponent,
             term: term.x,
             exponent: term.a,
+            num,
             gradient
         })
         visit(term.x)
         if (term.nextTerm)
-            visitProductTerm(term.nextTerm, gradient)
+            visitProductTerm(num, term.nextTerm, gradient)
     }
     visit(output)
 
@@ -109,7 +110,8 @@ interface ExponentDiff {
     type: DiffType.Exponent
     term: t.Num,
     exponent: number,
-    gradient: Diff
+    gradient: Diff,
+    num: t.Num
 }
 
 interface UnaryDiff {
@@ -133,7 +135,9 @@ function toNum(d: Diff): t.Num {
             return res
         case DiffType.Exponent:
             return n.mul(
-                toNum(d.gradient),
+                n.mul(
+                    toNum(d.gradient),
+                    n.div(d.num, d.term)),
                 n.mul(
                     n.pow(d.term, d.exponent - 1),
                     d.exponent))
