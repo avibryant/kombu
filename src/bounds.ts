@@ -25,10 +25,13 @@ function multiply(left: number, right: number): number {
       return left
     else if (left == 0.0 && right == Infinity)
       return right
+    else if(left == -Infinity && right >= 0)
+      return left
+    else if(right == -Infinity && left >= 0)
+        return right
     else
       return left * right
 }
-
 
 export function mul(a: Bounds, b: Bounds): Bounds {
     const options =

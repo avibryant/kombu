@@ -137,7 +137,7 @@ function toNum(d: Diff): t.Num {
             return n.mul(
                 n.mul(
                     toNum(d.gradient),
-                    n.div(d.num, d.term)),
+                    n.div(d.num, n.pow(d.term, d.exponent))),
                 n.mul(
                     n.pow(d.term, d.exponent - 1),
                     d.exponent))
