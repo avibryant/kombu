@@ -56,18 +56,6 @@ export function sin(x: AnyNum): t.Num {
     return u.sinNum(num(x))
 }
 
-export function tan(x: AnyNum): t.Num {
-    return u.tanNum(num(x))
-}
-
-export function acos(x: AnyNum): t.Num {
-    return u.acosNum(num(x))
-}
-
-export function asin(x: AnyNum): t.Num {
-    return u.asinNum(num(x))
-}
-
 export function atan(x: AnyNum): t.Num {
     return u.atanNum(num(x))
 }

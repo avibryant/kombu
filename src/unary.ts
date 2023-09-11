@@ -54,32 +54,6 @@ export function sinNum(x: t.Num): t.Num {
     }
 }
 
-export function tanNum(x: t.Num): t.Num {
-    if(x.type == t.NumType.Constant)
-        return c.constant(Math.tan(x.value))
-    else {
-        if(x.bounds.lower == 0 && x.bounds.upper <= (Math.PI/2))
-            return c.unary(x, "tan", {lower: 0, upper: Infinity})
-        else    
-            return c.unary(x, "tan", o.Unbounded)
-    }
-}
-
-export function acosNum(x: t.Num): t.Num {
-    if(x.type == t.NumType.Constant)
-        return c.constant(Math.acos(x.value))
-    else
-        return c.unary(x, "acos", {lower: Math.acos(x.bounds.upper), upper: Math.acos(x.bounds.lower)})    
-}
-
-export function asinNum(x: t.Num): t.Num {
-    if(x.type == t.NumType.Constant)
-        return c.constant(Math.asin(x.value))
-    else
-        return c.unary(x, "asin", {lower: Math.asin(x.bounds.lower), upper: Math.asin(x.bounds.upper)})        
-}
-
-
 export function atanNum(x: t.Num): t.Num {
     if(x.type == t.NumType.Constant)
         return c.constant(Math.atan(x.value))

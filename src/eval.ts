@@ -54,12 +54,6 @@ export function evaluator(prefill: Map<t.Num,number>): Evaluator {
                 return Math.cos(evaluate(node))
             case "sin":
                 return Math.sin(evaluate(node))
-            case "tan":
-                return Math.tan(evaluate(node))
-            case "asin":
-                return Math.asin(evaluate(node))
-            case "acos":
-                return Math.acos(evaluate(node))
             case "atan":
                 return Math.atan(evaluate(node))
         }

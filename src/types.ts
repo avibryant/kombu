@@ -50,9 +50,6 @@ export type UnaryFn =
     "abs" |
     "cos" |
     "sin" |
-    "tan" |
-    "acos" |
-    "asin" |
     "atan"
     
 export interface Unary {
