@@ -1,6 +1,5 @@
 import './style.css'
 import {Turtle} from './turtle'
-import {param} from './construct'
 import {degrees} from './vec2'
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -16,20 +15,24 @@ function resizeCanvas() {
 }
 
 resizeCanvas()
-/*
+
+const t = new Turtle()
+const d = t.someLength(100)
+t.forward(d)
+t.right(degrees(90))
+t.forward(d)
+t.right(degrees(90))
+t.forward(50)
+
 const ctx = canvas.getContext("2d")!
 
 ctx.lineWidth = 2
 ctx.strokeStyle = "black"
 
-ctx.beginPath()
-ctx.moveTo(0,0)
-ctx.lineTo(100,100)
-ctx.stroke()
-*/
+t.segments().forEach((s) => {
+  ctx.beginPath()
+  ctx.moveTo(s.x1,s.y1)
+  ctx.lineTo(s.x2,s.y2)
+  ctx.stroke()  
+})
 
-const t = new Turtle()
-t.forward(10)
-t.left(degrees(90))
-t.forward(10)
-console.log(t.segments)

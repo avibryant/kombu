@@ -1,5 +1,5 @@
 export { Num, Param } from './types'
-export { param, nonNegativeParam, zero, one, nodeCount } from './construct'
+export { param, zero, one, nodeCount } from './construct'
 export { tex } from './tex'
 export {evaluator} from './eval'
 export { gradient } from './grad'

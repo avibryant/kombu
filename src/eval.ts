@@ -56,6 +56,10 @@ export function evaluator(prefill: Map<t.Num,number>): Evaluator {
                 return Math.sin(evaluate(node))
             case "atan":
                 return Math.atan(evaluate(node))
+            case "exp":
+                return Math.exp(evaluate(node))
+            case "log":
+                return Math.log(evaluate(node))
         }
     }
 

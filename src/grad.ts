@@ -160,6 +160,10 @@ function toNum(d: Diff): t.Num {
                 case "atan":
                     return n.div(toNum(d.gradient),
                     n.add(c.one, n.pow(d.child.term, 2)))
+                case "log":
+                    return n.mul(toNum(d.gradient), n.div(c.one, d.child.term))
+                case "exp":
+                    return n.mul(toNum(d.gradient), d.child)
             }
     }
 }

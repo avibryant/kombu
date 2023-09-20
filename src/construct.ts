@@ -16,10 +16,6 @@ export function param(name: string, value: number = 1): t.Param {
     return { type: t.NumType.Param, id: nextID(), name, value, bounds: o.Unbounded }
 }
 
-export function nonNegativeParam(name: string, value: number = 1): t.Param {
-    return { type: t.NumType.Param, id: nextID(), name, value, bounds: o.NonNegativeBounds }
-}
-
 export function constant(n: number): t.Constant {
     const bounds = o.constantBounds(n)
     return { type: t.NumType.Constant, value: n, bounds }

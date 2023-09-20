@@ -59,3 +59,11 @@ export function sin(x: AnyNum): t.Num {
 export function atan(x: AnyNum): t.Num {
     return u.atanNum(num(x))
 }
+
+export function exp(x: AnyNum): t.Num {
+    return u.expNum(num(x))
+}
+
+export function log(x: AnyNum): t.Num {
+    return u.logNum(num(x))
+}

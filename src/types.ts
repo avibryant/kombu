@@ -50,7 +50,9 @@ export type UnaryFn =
     "abs" |
     "cos" |
     "sin" |
-    "atan"
+    "atan" |
+    "exp" | 
+    "log"
     
 export interface Unary {
     type: NumType.Unary

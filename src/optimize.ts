@@ -15,7 +15,8 @@ export function optimize(loss: t.Num, init: Map<t.Param,number>): e.Evaluator {
     while(iterations > 0) {
         const ev = e.evaluator(params)
         const l = ev(loss)
-        console.log(l)
+        if(iterations % 1000 == 0)
+            console.log(l)
         gradient.forEach((v,k) => {
             const diff = ev(v)
             const old = params.get(k) || 0

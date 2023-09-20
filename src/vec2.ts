@@ -73,4 +73,4 @@ export function subAngles(a: Vec2, b: Vec2): Vec2 {
     return {x,y}
 }
 
-export const origin = vec2(c.zero, c.zero)
+export const origin = vec2(200, 200)
