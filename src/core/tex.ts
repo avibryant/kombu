@@ -2,7 +2,7 @@ import * as t from './types'
 import { Bounds } from './bounds'
 
 export function tex(n: t.Num): String {
-    const buf = []
+    const buf: String[] = []
     printNumBuf(n, buf)
     printBoundsBuf(n.bounds, buf)
     return buf.join(" ")

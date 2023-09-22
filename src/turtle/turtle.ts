@@ -1,9 +1,5 @@
-import * as t from './types'
-import * as c from './construct'
-import * as n from './num'
+import * as k from '../core/api'
 import * as v from './vec2'
-import * as p from './stats'
-import {optimize} from './optimize'
 
 interface VecSegment {
     from: v.Vec2
@@ -19,20 +15,20 @@ interface Segment {
 
 export class Turtle {
     vecSegments: Array<VecSegment>
-    loss: t.Num
+    loss: k.Num
     position: v.Vec2
     direction: v.Vec2
     counter: number
 
     constructor() {
         this.vecSegments = []
-        this.loss = c.zero
+        this.loss = k.zero
         this.position = v.origin
-        this.direction = v.degrees(c.zero)
+        this.direction = v.degrees(k.zero)
         this.counter = 0
     }
 
-    forward(s: n.AnyNum): v.Vec2 {
+    forward(s: k.AnyNum): v.Vec2 {
         const d = v.scale(this.direction, s)
         const to = v.add(this.position, d)
         this.vecSegments.push({from: this.position, to})
@@ -49,7 +45,7 @@ export class Turtle {
     }
 
     segments(): Array<Segment> {
-        const fn = optimize(this.loss, new Map())
+        const fn = k.optimize(this.loss, new Map())
         return this.vecSegments.map((vs) => {
             return {
                 x1: fn(vs.from.x),
@@ -60,11 +56,11 @@ export class Turtle {
         })
     }
 
-    someLength(mean: number = 100): t.Num {
+    someLength(mean: number = 100): k.Num {
         this.counter += 1
-        const pr = p.uniformPrior("d" + this.counter)
-        const d = n.mul(pr.value, mean)
-        this.loss = n.sub(this.loss, pr.logp)
+        const pr = k.uniformPrior("d" + this.counter)
+        const d = k.mul(pr.value, mean)
+        this.loss = k.sub(this.loss, pr.logp)
         return d
     }
 }
