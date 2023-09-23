@@ -58,10 +58,9 @@ export class Turtle {
 
     someLength(mean: number = 100): k.Num {
         this.counter += 1
-        const pr = k.uniformPrior("d" + this.counter)
-        const d = k.mul(pr.value, mean)
+        const pr = k.scale(k.normalPrior("d" + this.counter), 20)
         this.loss = k.sub(this.loss, pr.logp)
-        return d
+        return k.add(pr.value, mean)
     }
 
     at(pt: v.Vec2) {

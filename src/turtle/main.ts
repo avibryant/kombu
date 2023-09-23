@@ -18,18 +18,18 @@ resizeCanvas()
 
 const t = new Turtle()
 const o = t.position
-t.forward(t.someLength(100))
+t.forward(t.someLength(Math.random() * 400))
 t.right(degrees(90))
-t.forward(t.someLength(200))
+t.forward(t.someLength(Math.random() * 400))
 t.right(degrees(90))
-t.forward(t.someLength(100))
+t.forward(t.someLength(Math.random() * 400))
 t.right(degrees(90))
-t.forward(t.someLength(200))
+t.forward(t.someLength(Math.random() * 400))
 t.at(o)
 
 const ctx = canvas.getContext("2d")!
 
-ctx.lineWidth = 2
+ctx.lineWidth = 1
 ctx.strokeStyle = "black"
 
 t.segments().forEach((s) => {
