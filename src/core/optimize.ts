@@ -10,7 +10,7 @@ export function optimize(loss: t.Num, init: Map<t.Param,number>): e.Evaluator {
             params.set(k,Math.random())
     })
 
-    const epsilon = 0.01
+    const epsilon = 0.001
     let iterations = 10000
     while(iterations > 0) {
         const ev = e.evaluator(params)

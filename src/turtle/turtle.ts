@@ -63,4 +63,10 @@ export class Turtle {
         this.loss = k.sub(this.loss, pr.logp)
         return d
     }
+
+    at(pt: v.Vec2) {
+        const prx = k.normalLikelihood(k.sub(this.position.x, pt.x))
+        const pry = k.normalLikelihood(k.sub(this.position.y, pt.y))
+        this.loss = k.sub(this.loss, k.add(prx, pry))
+    }
 }

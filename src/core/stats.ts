@@ -27,6 +27,11 @@ export function normalPrior(name: string): Prior {
     }
 }
 
+export function normalLikelihood(x: n.AnyNum): t.Num {
+    const v = n.num(x)
+    return n.div(n.mul(v,v), -2)
+}
+
 export function uniformPrior(name: string): Prior {
     const v = c.param(name)
     const value = logistic(v)

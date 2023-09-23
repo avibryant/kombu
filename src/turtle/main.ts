@@ -17,12 +17,15 @@ function resizeCanvas() {
 resizeCanvas()
 
 const t = new Turtle()
-const d = t.someLength(100)
-t.forward(d)
+const o = t.position
+t.forward(t.someLength(100))
 t.right(degrees(90))
-t.forward(d)
+t.forward(t.someLength(200))
 t.right(degrees(90))
-t.forward(50)
+t.forward(t.someLength(100))
+t.right(degrees(90))
+t.forward(t.someLength(200))
+t.at(o)
 
 const ctx = canvas.getContext("2d")!
 
