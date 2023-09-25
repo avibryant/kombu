@@ -5,7 +5,7 @@ import * as g from './grad'
 export function optimize(loss: t.Num, init: Map<t.Param,number>): e.Evaluator {
     const gradient = g.gradient(loss)
     const params = new Map(init)
-    gradient.forEach((v,k) => {
+    gradient.forEach((_,k) => {
         if(!params.has(k))
             params.set(k,Math.random())
     })
