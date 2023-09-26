@@ -5,10 +5,28 @@ import * as t from "./types"
 
 const builtins = ["log", "exp"]
 
+function frag(dbg: string, ...fragment: w.BytecodeFragment) {
+    const arr = Array.from(fragment)
+    ;(arr as any).dbg = dbg
+    return arr
+}
+
+let count = 0
+function debugPrint(frag: any[], depth = 0) {
+    if (frag.dbg) console.log(`[${frag.dbg}]`)
+    if (Array.isArray(frag)) frag.forEach((x, i) => debugPrint(x, depth + 1))
+    else
+        console.log(
+            `${new Array(depth).join(
+                " ",
+            )}@${count++} ${frag} (0x${frag.toString(16)})`,
+        )
+}
+
 function callBuiltin(name: string): w.BytecodeFragment {
     const idx = builtins.indexOf(name)
-    if (idx === -1) throw new Error(`builtin '${name}' not found`);
-    return [w.instr.call, w.funcidx(idx)];
+    if (idx === -1) throw new Error(`builtin '${name}' not found`)
+    return [w.instr.call, w.funcidx(idx)]
 }
 
 function makeWasmModule(body: w.BytecodeFragment) {
@@ -19,26 +37,32 @@ function makeWasmModule(body: w.BytecodeFragment) {
         w.import_("builtins", name, w.importdesc.func(0)),
     )
 
-    const mod = w.module([
+    const bytes = w.module([
         w.typesec([mainFuncType, builtinFuncType]),
         w.importsec(imports),
         w.funcsec([w.typeidx(0)]),
         w.exportsec([w.export_("main", w.exportdesc.func(0))]),
-        w.codesec([w.code(w.func([], body))]),
+        w.codesec([w.code(w.func([], [...body, w.instr.end]))]),
     ])
+    //    debugPrint(bytes);
     // `(mod as any[])` to avoid compiler error about excessively deep
     // type instantiation.
-    return Uint8Array.from((mod as any[]).flat(Infinity))
+    return Uint8Array.from((bytes as any[]).flat(Infinity))
 }
-
-const f64 = w.i32 // TODO: Why no f64?
 
 export function evaluator(_prefill: Map<t.Num, number>): Evaluator {
     const { instr } = w
     //    const numCache = new Map(prefill)
 
     function evaluate(num: t.Num): number {
-        makeWasmModule(emitNum(num))
+        const bytes = makeWasmModule(emitNum(num))
+        const { log, exp } = Math
+        const mod = new WebAssembly.Module(bytes)
+        const { exports } = new WebAssembly.Instance(mod, {
+            builtins: { log, exp },
+        })
+        return exports.main()
+
         // let result = numCache.get(num)
         // if (result == undefined) {
         //     result = computeNum(num)
@@ -51,11 +75,17 @@ export function evaluator(_prefill: Map<t.Num, number>): Evaluator {
     function emitNum(num: t.Num): w.BytecodeFragment {
         switch (num.type) {
             case t.NumType.Constant:
-                return [instr.f64.const, f64(num.value)]
-            // case t.NumType.Param:
-            //     return [instr.f64.const, f64(Number.NaN)]
+                return frag("Constant", instr.f64.const, w.f64(num.value))
+            case t.NumType.Param:
+                return frag("Param", instr.f64.const, w.f64(Number.NaN))
             case t.NumType.Sum:
-                return [emitSum(num.firstTerm), f64(num.k), instr.f64.add]
+                return frag(
+                    "Sum",
+                    emitSum(num.firstTerm),
+                    instr.f64.const,
+                    w.f64(num.k),
+                    instr.f64.add,
+                )
             case t.NumType.Product:
                 return emitProduct(num.firstTerm)
             case t.NumType.Unary:
@@ -70,25 +100,32 @@ export function evaluator(_prefill: Map<t.Num, number>): Evaluator {
 
     function emitPow(base: w.BytecodeFragment, exponent: number) {
         if (exponent === -1) {
-            return [instr.f64.const, 1, base, instr.f64.div]
+            return frag("Pow", instr.f64.const, w.f64(1), base, instr.f64.div)
         } else if (exponent === 1) {
             return base
         } else if (exponent === -2) {
-            return [
+            return frag(
+                "Pow",
                 instr.f64.const,
-                1,
+                w.f64(1),
                 base,
                 base,
                 instr.f64.mul,
                 instr.f64.div,
-            ]
+            )
         } else {
             throw new Error(`unhandled exponent: ${exponent}`)
         }
     }
 
     function emitSum(node: t.TermNode<t.SumTerm>): w.BytecodeFragment {
-        let result = [f64(node.a), emitCachedNum(node.x), instr.f64.mul]
+        let result = frag(
+            "Sum2",
+            instr.f64.const,
+            w.f64(node.a),
+            emitCachedNum(node.x),
+            instr.f64.mul,
+        )
         if (node.nextTerm)
             return result.concat(emitSum(node.nextTerm), instr.f64.add)
         return result
@@ -102,7 +139,7 @@ export function evaluator(_prefill: Map<t.Num, number>): Evaluator {
     }
 
     function emitUnary(node: t.Term, type: t.UnaryFn): w.BytecodeFragment {
-        switch(type) {
+        switch (type) {
             // case "sign":
             //   if(evaluate(node) >= 0)
             //       return 1
@@ -120,7 +157,7 @@ export function evaluator(_prefill: Map<t.Num, number>): Evaluator {
             //     return Math.exp(evaluate(node))
             case "exp":
             case "log":
-                return [emitCachedNum(node), callBuiltin(type)];
+                return frag("Unary", emitCachedNum(node), callBuiltin(type))
             default:
                 throw new Error(`not supported: ${type}`)
         }
