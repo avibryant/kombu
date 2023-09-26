@@ -14,6 +14,6 @@
     "vite": "^4.4.5"
   },
   "dependencies": {
-    "@wasmgroundup/emit": "^0.2.3"
+    "@wasmgroundup/emit": "^0.2.4"
   }
 }
