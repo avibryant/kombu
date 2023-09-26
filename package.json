@@ -6,10 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "check": "tsc --noEmit",
     "preview": "vite preview"
   },
   "devDependencies": {
     "typescript": "^5.0.2",
     "vite": "^4.4.5"
+  },
+  "dependencies": {
+    "@wasmgroundup/emit": "^0.2.3"
   }
 }
