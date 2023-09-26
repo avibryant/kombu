@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "check": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest"
   },
   "devDependencies": {
     "typescript": "^5.0.2",
-    "vite": "^4.4.5"
+    "vite": "^4.4.5",
+    "vitest": "^0.34.5"
   },
   "dependencies": {
     "@wasmgroundup/emit": "^0.2.4"
