@@ -30,21 +30,22 @@ function callBuiltin(name: string): w.BytecodeFragment {
 }
 
 function makeWasmModule(body: w.BytecodeFragment) {
-    const mainFuncType = w.functype([w.valtype.f64], [w.valtype.f64])
+    const mainFuncType = w.functype([], [w.valtype.f64])
     const builtinFuncType = w.functype([w.valtype.f64], [w.valtype.f64])
 
     const imports = builtins.map((name) =>
         w.import_("builtins", name, w.importdesc.func(0)),
     )
+    const mainFuncidx = imports.length
 
     const bytes = w.module([
         w.typesec([mainFuncType, builtinFuncType]),
         w.importsec(imports),
         w.funcsec([w.typeidx(0)]),
-        w.exportsec([w.export_("main", w.exportdesc.func(0))]),
-        w.codesec([w.code(w.func([], [...body, w.instr.end]))]),
+        w.exportsec([w.export_("main", w.exportdesc.func(mainFuncidx))]),
+        w.codesec([w.code(w.func([], frag("code", ...body, w.instr.end)))]),
     ])
-    //    debugPrint(bytes);
+//    debugPrint(bytes)
     // `(mod as any[])` to avoid compiler error about excessively deep
     // type instantiation.
     return Uint8Array.from((bytes as any[]).flat(Infinity))
@@ -69,7 +70,6 @@ export function evaluator(_prefill: Map<t.Num, number>): Evaluator {
         //     numCache.set(num, result)
         // }
         // return result
-        return 1
     }
 
     function emitNum(num: t.Num): w.BytecodeFragment {
