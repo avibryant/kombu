@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "check": "tsc --noEmit",
+    "format": "prettier --write --no-semi .",
     "preview": "vite preview",
     "test": "vitest"
   },

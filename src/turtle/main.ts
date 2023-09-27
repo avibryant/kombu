@@ -1,12 +1,12 @@
-import './style.css'
-import {Turtle} from './turtle'
+import "./style.css"
+import { Turtle } from "./turtle"
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div>
     <canvas id="canvas"></canvas>
   </div>
 `
-const canvas = document.querySelector<HTMLCanvasElement>('#canvas')!
+const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
 
 function resizeCanvas() {
   canvas.width = window.innerWidth - canvas.offsetLeft
@@ -33,15 +33,17 @@ function loop(i: number) {
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   ctx.lineWidth = 1
   ctx.strokeStyle = "white"
-    t.segments().forEach((s) => {
+  t.segments().forEach((s) => {
     ctx.beginPath()
-    ctx.moveTo(s.x1,s.y1)
-    ctx.lineTo(s.x2,s.y2)
-    ctx.stroke()  
+    ctx.moveTo(s.x1, s.y1)
+    ctx.lineTo(s.x2, s.y2)
+    ctx.stroke()
   })
 
-  if(i > 0) {
-    setTimeout(function() {loop(i - 1)}, 10)
+  if (i > 0) {
+    setTimeout(function () {
+      loop(i - 1)
+    }, 10)
   }
 }
 
