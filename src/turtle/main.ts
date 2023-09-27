@@ -16,17 +16,13 @@ function resizeCanvas() {
 
 resizeCanvas()
 
-//console.log(degrees(90))
-const deg90 = vec2(0,1)
-
 const t = new Turtle()
 const o = t.position
+const deg = t.anyAngle()
 t.forward(t.approxLength(200))
-t.right(deg90)
+t.right(deg)
 t.forward(t.approxLength(200))
-t.right(deg90)
-t.forward(t.approxLength(200))
-t.right(deg90)
+t.right(deg)
 t.forward(t.approxLength(200))
 t.at(o)
 

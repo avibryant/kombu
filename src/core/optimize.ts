@@ -29,5 +29,9 @@ export function optimize(loss: t.Num, init: Map<t.Param,number>): e.Evaluator {
         iterations = iterations - 1
     }
 
+    params.forEach((v,k) => {
+        console.log(k.name + " = " + v)
+    })
+
     return e.evaluator(params)
 }

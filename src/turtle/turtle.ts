@@ -73,24 +73,25 @@ export class Turtle {
         this.loss = k.sub(this.loss, pr.logp)
         return k.softplus(k.add(k.mul(pr.value, sd), mean))
     }
-/*
+
+    anyAngle(): v.Vec2 {
+        this.counter += 1
+        const raw = k.param("a" + this.counter)
+        const sin = k.sub(k.mul(2, k.logistic(raw)), 1)
+        const cos = k.neg(k.sqrt(k.sub(k.one, k.mul(sin,sin))))
+        return {x: cos, y: sin}
+    }
+
+    /*
     anyLength(): k.Num {
 
     }
     
-    anyAngle(): v.Vec2 {
-
-    }
 
     somewhereOn(seg: VecSegment): v.Vec2 {
 
     }
 */
-    at(pt: v.Vec2) {
-        const prx = k.normalLikelihood(k.sub(this.position.x, pt.x))
-        const pry = k.normalLikelihood(k.sub(this.position.y, pt.y))
-        this.loss = k.sub(this.loss, k.add(prx, pry))
-    }
 
     parallel(seg: VecSegment) {
 
@@ -98,5 +99,11 @@ export class Turtle {
 
     jump(pt: v.Vec2) {
 
+    }
+
+    at(pt: v.Vec2) {
+        const prx = k.normalLikelihood(k.sub(this.position.x, pt.x))
+        const pry = k.normalLikelihood(k.sub(this.position.y, pt.y))
+        this.loss = k.sub(this.loss, k.add(prx, pry))
     }
 }
