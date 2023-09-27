@@ -3,7 +3,12 @@ import * as w from "@wasmgroundup/emit"
 import { Evaluator } from "./eval"
 import * as t from "./types"
 
-const builtins = ["log", "exp"]
+const builtins = {
+    log: Math.log,
+    exp: Math.exp,
+    pow: Math.pow,
+}
+const builtinNames = Object.keys(builtins)
 
 function frag(dbg: string, ...fragment: w.BytecodeFragment) {
     const arr = Array.from(fragment)
@@ -24,7 +29,7 @@ function debugPrint(frag: any[], depth = 0) {
 }
 
 function callBuiltin(name: string): w.BytecodeFragment {
-    const idx = builtins.indexOf(name)
+    const idx = builtinNames.indexOf(name)
     if (idx === -1) throw new Error(`builtin '${name}' not found`)
     return [w.instr.call, w.funcidx(idx)]
 }
@@ -33,7 +38,7 @@ function makeWasmModule(body: w.BytecodeFragment) {
     const mainFuncType = w.functype([], [w.valtype.f64])
     const builtinFuncType = w.functype([w.valtype.f64], [w.valtype.f64])
 
-    const imports = builtins.map((name) =>
+    const imports = builtinNames.map((name) =>
         w.import_("builtins", name, w.importdesc.func(0)),
     )
     const mainFuncidx = imports.length
@@ -45,7 +50,7 @@ function makeWasmModule(body: w.BytecodeFragment) {
         w.exportsec([w.export_("main", w.exportdesc.func(mainFuncidx))]),
         w.codesec([w.code(w.func([], frag("code", ...body, w.instr.end)))]),
     ])
-//    debugPrint(bytes)
+    //    debugPrint(bytes)
     // `(mod as any[])` to avoid compiler error about excessively deep
     // type instantiation.
     return Uint8Array.from((bytes as any[]).flat(Infinity))
@@ -59,9 +64,7 @@ export function evaluator(_prefill: Map<t.Num, number>): Evaluator {
         const bytes = makeWasmModule(emitNum(num))
         const { log, exp } = Math
         const mod = new WebAssembly.Module(bytes)
-        const { exports } = new WebAssembly.Instance(mod, {
-            builtins: { log, exp },
-        })
+        const { exports } = new WebAssembly.Instance(mod, { builtins })
         return exports.main()
 
         // let result = numCache.get(num)
@@ -98,26 +101,6 @@ export function evaluator(_prefill: Map<t.Num, number>): Evaluator {
         return emitNum(num)
     }
 
-    function emitPow(base: w.BytecodeFragment, exponent: number) {
-        if (exponent === -1) {
-            return frag("Pow", instr.f64.const, w.f64(1), base, instr.f64.div)
-        } else if (exponent === 1) {
-            return base
-        } else if (exponent === -2) {
-            return frag(
-                "Pow",
-                instr.f64.const,
-                w.f64(1),
-                base,
-                base,
-                instr.f64.mul,
-                instr.f64.div,
-            )
-        } else {
-            throw new Error(`unhandled exponent: ${exponent}`)
-        }
-    }
-
     function emitSum(node: t.TermNode<t.SumTerm>): w.BytecodeFragment {
         let result = frag(
             "Sum2",
@@ -132,7 +115,12 @@ export function evaluator(_prefill: Map<t.Num, number>): Evaluator {
     }
 
     function emitProduct(node: t.TermNode<t.ProductTerm>): w.BytecodeFragment {
-        let result = emitPow(emitCachedNum(node.x), node.a)
+        let result = frag(
+            "Pow",
+            emitCachedNum(node.x),
+            w.f64(node.a),
+            callBuiltin("pow"),
+        )
         if (node.nextTerm)
             return result.concat(emitProduct(node.nextTerm), instr.f64.mul)
         return result
