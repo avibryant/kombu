@@ -7,6 +7,11 @@ const builtins = {
     log: Math.log,
     exp: Math.exp,
     pow: Math.pow,
+    sign: Math.sign,
+    abs: Math.abs,
+    cos: Math.cos,
+    sin: Math.sin,
+    atan: Math.atan,
 }
 const builtinNames = Object.keys(builtins)
 
@@ -50,7 +55,7 @@ function makeWasmModule(body: w.BytecodeFragment) {
         w.exportsec([w.export_("main", w.exportdesc.func(mainFuncidx))]),
         w.codesec([w.code(w.func([], frag("code", ...body, w.instr.end)))]),
     ])
-    //    debugPrint(bytes)
+    debugPrint(bytes)
     // `(mod as any[])` to avoid compiler error about excessively deep
     // type instantiation.
     return Uint8Array.from((bytes as any[]).flat(Infinity))
@@ -62,7 +67,6 @@ export function evaluator(_prefill: Map<t.Num, number>): Evaluator {
 
     function evaluate(num: t.Num): number {
         const bytes = makeWasmModule(emitNum(num))
-        const { log, exp } = Math
         const mod = new WebAssembly.Module(bytes)
         const { exports } = new WebAssembly.Instance(mod, { builtins })
         return exports.main()
@@ -127,28 +131,10 @@ export function evaluator(_prefill: Map<t.Num, number>): Evaluator {
     }
 
     function emitUnary(node: t.Term, type: t.UnaryFn): w.BytecodeFragment {
-        switch (type) {
-            // case "sign":
-            //   if(evaluate(node) >= 0)
-            //       return 1
-            //   else
-            //       return -1
-            // case "abs":
-            //     return Math.abs(evaluate(node))
-            // case "cos":
-            //     return Math.cos(evaluate(node))
-            // case "sin":
-            //     return Math.sin(evaluate(node))
-            // case "atan":
-            //     return Math.atan(evaluate(node))
-            // case "exp":
-            //     return Math.exp(evaluate(node))
-            case "exp":
-            case "log":
-                return frag("Unary", emitCachedNum(node), callBuiltin(type))
-            default:
-                throw new Error(`not supported: ${type}`)
+        if (!builtinNames.includes(type)) {
+            throw new Error(`not supported: ${type}`)
         }
+        return frag("Unary", emitCachedNum(node), callBuiltin(type))
     }
 
     return evaluate
