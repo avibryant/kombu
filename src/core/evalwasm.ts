@@ -39,7 +39,7 @@ class CodegenContext {
 
     maybeAllocateGlobals(num: t.Num): number {
         // For every `t.Num` that is cacheable, allocate two globals:
-        // an i32 as a flag (is it cached?) and an f64 for the cached value.
+        // an f64 for the cached value, and an i32 as a flag (is it cached?).
         // TODO: Should we be concerned about alignment here?
         if (!("id" in num)) return -1
         if (!this.idToGlobalidx.has(num.id)) {
@@ -92,7 +92,7 @@ function makeWasmModule(
     const mainFuncidx = imports.length
 
     const globals = []
-    for (let i = 0; i < numGlobals; i++) {
+    for (let i = 0; i < numGlobals; i += 2) {
         const initialVal = prefill.get(i) ?? Math.random()
         const initialFlag = prefill.has(i) ? 1 : 0
         globals.push(
@@ -115,7 +115,7 @@ function makeWasmModule(
         w.exportsec([w.export_("main", w.exportdesc.func(mainFuncidx))]),
         w.codesec([w.code(w.func([], frag("code", ...body, w.instr.end)))]),
     ])
-    debugPrint(bytes)
+    //debugPrint(bytes)
     // `(mod as any[])` to avoid compiler error about excessively deep
     // type instantiation.
     return Uint8Array.from((bytes as any[]).flat(Infinity))
