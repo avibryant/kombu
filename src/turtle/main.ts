@@ -1,6 +1,5 @@
 import './style.css'
 import {Turtle} from './turtle'
-import {degrees, vec2} from './vec2'
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div>
@@ -27,13 +26,7 @@ t.at(o)
 
 const ctx = canvas.getContext("2d")!
 
-
-function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-let i = 0
-while(i < 1000) {
+function loop(i: number) {
   t.optimize(1)
 
   ctx.fillStyle = "black"
@@ -47,6 +40,9 @@ while(i < 1000) {
     ctx.stroke()  
   })
 
-  i += 1
-  await sleep(10)
+  if(i > 0) {
+    setTimeout(function() {loop(i - 1)}, 10)
+  }
 }
+
+loop(1000)

@@ -1,7 +1,6 @@
 import * as t from './types'
 import * as e from './eval'
 import * as g from './grad'
-import {tex} from './tex'
 
 export function optimize(loss: t.Num, init: Map<t.Param,number>, iterations: number): e.Evaluator {
     const gradient = g.gradient(loss)
