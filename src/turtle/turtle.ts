@@ -26,6 +26,7 @@ export class Turtle {
     position: v.Vec2
     direction: v.Vec2
     counter: number
+    params: Map<k.Param,number>
 
     constructor() {
         this.vecSegments = []
@@ -33,6 +34,7 @@ export class Turtle {
         this.position = v.origin
         this.direction = v.degrees(k.zero)
         this.counter = 0
+        this.params = new Map()
     }
 
     forward(s: k.AnyNum): VecSegment {
@@ -42,8 +44,6 @@ export class Turtle {
         this.vecSegments.push(seg)
         this.position = to
 
-        console.log("x = " + k.tex(this.position.x))
-        console.log("y = " + k.tex(this.position.y))
         return seg
     }
 
@@ -55,14 +55,19 @@ export class Turtle {
         this.direction = v.addAngles(this.direction, angle)
     }
 
+    optimize(iterations: number) {
+        const ev = k.optimize(this.loss, this.params, iterations)
+        this.params = ev.params
+    }
+
     segments(): Array<Segment> {
-        const fn = k.optimize(this.loss, new Map())
+        const ev = k.evaluator(this.params)
         return this.vecSegments.map((vs) => {
             return {
-                x1: fn(vs.from.x),
-                y1: fn(vs.from.y),
-                x2: fn(vs.to.x),
-                y2: fn(vs.to.y)
+                x1: ev.evaluate(vs.from.x),
+                y1: ev.evaluate(vs.from.y),
+                x2: ev.evaluate(vs.to.x),
+                y2: ev.evaluate(vs.to.y)
             }
         })
     }
@@ -91,7 +96,7 @@ export class Turtle {
     somewhereOn(seg: VecSegment): v.Vec2 {
 
     }
-*/
+
 
     parallel(seg: VecSegment) {
 
@@ -100,7 +105,7 @@ export class Turtle {
     jump(pt: v.Vec2) {
 
     }
-
+*/
     at(pt: v.Vec2) {
         const prx = k.normalLikelihood(k.sub(this.position.x, pt.x))
         const pry = k.normalLikelihood(k.sub(this.position.y, pt.y))

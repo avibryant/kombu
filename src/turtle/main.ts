@@ -27,13 +27,26 @@ t.at(o)
 
 const ctx = canvas.getContext("2d")!
 
-ctx.lineWidth = 1
-ctx.strokeStyle = "black"
 
-t.segments().forEach((s) => {
-  ctx.beginPath()
-  ctx.moveTo(s.x1,s.y1)
-  ctx.lineTo(s.x2,s.y2)
-  ctx.stroke()  
-})
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
+let i = 0
+while(i < 1000) {
+  t.optimize(1)
+
+  ctx.fillStyle = "black"
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+  ctx.lineWidth = 1
+  ctx.strokeStyle = "white"
+    t.segments().forEach((s) => {
+    ctx.beginPath()
+    ctx.moveTo(s.x1,s.y1)
+    ctx.lineTo(s.x2,s.y2)
+    ctx.stroke()  
+  })
+
+  i += 1
+  await sleep(10)
+}

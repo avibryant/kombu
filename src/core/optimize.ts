@@ -3,8 +3,7 @@ import * as e from './eval'
 import * as g from './grad'
 import {tex} from './tex'
 
-export function optimize(loss: t.Num, init: Map<t.Param,number>): e.Evaluator {
-    console.log("loss = " + tex(loss))
+export function optimize(loss: t.Num, init: Map<t.Param,number>, iterations: number): e.Evaluator {
     const gradient = g.gradient(loss)
     const params = new Map(init)
     gradient.forEach((_,k) => {
@@ -13,25 +12,21 @@ export function optimize(loss: t.Num, init: Map<t.Param,number>): e.Evaluator {
     })
 
     const epsilon = 0.0001
-    let iterations = 100000
-    while(iterations > 0) {
+    let i = iterations
+    while(i > 0) {
         const ev = e.evaluator(params)
-        const l = ev(loss)
-        if(iterations % 1000 == 0) {
+        const l = ev.evaluate(loss)
+        if(i % 1000 == 0) {
             console.log(l)
         }
         gradient.forEach((v,k) => {
-            const diff = ev(v)
+            const diff = ev.evaluate(v)
             const old = params.get(k) || 0
             const update = old - (diff * epsilon)
             params.set(k, update)
         })
-        iterations = iterations - 1
+        i = i - 1
     }
-
-    params.forEach((v,k) => {
-        console.log(k.name + " = " + v)
-    })
 
     return e.evaluator(params)
 }
