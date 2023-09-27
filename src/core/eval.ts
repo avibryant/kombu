@@ -1,8 +1,12 @@
 import * as t from './types'
 
-export type Evaluator = (inp: t.Num) => number
-export function evaluator(prefill: Map<t.Num,number>): Evaluator {
-    const numCache = new Map(prefill)
+export interface Evaluator {
+    evaluate: (inp: t.Num) => number
+    params: Map<t.Param, number>
+}
+
+export function evaluator(params: Map<t.Param,number>): Evaluator {
+    const numCache: Map<t.Num,number> = new Map(params)
     function evaluate(num: t.Num): number {
         let result = numCache.get(num)
         if (result == undefined) {
@@ -63,5 +67,5 @@ export function evaluator(prefill: Map<t.Num,number>): Evaluator {
         }
     }
 
-    return evaluate
+    return {evaluate, params}
 }

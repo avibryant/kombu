@@ -2,30 +2,29 @@ import * as t from './types'
 import * as e from './eval'
 import * as g from './grad'
 
-import { evaluator } from './evalwasm'
-
-export function optimize(loss: t.Num, init: Map<t.Param,number>): e.Evaluator {
+export function optimize(loss: t.Num, init: Map<t.Param,number>, iterations: number): e.Evaluator {
     const gradient = g.gradient(loss)
     const params = new Map(init)
     gradient.forEach((_,k) => {
-        if (!params.has(k))
-            params.set(k, Math.random())
+        if(!params.has(k))
+            params.set(k,Math.random() * 10)
     })
 
-    const epsilon = 0.01
-    let iterations = 10000
-    while(iterations > 0) {
-        const ev = evaluator(params)
-        const l = ev(loss)
-        if(iterations % 1000 == 0)
+    const epsilon = 0.0001
+    let i = iterations
+    while(i > 0) {
+        const ev = e.evaluator(params)
+        const l = ev.evaluate(loss)
+        if(i % 1000 == 0) {
             console.log(l)
+        }
         gradient.forEach((v,k) => {
-            const diff = ev(v)
+            const diff = ev.evaluate(v)
             const old = params.get(k) || 0
             const update = old - (diff * epsilon)
             params.set(k, update)
         })
-        iterations = iterations - 1
+        i = i - 1
     }
 
     return evaluator(params)
