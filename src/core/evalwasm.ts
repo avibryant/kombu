@@ -19,13 +19,6 @@ interface Cacheable {
     id: number
 }
 
-function checkCacheable(num: t.Num): Cacheable {
-    if (!("id" in num)) {
-        throw new Error(`not Cacheable: ${num}`)
-    }
-    return num as Cacheable
-}
-
 function checkNotNull<T>(x: T): NonNullable<T> {
     if (x == null) {
         throw new Error(`unexpected null: ${x}`)
@@ -68,7 +61,8 @@ function frag(dbg: string, ...fragment: w.BytecodeFragment) {
 let count = 0
 // @ts-ignore 'debugPrint' is declared but its value is never read.
 function debugPrint(frag: any[], depth = 0) {
-    const log = (...args) => console.log(new Array(depth).join("  "), ...args)
+    const log = (...args: any[]) =>
+        console.log(new Array(depth).join("  "), ...args)
     if ((frag as any).dbg) log(`[${(frag as any).dbg}]`)
     if (Array.isArray(frag)) frag.forEach((x) => debugPrint(x, depth + 1))
     else log(`@${count++} ${frag} (0x${(frag as any).toString(16)})`)
@@ -129,7 +123,7 @@ function makeWasmModule(
     return Uint8Array.from((bytes as any[]).flat(Infinity))
 }
 
-export function evaluator(prefill: Map<t.Num, number>): Evaluator {
+export function evaluator(params: Map<t.Param, number>): Evaluator {
     const { instr } = w
 
     function evaluate(num: t.Num): number {
@@ -138,8 +132,8 @@ export function evaluator(prefill: Map<t.Num, number>): Evaluator {
 
         const prefillByIdx = new Map<number, number>()
 
-        for (const [k, v] of prefill.entries()) {
-            const idx = ctx.globalidx(checkCacheable(k))
+        for (const [k, v] of params.entries()) {
+            const idx = ctx.globalidx(k)
             if (idx !== -1) {
                 prefillByIdx.set(idx, v)
             }
@@ -238,5 +232,5 @@ export function evaluator(prefill: Map<t.Num, number>): Evaluator {
         return frag("Unary", emitCachedNum(node, ctx), callBuiltin(type))
     }
 
-    return evaluate
+    return { evaluate, params }
 }
