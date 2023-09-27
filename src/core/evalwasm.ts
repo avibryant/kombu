@@ -54,11 +54,8 @@ class CodegenContext {
         return checkNotNull(this.idToGlobalidx.get(num.id))
     }
 
-    globalidx(c: Cacheable) {
-        if (!this.idToGlobalidx.has(c.id)) {
-            throw new Error(`No global for id '${c.id}'`)
-        }
-        return checkNotNull(this.idToGlobalidx.get(c.id))
+    globalidx(c: Cacheable): number {
+        return this.idToGlobalidx.get(c.id) ?? -1
     }
 }
 
@@ -90,11 +87,14 @@ function makeWasmModule(
 ) {
     const mainFuncType = w.functype([], [w.valtype.f64])
     const builtinFuncType1 = w.functype([w.valtype.f64], [w.valtype.f64])
-    const builtinFuncType2 = w.functype([w.valtype.f64, w.valtype.f64], [w.valtype.f64])
+    const builtinFuncType2 = w.functype(
+        [w.valtype.f64, w.valtype.f64],
+        [w.valtype.f64],
+    )
 
     const imports = builtinNames.map((name) => {
         // TODO: Find a cleaner way of doing this?
-        const sigIdx = name === 'pow' ? 2 : 1
+        const sigIdx = name === "pow" ? 2 : 1
         return w.import_("builtins", name, w.importdesc.func(sigIdx))
     })
     const mainFuncidx = imports.length
@@ -123,7 +123,7 @@ function makeWasmModule(
         w.exportsec([w.export_("main", w.exportdesc.func(mainFuncidx))]),
         w.codesec([w.code(w.func([], frag("code", ...body, w.instr.end)))]),
     ])
-//    debugPrint(bytes)
+    //    debugPrint(bytes)
     // `(mod as any[])` to avoid compiler error about excessively deep
     // type instantiation.
     return Uint8Array.from((bytes as any[]).flat(Infinity))
@@ -135,13 +135,16 @@ export function evaluator(prefill: Map<t.Num, number>): Evaluator {
     function evaluate(num: t.Num): number {
         const ctx = new CodegenContext()
         const body = emitCachedNum(num, ctx)
-        const prefillById = new Map(
-            Array.from(prefill.entries()).map(([k, v]) => [
-                ctx.globalidx(checkCacheable(k)),
-                v,
-            ]),
-        )
-        const bytes = makeWasmModule(body, ctx.globalsCount, prefillById)
+
+        const prefillByIdx = new Map<number, number>()
+
+        for (const [k, v] of prefill.entries()) {
+            const idx = ctx.globalidx(checkCacheable(k))
+            if (idx !== -1) {
+                prefillByIdx.set(idx, v)
+            }
+        }
+        const bytes = makeWasmModule(body, ctx.globalsCount, prefillByIdx)
         const mod = new WebAssembly.Module(bytes)
         const { exports } = new WebAssembly.Instance(mod, { builtins })
         return (exports as any).main()

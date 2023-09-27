@@ -31,7 +31,6 @@ test("params", () => {
     expect(ev2(k.add(x, y))).toBe(300)
 })
 
-
 test("params", () => {
     const x = k.param("x")
     const ev = evaluator(new Map([[x, 99]]))
