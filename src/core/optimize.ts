@@ -9,7 +9,7 @@ export function optimize(loss: t.Num, init: Map<t.Param,number>): e.Evaluator {
     const params = new Map(init)
     gradient.forEach((_,k) => {
         if(!params.has(k))
-            params.set(k,Math.random())
+            params.set(k,Math.random() * 10)
     })
 
     const epsilon = 0.0001

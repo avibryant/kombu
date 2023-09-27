@@ -18,12 +18,11 @@ resizeCanvas()
 
 const t = new Turtle()
 const o = t.position
-const deg = t.anyAngle()
+t.forward(t.approxLength(100))
+t.right(t.anyAngle())
 t.forward(t.approxLength(200))
-t.right(deg)
-t.forward(t.approxLength(200))
-t.right(deg)
-t.forward(t.approxLength(200))
+t.right(t.anyAngle())
+t.forward(t.approxLength(300))
 t.at(o)
 
 const ctx = canvas.getContext("2d")!
