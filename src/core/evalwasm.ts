@@ -89,11 +89,14 @@ function makeWasmModule(
     prefill: Map<number, number>,
 ) {
     const mainFuncType = w.functype([], [w.valtype.f64])
-    const builtinFuncType = w.functype([w.valtype.f64], [w.valtype.f64])
+    const builtinFuncType1 = w.functype([w.valtype.f64], [w.valtype.f64])
+    const builtinFuncType2 = w.functype([w.valtype.f64, w.valtype.f64], [w.valtype.f64])
 
-    const imports = builtinNames.map((name) =>
-        w.import_("builtins", name, w.importdesc.func(1)),
-    )
+    const imports = builtinNames.map((name) => {
+        // TODO: Find a cleaner way of doing this?
+        const sigIdx = name === 'pow' ? 2 : 1
+        return w.import_("builtins", name, w.importdesc.func(sigIdx))
+    })
     const mainFuncidx = imports.length
 
     const globals = []
@@ -113,14 +116,14 @@ function makeWasmModule(
     }
 
     const bytes = w.module([
-        w.typesec([mainFuncType, builtinFuncType]),
+        w.typesec([mainFuncType, builtinFuncType1, builtinFuncType2]),
         w.importsec(imports),
         w.funcsec([w.typeidx(0)]),
         w.globalsec(globals),
         w.exportsec([w.export_("main", w.exportdesc.func(mainFuncidx))]),
         w.codesec([w.code(w.func([], frag("code", ...body, w.instr.end)))]),
     ])
-    debugPrint(bytes)
+//    debugPrint(bytes)
     // `(mod as any[])` to avoid compiler error about excessively deep
     // type instantiation.
     return Uint8Array.from((bytes as any[]).flat(Infinity))
