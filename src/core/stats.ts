@@ -8,15 +8,11 @@ export interface Prior {
 }
 
 export function logistic(num: n.AnyNum): t.Num {
-    const negNum = n.neg(n.num(num))
-    return n.div(c.one, n.add(c.one, n.exp(negNum)))
+    return n.div(c.one, n.add(c.one, n.exp(n.neg(num))))
 }
 
-export function scale(prior: Prior, sigma: n.AnyNum): Prior {
-    return {
-        value: n.mul(prior.value, sigma),
-        logp: n.sub(prior.logp, n.log(sigma))
-    }
+export function softplus(num: n.AnyNum): t.Num {
+    return n.log(n.add(1, n.exp(num)))
 }
 
 export function normalPrior(name: string): Prior {

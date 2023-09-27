@@ -1,6 +1,6 @@
 import './style.css'
 import {Turtle} from './turtle'
-import {degrees} from './vec2'
+import {degrees, vec2} from './vec2'
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div>
@@ -16,15 +16,18 @@ function resizeCanvas() {
 
 resizeCanvas()
 
+//console.log(degrees(90))
+const deg90 = vec2(0,1)
+
 const t = new Turtle()
 const o = t.position
-t.forward(t.someLength(Math.random() * 400))
-t.right(degrees(90))
-t.forward(t.someLength(Math.random() * 400))
-t.right(degrees(90))
-t.forward(t.someLength(Math.random() * 400))
-t.right(degrees(90))
-t.forward(t.someLength(Math.random() * 400))
+t.forward(t.approxLength(200))
+t.right(deg90)
+t.forward(t.approxLength(200))
+t.right(deg90)
+t.forward(t.approxLength(200))
+t.right(deg90)
+t.forward(t.approxLength(200))
 t.at(o)
 
 const ctx = canvas.getContext("2d")!
