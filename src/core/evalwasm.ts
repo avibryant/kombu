@@ -33,6 +33,10 @@ function checkNotNull<T>(x: T): NonNullable<T> {
     return x
 }
 
+function f64_const(v: number): w.BytecodeFragment {
+    return frag("f64_const", w.instr.f64.const, w.f64(v))
+}
+
 class CodegenContext {
     globalsCount: number = 0
     private idToGlobalidx = new Map<number, number>()
@@ -65,6 +69,7 @@ function frag(dbg: string, ...fragment: w.BytecodeFragment) {
 }
 
 let count = 0
+// @ts-ignore 'debugPrint' is declared but its value is never read.
 function debugPrint(frag: any[], depth = 0) {
     const log = (...args) => console.log(new Array(depth).join("  "), ...args)
     if ((frag as any).dbg) log(`[${(frag as any).dbg}]`)
@@ -87,7 +92,7 @@ function makeWasmModule(
     const builtinFuncType = w.functype([w.valtype.f64], [w.valtype.f64])
 
     const imports = builtinNames.map((name) =>
-        w.import_("builtins", name, w.importdesc.func(0)),
+        w.import_("builtins", name, w.importdesc.func(1)),
     )
     const mainFuncidx = imports.length
 
@@ -97,7 +102,7 @@ function makeWasmModule(
         const initialFlag = prefill.has(i) ? 1 : 0
         globals.push(
             w.global(w.globaltype(w.valtype.f64, w.mut.var), [
-                [w.instr.f64.const, w.f64(initialVal)],
+                f64_const(initialVal),
                 w.instr.end,
             ]),
             w.global(w.globaltype(w.valtype.i32, w.mut.var), [
@@ -115,7 +120,7 @@ function makeWasmModule(
         w.exportsec([w.export_("main", w.exportdesc.func(mainFuncidx))]),
         w.codesec([w.code(w.func([], frag("code", ...body, w.instr.end)))]),
     ])
-    //debugPrint(bytes)
+    debugPrint(bytes)
     // `(mod as any[])` to avoid compiler error about excessively deep
     // type instantiation.
     return Uint8Array.from((bytes as any[]).flat(Infinity))
@@ -142,15 +147,15 @@ export function evaluator(prefill: Map<t.Num, number>): Evaluator {
     function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
         switch (num.type) {
             case t.NumType.Constant:
-                return frag("Constant", instr.f64.const, w.f64(num.value))
+                return frag("Constant", f64_const(num.value))
             case t.NumType.Param:
-                return frag("Param", instr.f64.const, w.f64(Number.NaN))
+                return frag("Param", f64_const(Number.NaN))
             case t.NumType.Sum:
                 return frag(
                     "Sum",
                     emitSum(num.firstTerm, ctx),
-                    instr.f64.const,
-                    w.f64(num.k),
+                    f64_const(num.k),
+
                     instr.f64.add,
                 )
             case t.NumType.Product:
@@ -191,8 +196,8 @@ export function evaluator(prefill: Map<t.Num, number>): Evaluator {
     ): w.BytecodeFragment {
         let result = frag(
             "Sum2",
-            instr.f64.const,
-            w.f64(node.a),
+            f64_const(node.a),
+
             emitCachedNum(node.x, ctx),
             instr.f64.mul,
         )
@@ -208,7 +213,7 @@ export function evaluator(prefill: Map<t.Num, number>): Evaluator {
         let result = frag(
             "Pow",
             emitCachedNum(node.x, ctx),
-            w.f64(node.a),
+            f64_const(node.a),
             callBuiltin("pow"),
         )
         if (node.nextTerm)
