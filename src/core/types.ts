@@ -60,3 +60,12 @@ export interface Unary {
   term: Term
   bounds: Bounds
 }
+
+export interface ComputeState {
+  hasParam(param: Param): boolean
+  setParams(params: Map<Param, number>): void
+  setParam(param: Param, val: number): void
+  writeCache(n: Num, val: number): void
+  getParam(param: Param): number | undefined
+  readCache(n: Num): number | undefined
+}

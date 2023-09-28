@@ -8,14 +8,15 @@ import * as g from "./grad"
 
 export function optimize(
   loss: t.Num,
-  state: e.ComputeState,
+  init: Map<t.Param, number>,
 ): { evaluator: e.Evaluator; begin: () => Generator<number> } {
   const gradient = g.gradient(loss)
+  const params = new Map(init)
   gradient.forEach((_, k) => {
-    // TODO implement a setParamDefaults() method on ComputeState?
-    if (!state.hasParam(k)) state.setParam(k, Math.random() * 10)
+    if (!params.has(k)) params.set(k, Math.random() * 10)
   })
-  const ev = e.evaluator(state)
+  // TODO: This should be allocated via the evaluator
+  const ev = e.evaluator(params)
 
   function* stepGen() {
     const epsilon = 0.0001
@@ -27,9 +28,9 @@ export function optimize(
       }
       gradient.forEach((v, k) => {
         const diff = ev.evaluate(v)
-        const old = state.getParam(k) ?? 0
+        const old = ev.state.getParam(k) ?? 0
         const update = old - diff * epsilon
-        state.setParam(k, update)
+        ev.state.setParam(k, update)
       })
       yield l
     }

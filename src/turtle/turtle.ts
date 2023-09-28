@@ -56,8 +56,7 @@ export class Turtle {
   }
 
   optimize() {
-    const state = new k.ComputeState(new Map())
-    const { evaluator, begin } = k.optimize(this.loss, state)
+    const { evaluator, begin } = k.optimize(this.loss, new Map())
     this.evaluator = evaluator
     return begin()
   }

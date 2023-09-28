@@ -3,10 +3,10 @@ import * as t from "./types"
 
 export interface Evaluator {
   evaluate: (inp: t.Num) => number
-  state: ComputeState
+  state: t.ComputeState
 }
 
-export class ComputeState {
+class SimpleComputeState {
   private numCache: Map<t.Num, [number, number]> = new Map()
   private epoch = 0
 
@@ -47,7 +47,9 @@ export class ComputeState {
   }
 }
 
-export function evaluator(state: ComputeState): Evaluator {
+export function evaluator(params: Map<t.Param, number>): Evaluator {
+  const state = new SimpleComputeState(params)
+
   function evaluate(num: t.Num): number {
     let result = state.readCache(num)
     if (result === undefined) {
