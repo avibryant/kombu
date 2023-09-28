@@ -2,9 +2,9 @@ import * as t from "./types"
 import * as e from "./eval"
 import * as g from "./grad"
 
-//import { evaluator as wasmEvaluator } from "./evalwasm"
+import { evaluator as wasmEvaluator } from "./evalwasm"
 
-//const useWasm = false
+const useWasm = false
 
 export function optimize(
   loss: t.Num,
@@ -17,7 +17,7 @@ export function optimize(
   })
   const roots = [loss, ...gradient.values()]
   // TODO: This should be allocated via the evaluator
-  const ev = e.evaluator(roots, params)
+  const ev = (useWasm ? e.evaluator : wasmEvaluator)(roots, params)
 
   function* stepGen() {
     const epsilon = 0.0001
