@@ -1,3 +1,4 @@
+import { checkNotNull } from "./assert"
 import * as t from "./types"
 
 export interface Evaluator {
@@ -5,13 +6,50 @@ export interface Evaluator {
   params: Map<t.Param, number>
 }
 
+export class ComputeState {
+  private numCache: Map<t.Num, [number, number]> = new Map();
+  private epoch = 0
+
+  constructor(params: Map<t.Param, number>) {
+    this.setParams(params);
+  }
+
+  setParams(params: Map<t.Param, number>) {
+    this.epoch += 1;
+    for (const [p, val] of params) {
+      this.numCache.set(p, [Infinity, val])
+    }
+  }
+
+  setParam(param: t.Param, val: number): void {
+    this.epoch += 1;
+    this.numCache.set(param, [Infinity, val])
+  }
+
+  writeCache(n: t.Num, val: number) {
+    this.numCache.set(n, [this.epoch, val]);
+  }
+
+  getParam(param: t.Param): number | undefined {
+    if (!this.numCache.has(param)) return undefined;
+    const [_, val] = checkNotNull(this.numCache.get(param)) // ignore validity
+    return val;
+  }
+
+  readCache(n: t.Num) {
+    if (!this.numCache.has(n)) return undefined;
+    const [validity, val] = checkNotNull(this.numCache.get(n))
+    return validity >= this.epoch ? val : undefined;
+  }
+}
+
 export function evaluator(params: Map<t.Param, number>): Evaluator {
-  const numCache: Map<t.Num, number> = new Map(params)
+  const state = new ComputeState(params);
   function evaluate(num: t.Num): number {
-    let result = numCache.get(num)
-    if (result == undefined) {
+    let result = state.readCache(num)
+    if (result === undefined) {
       result = computeNum(num)
-      numCache.set(num, result)
+      state.writeCache(num, result)
     }
     return result
   }
