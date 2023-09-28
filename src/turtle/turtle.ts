@@ -26,7 +26,7 @@ export class Turtle {
   position: v.Vec2
   direction: v.Vec2
   counter: number
-  params: Map<k.Param, number>
+  computeState: k.ComputeState
 
   constructor() {
     this.vecSegments = []
@@ -34,7 +34,7 @@ export class Turtle {
     this.position = v.origin
     this.direction = v.degrees(k.zero)
     this.counter = 0
-    this.params = new Map()
+    this.computeState = new k.ComputeState(new Map())
   }
 
   forward(s: k.AnyNum): VecSegment {
@@ -56,12 +56,11 @@ export class Turtle {
   }
 
   optimize(iterations: number) {
-    const ev = k.optimize(this.loss, this.params, iterations)
-    this.params = ev.params
+    const ev = k.optimize(this.loss, this.computeState, iterations)
   }
 
   segments(): Array<Segment> {
-    const ev = k.evaluator(this.params)
+    const ev = k.evaluator(this.computeState)
     return this.vecSegments.map((vs) => {
       return {
         x1: ev.evaluate(vs.from.x),
@@ -91,7 +90,7 @@ export class Turtle {
     anyLength(): k.Num {
 
     }
-    
+
 
     somewhereOn(seg: VecSegment): v.Vec2 {
 

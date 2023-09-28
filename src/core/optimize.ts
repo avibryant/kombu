@@ -8,33 +8,33 @@ import * as g from "./grad"
 
 export function optimize(
   loss: t.Num,
-  init: Map<t.Param, number>,
+  state: e.ComputeState,
   iterations: number,
 ): e.Evaluator {
   const gradient = g.gradient(loss)
-  const params = new Map(init)
   gradient.forEach((_, k) => {
-    if (!params.has(k)) params.set(k, Math.random() * 10)
+    // TODO implement a setParamDefaults() method on ComputeState?
+    if (!state.hasParam(k)) state.setParam(k, Math.random() * 10)
   })
 
   const epsilon = 0.0001
   let i = iterations
   while (i > 0) {
     //    const ev = (useWasm ? wasmEvaluator : e.evaluator)(params)
-    const ev = e.evaluator(params)
+    const ev = e.evaluator(state)
     const l = ev.evaluate(loss)
     if (i % 1000 == 0) {
       console.log(l)
     }
     gradient.forEach((v, k) => {
       const diff = ev.evaluate(v)
-      const old = params.get(k) || 0
+      const old = state.getParam(k) ?? 0
       const update = old - diff * epsilon
-      params.set(k, update)
+      state.setParam(k, update)
     })
     i = i - 1
   }
 
   //  return (useWasm ? wasmEvaluator : e.evaluator)(params)
-  return e.evaluator(params)
+  return e.evaluator(state)
 }
