@@ -47,7 +47,10 @@ class SimpleComputeState {
   }
 }
 
-export function evaluator(params: Map<t.Param, number>): Evaluator {
+export function evaluator(
+  _nums: t.Num[],
+  params: Map<t.Param, number>,
+): Evaluator {
   const state = new SimpleComputeState(params)
 
   function evaluate(num: t.Num): number {

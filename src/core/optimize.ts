@@ -15,8 +15,9 @@ export function optimize(
   gradient.forEach((_, k) => {
     if (!params.has(k)) params.set(k, Math.random() * 10)
   })
+  const roots = [loss, ...gradient.values()]
   // TODO: This should be allocated via the evaluator
-  const ev = e.evaluator(params)
+  const ev = e.evaluator(roots, params)
 
   function* stepGen() {
     const epsilon = 0.0001

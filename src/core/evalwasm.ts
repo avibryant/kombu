@@ -79,7 +79,7 @@ function callBuiltin(name: string): w.BytecodeFragment {
 }
 
 function makeWasmModule(
-  namesAndBodies: [string, w.BytecodeFragment][],
+  namesAndBodies: { name: string; body: w.BytecodeFragment }[],
   ctx: CodegenContext,
 ) {
   const mainFuncType = w.functype([], [w.valtype.f64])
@@ -94,8 +94,6 @@ function makeWasmModule(
     const sigIdx = name === "pow" ? 2 : 1
     return w.import_("builtins", name, w.importdesc.func(sigIdx))
   })
-  const mainFuncidx = imports.length
-
   const globals = []
   for (let i = 0; i < ctx.globalsCount; i += 2) {
     const initialVal = ctx.initialGlobalValOrElse(i, () => Math.random())
@@ -111,15 +109,18 @@ function makeWasmModule(
       ]),
     )
   }
-
   const bytes = w.module([
     w.typesec([mainFuncType, builtinFuncType1, builtinFuncType2]),
     w.importsec(imports),
-    w.funcsec([w.typeidx(0)]),
+    w.funcsec(new Array(namesAndBodies.length).map(() => w.typeidx(0))),
     w.globalsec(globals),
-    w.exportsec([w.export_("main", w.exportdesc.func(mainFuncidx))]),
+    w.exportsec(
+      namesAndBodies.map(({ name }, i) =>
+        w.export_(name, w.exportdesc.func(imports.length + i)),
+      ),
+    ),
     w.codesec(
-      namesAndBodies.map(([_, body]) =>
+      namesAndBodies.map(({ body }) =>
         w.code(w.func([], frag("code", ...body, w.instr.end))),
       ),
     ),
@@ -137,21 +138,20 @@ export function evaluator(
   const { instr } = w
 
   const ctx = new CodegenContext(params)
-  const functionBodies = nums.map((num) => [
-    `compute${num.id}`,
-    compileNum(num, ctx),
-  ])
+  const functionBodies = nums.map((num) => ({
+    name: `compute${num.id}`,
+    body: compileNum(num, ctx),
+  }))
   const bytes = makeWasmModule(functionBodies, ctx)
   const mod = new WebAssembly.Module(bytes)
   const { exports } = new WebAssembly.Instance(mod, { builtins })
-  return (exports as any).main()
 
   function evaluate(num: t.Num): number {
-    return 0
+    return exports[`compute${num.id}`]()
   }
 
-  function compileNum(num, ctx: CodegenContext) {
-    const body = emitCachedNum(num, ctx)
+  function compileNum(num: t.Num, ctx: CodegenContext) {
+    return emitCachedNum(num, ctx)
   }
 
   function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
