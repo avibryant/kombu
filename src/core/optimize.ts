@@ -2,9 +2,9 @@ import * as t from "./types"
 import * as e from "./eval"
 import * as g from "./grad"
 
-import { evaluator as wasmEvaluator } from "./evalwasm"
+//import { evaluator as wasmEvaluator } from "./evalwasm"
 
-const useWasm = false
+//const useWasm = false
 
 export function optimize(
   loss: t.Num,
@@ -20,7 +20,8 @@ export function optimize(
   const epsilon = 0.0001
   let i = iterations
   while (i > 0) {
-    const ev = (useWasm ? wasmEvaluator : e.evaluator)(params)
+    //    const ev = (useWasm ? wasmEvaluator : e.evaluator)(params)
+    const ev = e.evaluator(params)
     const l = ev.evaluate(loss)
     if (i % 1000 == 0) {
       console.log(l)
@@ -34,5 +35,6 @@ export function optimize(
     i = i - 1
   }
 
-  return (useWasm ? wasmEvaluator : e.evaluator)(params)
+  //  return (useWasm ? wasmEvaluator : e.evaluator)(params)
+  return e.evaluator(params)
 }

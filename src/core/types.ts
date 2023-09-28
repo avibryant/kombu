@@ -12,6 +12,7 @@ export enum NumType {
 
 export interface Constant {
   type: NumType.Constant
+  id: number
   value: number
   bounds: Bounds
 }

@@ -1,5 +1,6 @@
 import * as w from "@wasmgroundup/emit"
 
+import { checkNotNull } from "./assert"
 import { Evaluator } from "./eval"
 import * as t from "./types"
 
@@ -15,17 +16,6 @@ const builtins = {
 }
 const builtinNames = Object.keys(builtins)
 
-interface Cacheable {
-  id: number
-}
-
-function checkNotNull<T>(x: T): NonNullable<T> {
-  if (x == null) {
-    throw new Error(`unexpected null: ${x}`)
-  }
-  return x
-}
-
 function f64_const(v: number): w.BytecodeFragment {
   return frag("f64_const", w.instr.f64.const, w.f64(v))
 }
@@ -33,22 +23,36 @@ function f64_const(v: number): w.BytecodeFragment {
 class CodegenContext {
   globalsCount: number = 0
   private idToGlobalidx = new Map<number, number>()
+  private globalValByIdx = new Map<number, number>()
+
+  constructor(private paramValues: Map<t.Num, number>) {}
 
   maybeAllocateGlobals(num: t.Num): number {
-    // For every `t.Num` that is cacheable, allocate two globals:
-    // an f64 for the cached value, and an i32 as a flag (is it cached?).
+    // For every Identifiable node, allocate two globals: (1) an f64 for the
+    // cached value, and (2) an i32 as a flag (is it cached?).
     // TODO: Should we be concerned about alignment here?
-    if (!("id" in num)) return -1
-    if (!this.idToGlobalidx.has(num.id)) {
-      const idx = this.globalsCount
-      this.globalsCount += 2
-      this.idToGlobalidx.set(num.id, idx)
+    const idx = this.globalsCount
+    this.globalsCount += 2
+    this.idToGlobalidx.set(num.id, idx)
+
+    // Record the initial value if we have one.
+    if (this.paramValues.has(num)) {
+      this.globalValByIdx.set(idx, checkNotNull(this.paramValues.get(num)))
     }
-    return checkNotNull(this.idToGlobalidx.get(num.id))
+
+    return idx
   }
 
-  globalidx(c: Cacheable): number {
-    return this.idToGlobalidx.get(c.id) ?? -1
+  globalidx(num: t.Num): number {
+    return this.idToGlobalidx.get(num.id) ?? -1
+  }
+
+  initialGlobalValOrElse(idx: number, fn: () => number): number {
+    return this.globalValByIdx.get(idx) ?? fn()
+  }
+
+  initialGlobalFlag(idx: number) {
+    return this.globalValByIdx.has(idx) ? 1 : 0
   }
 }
 
@@ -75,9 +79,8 @@ function callBuiltin(name: string): w.BytecodeFragment {
 }
 
 function makeWasmModule(
-  body: w.BytecodeFragment,
-  numGlobals: number,
-  prefill: Map<number, number>,
+  namesAndBodies: [string, w.BytecodeFragment][],
+  ctx: CodegenContext,
 ) {
   const mainFuncType = w.functype([], [w.valtype.f64])
   const builtinFuncType1 = w.functype([w.valtype.f64], [w.valtype.f64])
@@ -94,9 +97,9 @@ function makeWasmModule(
   const mainFuncidx = imports.length
 
   const globals = []
-  for (let i = 0; i < numGlobals; i += 2) {
-    const initialVal = prefill.get(i) ?? Math.random()
-    const initialFlag = prefill.has(i) ? 1 : 0
+  for (let i = 0; i < ctx.globalsCount; i += 2) {
+    const initialVal = ctx.initialGlobalValOrElse(i, () => Math.random())
+    const initialFlag = ctx.initialGlobalFlag(i)
     globals.push(
       w.global(w.globaltype(w.valtype.f64, w.mut.var), [
         f64_const(initialVal),
@@ -115,7 +118,11 @@ function makeWasmModule(
     w.funcsec([w.typeidx(0)]),
     w.globalsec(globals),
     w.exportsec([w.export_("main", w.exportdesc.func(mainFuncidx))]),
-    w.codesec([w.code(w.func([], frag("code", ...body, w.instr.end)))]),
+    w.codesec(
+      namesAndBodies.map(([_, body]) =>
+        w.code(w.func([], frag("code", ...body, w.instr.end))),
+      ),
+    ),
   ])
   //    debugPrint(bytes)
   // `(mod as any[])` to avoid compiler error about excessively deep
@@ -123,25 +130,28 @@ function makeWasmModule(
   return Uint8Array.from((bytes as any[]).flat(Infinity))
 }
 
-export function evaluator(params: Map<t.Param, number>): Evaluator {
+export function evaluator(
+  nums: t.Num[],
+  params: Map<t.Param, number>,
+): Evaluator {
   const { instr } = w
 
+  const ctx = new CodegenContext(params)
+  const functionBodies = nums.map((num) => [
+    `compute${num.id}`,
+    compileNum(num, ctx),
+  ])
+  const bytes = makeWasmModule(functionBodies, ctx)
+  const mod = new WebAssembly.Module(bytes)
+  const { exports } = new WebAssembly.Instance(mod, { builtins })
+  return (exports as any).main()
+
   function evaluate(num: t.Num): number {
-    const ctx = new CodegenContext()
+    return 0
+  }
+
+  function compileNum(num, ctx: CodegenContext) {
     const body = emitCachedNum(num, ctx)
-
-    const prefillByIdx = new Map<number, number>()
-
-    for (const [k, v] of params.entries()) {
-      const idx = ctx.globalidx(k)
-      if (idx !== -1) {
-        prefillByIdx.set(idx, v)
-      }
-    }
-    const bytes = makeWasmModule(body, ctx.globalsCount, prefillByIdx)
-    const mod = new WebAssembly.Module(bytes)
-    const { exports } = new WebAssembly.Instance(mod, { builtins })
-    return (exports as any).main()
   }
 
   function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
