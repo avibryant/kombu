@@ -1,4 +1,5 @@
 import * as k from "../core/api"
+import { checkNotNull } from "../core/assert"
 import * as v from "./vec2"
 
 export interface VecSegment {
@@ -26,7 +27,7 @@ export class Turtle {
   position: v.Vec2
   direction: v.Vec2
   counter: number
-  computeState: k.ComputeState
+  evaluator?: k.Evaluator
 
   constructor() {
     this.vecSegments = []
@@ -34,7 +35,6 @@ export class Turtle {
     this.position = v.origin
     this.direction = v.degrees(k.zero)
     this.counter = 0
-    this.computeState = new k.ComputeState(new Map())
   }
 
   forward(s: k.AnyNum): VecSegment {
@@ -56,11 +56,12 @@ export class Turtle {
   }
 
   optimize(iterations: number) {
-    const ev = k.optimize(this.loss, this.computeState, iterations)
+    const state = new k.ComputeState(new Map())
+    this.evaluator = k.optimize(this.loss, state, iterations)
   }
 
   segments(): Array<Segment> {
-    const ev = k.evaluator(this.computeState)
+    const ev = checkNotNull(this.evaluator)
     return this.vecSegments.map((vs) => {
       return {
         x1: ev.evaluate(vs.from.x),

@@ -3,6 +3,7 @@ export type { AnyNum } from "./num"
 export { param, zero, one, nodeCount } from "./construct"
 export { tex } from "./tex"
 export { ComputeState, evaluator } from "./eval"
+export type { Evaluator } from "./eval"
 export { gradient } from "./grad"
 export { optimize } from "./optimize"
 export {

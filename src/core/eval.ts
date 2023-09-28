@@ -3,7 +3,7 @@ import * as t from "./types"
 
 export interface Evaluator {
   evaluate: (inp: t.Num) => number
-  params: Map<t.Param, number>
+  state: ComputeState
 }
 
 export class ComputeState {
@@ -104,5 +104,5 @@ export function evaluator(state: ComputeState): Evaluator {
     }
   }
 
-  return { evaluate }
+  return { evaluate, state }
 }
