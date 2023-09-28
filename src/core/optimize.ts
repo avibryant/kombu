@@ -9,8 +9,7 @@ import * as g from "./grad"
 export function optimize(
   loss: t.Num,
   state: e.ComputeState,
-  iterations: number,
-): e.Evaluator {
+): { evaluator: e.Evaluator; begin: () => Generator<number> } {
   const gradient = g.gradient(loss)
   gradient.forEach((_, k) => {
     // TODO implement a setParamDefaults() method on ComputeState?
@@ -18,22 +17,27 @@ export function optimize(
   })
   const ev = e.evaluator(state)
 
-  const epsilon = 0.0001
-  let i = iterations
-  while (i > 0) {
-    const l = ev.evaluate(loss)
-    if (i % 1000 == 0) {
-      console.log(l)
+  function* stepGen() {
+    const epsilon = 0.0001
+    let i = 0
+    while (true) {
+      const l = ev.evaluate(loss)
+      if (++i % 1000 == 0) {
+        console.log(l)
+      }
+      gradient.forEach((v, k) => {
+        const diff = ev.evaluate(v)
+        const old = state.getParam(k) ?? 0
+        const update = old - diff * epsilon
+        state.setParam(k, update)
+      })
+      yield l
     }
-    gradient.forEach((v, k) => {
-      const diff = ev.evaluate(v)
-      const old = state.getParam(k) ?? 0
-      const update = old - diff * epsilon
-      state.setParam(k, update)
-    })
-    i = i - 1
   }
 
   //  return (useWasm ? wasmEvaluator : e.evaluator)(params)
-  return ev
+  return {
+    evaluator: ev,
+    begin: () => stepGen(),
+  }
 }

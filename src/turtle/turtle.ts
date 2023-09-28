@@ -55,9 +55,11 @@ export class Turtle {
     this.direction = v.addAngles(this.direction, angle)
   }
 
-  optimize(iterations: number) {
+  optimize() {
     const state = new k.ComputeState(new Map())
-    this.evaluator = k.optimize(this.loss, state, iterations)
+    const { evaluator, begin } = k.optimize(this.loss, state)
+    this.evaluator = evaluator
+    return begin()
   }
 
   segments(): Array<Segment> {

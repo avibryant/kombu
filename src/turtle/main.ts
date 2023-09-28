@@ -26,8 +26,10 @@ t.at(o)
 
 const ctx = canvas.getContext("2d")!
 
+const iter = t.optimize()
+
 function loop(i: number) {
-  t.optimize(1)
+  iter.next()
 
   ctx.fillStyle = "black"
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
@@ -46,5 +48,4 @@ function loop(i: number) {
     }, 10)
   }
 }
-
 loop(1000)
