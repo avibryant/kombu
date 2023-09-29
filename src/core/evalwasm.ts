@@ -199,8 +199,10 @@ export function evaluator(
     let cacheIdx = ctx.globalidx(num)
     if (cacheIdx === -1) {
       cacheIdx = ctx.allocateGlobal(num)
-      // Compute the result and write to the cache.
-      result.push(emitNum(num, ctx), instr.global.set, w.u32(cacheIdx))
+      if (num.type !== t.NumType.Param) {
+        // Compute the result and write to the cache.
+        result.push(emitNum(num, ctx), instr.global.set, w.u32(cacheIdx))
+      }
     }
     // Read from the cache.
     result.push(instr.global.get, w.u32(cacheIdx))
