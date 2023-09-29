@@ -3,8 +3,6 @@ import * as w from "@wasmgroundup/emit"
 import { Evaluator } from "./eval"
 import * as t from "./types"
 
-const U32_MAX = 0x00ffffff
-
 const builtins = {
   log: Math.log,
   exp: Math.exp,
@@ -21,24 +19,30 @@ function f64_const(v: number): w.BytecodeFragment {
   return frag("f64_const", w.instr.f64.const, w.f64(v))
 }
 
+type IdentifiableNum = t.Num & { id: number }
+
+function checkIdentifiable(num: t.Num): IdentifiableNum {
+  if (num.type === t.NumType.Constant) {
+    throw new Error(`expected num with an id, get: Const(${num.value})`)
+  }
+  return num;
+}
+
 class CodegenContext {
   globals: { type: number; initExpr: w.BytecodeFragment | undefined }[] = []
   idToGlobalidx = new Map<number, number>()
   functypeToIdx = new Map<string, number>()
   functypes: w.BytecodeFragment = []
 
-  constructor(private paramValues: Map<t.Num, number>) {}
-
-  allocateGlobal(num: t.Num): number {
+  allocateGlobal(num: IdentifiableNum, initialVal: number): number {
     const idx = this.globals.length
     this.idToGlobalidx.set(num.id, idx)
 
-    const initialVal = this.paramValues.get(num) ?? Math.random()
     this.globals.push({ type: w.valtype.f64, initExpr: f64_const(initialVal) })
     return idx
   }
 
-  globalidx(num: t.Num): number {
+  globalidx(num: IdentifiableNum): number {
     return this.idToGlobalidx.get(num.id) ?? -1
   }
 
@@ -111,20 +115,12 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
     )
   })
   const bytes = w.module([
-    frag("typesec", w.typesec(ctx.functypes)),
-    frag("importsec", w.importsec(frag("imports", ...imports))),
-    frag(
-      "funcsec",
-      w.funcsec(
-        functions.map(({ type }) => w.typeidx(ctx.recordFunctype(type))),
-      ),
-    ),
+    w.typesec(ctx.functypes),
+    w.importsec(frag("imports", ...imports)),
+    w.funcsec(functions.map(({ type }) => w.typeidx(ctx.recordFunctype(type)))),
     w.globalsec(
       ctx.globals.map((g) =>
-        frag(
-          "global",
-          w.global(w.globaltype(g.type, w.mut.var), [g.initExpr, w.instr.end]),
-        ),
+        w.global(w.globaltype(g.type, w.mut.var), [g.initExpr, w.instr.end]),
       ),
     ),
     w.exportsec(
@@ -149,16 +145,22 @@ export function evaluator(
   params: Map<t.Param, number>,
 ): Evaluator {
   const { instr } = w
-
-  const ctx = new CodegenContext(params)
+  const ctx = new CodegenContext()
   const functions = nums.map((num) => ({
-    name: `compute${num.id}`,
+    name: `compute${checkIdentifiable(num).id}`,
     type: w.functype([], [w.valtype.f64]),
     body: emitCachedNum(num, ctx),
   }))
   const bytes = makeWasmModule(functions, ctx)
   const mod = new WebAssembly.Module(bytes)
   const { exports } = new WebAssembly.Instance(mod, { builtins })
+
+  function initialCacheValue(num: t.Num): number {
+    if (num.type === t.NumType.Param) {
+      return params.get(num) ?? Math.random()
+    }
+    return 0
+  }
 
   function evaluate(num: t.Num): number {
     if (num.type === t.NumType.Constant) {
@@ -183,7 +185,6 @@ export function evaluator(
           "Sum",
           emitSum(num.firstTerm, ctx),
           f64_const(num.k),
-
           instr.f64.add,
         )
       case t.NumType.Product:
@@ -194,13 +195,17 @@ export function evaluator(
   }
 
   function emitCachedNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
-    let result = []
+    // Constants are never cached.
+    if (num.type === t.NumType.Constant) return emitNum(num, ctx)
 
+    let result = []
     let cacheIdx = ctx.globalidx(num)
     if (cacheIdx === -1) {
-      cacheIdx = ctx.allocateGlobal(num)
+      cacheIdx = ctx.allocateGlobal(num, initialCacheValue(num))
+
+      // For non-Params, compute the result and write to the cache.
+      // For Params, the global is initialized with the correct value.
       if (num.type !== t.NumType.Param) {
-        // Compute the result and write to the cache.
         result.push(emitNum(num, ctx), instr.global.set, w.u32(cacheIdx))
       }
     }
@@ -250,9 +255,5 @@ export function evaluator(
     return frag("Unary", emitCachedNum(node, ctx), callBuiltin(type))
   }
 
-  const state = {
-    setParams(params: Map<t.Param, number>) {},
-  }
-
-  return { evaluate, state }
+  return { evaluate, params }
 }
