@@ -24,7 +24,7 @@ export function param(name: string, value: number = 1): t.Param {
 
 export function constant(n: number): t.Constant {
   const bounds = o.constantBounds(n)
-  return { type: t.NumType.Constant, value: n, bounds }
+  return { type: t.NumType.Constant, id: nextID(), value: n, bounds }
 }
 
 export const one = constant(1)

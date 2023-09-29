@@ -2,7 +2,7 @@ import * as t from "./types"
 import * as e from "./eval"
 import * as g from "./grad"
 
-import { evaluator as wasmEvaluator } from "./evalwasm"
+import { optimizer } from "./optimizer"
 
 const useWasm = true
 
@@ -22,7 +22,7 @@ export function optimize(
   while (i > 0) {
     const roots = [loss, ...gradient.values()]
     // TODO: Push the optimization loop into Wasm
-    const ev = useWasm ? wasmEvaluator(roots, params) : e.evaluator(params)
+    const ev = useWasm ? optimizer(roots, params) : e.evaluator(params)
     const l = ev.evaluate(loss)
     if (i % 1000 == 0) {
       console.log(l)

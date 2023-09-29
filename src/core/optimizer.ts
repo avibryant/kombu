@@ -1,6 +1,6 @@
 import * as w from "@wasmgroundup/emit"
 
-import { Evaluator } from "./eval"
+import { checkNotNull } from "./assert"
 import * as t from "./types"
 
 const builtins = {
@@ -19,22 +19,13 @@ function f64_const(v: number): w.BytecodeFragment {
   return frag("f64_const", w.instr.f64.const, w.f64(v))
 }
 
-type IdentifiableNum = t.Num & { id: number }
-
-function checkIdentifiable(num: t.Num): IdentifiableNum {
-  if (num.type === t.NumType.Constant) {
-    throw new Error(`expected num with an id, get: Const(${num.value})`)
-  }
-  return num;
-}
-
 class CodegenContext {
   globals: { type: number; initExpr: w.BytecodeFragment | undefined }[] = []
   idToGlobalidx = new Map<number, number>()
   functypeToIdx = new Map<string, number>()
   functypes: w.BytecodeFragment = []
 
-  allocateGlobal(num: IdentifiableNum, initialVal: number): number {
+  allocateGlobal(num: t.Num, initialVal: number): number {
     const idx = this.globals.length
     this.idToGlobalidx.set(num.id, idx)
 
@@ -42,12 +33,13 @@ class CodegenContext {
     return idx
   }
 
-  globalidx(num: IdentifiableNum): number {
+  globalidx(num: t.Num): number {
     return this.idToGlobalidx.get(num.id) ?? -1
   }
 
   typeidxForFunctype(type: w.BytecodeFragment): w.BytecodeFragment {
-    return w.typeidx(this.functypeToIdx.get(JSON.stringify(type))!)
+    const idx = checkNotNull(this.functypeToIdx.get(JSON.stringify(type)))
+    return w.typeidx(idx)
   }
 
   recordFunctype(type: w.BytecodeFragment): number {
@@ -140,14 +132,11 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
   return Uint8Array.from((bytes as any[]).flat(Infinity))
 }
 
-export function evaluator(
-  nums: t.Num[],
-  params: Map<t.Param, number>,
-): Evaluator {
+export function optimizer(nums: t.Num[], params: Map<t.Param, number>) {
   const { instr } = w
   const ctx = new CodegenContext()
   const functions = nums.map((num) => ({
-    name: `compute${checkIdentifiable(num).id}`,
+    name: `compute${num.id}`,
     type: w.functype([], [w.valtype.f64]),
     body: emitCachedNum(num, ctx),
   }))
@@ -255,5 +244,5 @@ export function evaluator(
     return frag("Unary", emitCachedNum(node, ctx), callBuiltin(type))
   }
 
-  return { evaluate, params }
+  return { evaluate }
 }
