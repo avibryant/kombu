@@ -1,6 +1,5 @@
 import * as w from "@wasmgroundup/emit"
 
-import { checkNotNull } from "./assert"
 import { Evaluator } from "./eval"
 import * as t from "./types"
 
@@ -22,39 +21,47 @@ function f64_const(v: number): w.BytecodeFragment {
   return frag("f64_const", w.instr.f64.const, w.f64(v))
 }
 
-function i32_const(v: number): w.BytecodeFragment {
-  return frag("i32_const", w.instr.i32.const, w.u32(v))
-}
-
 class CodegenContext {
   globals: { type: number; initExpr: w.BytecodeFragment | undefined }[] = []
   idToGlobalidx = new Map<number, number>()
+  functypeToIdx = new Map<string, number>()
+  functypes: w.BytecodeFragment = []
 
-  constructor(private paramValues: Map<t.Num, number>) {
-    // There's always at least one global: the cache epoch.
-    // The first epoch is 1, so that all non-param cache entries are invalid.
-    this.globals.push({ type: w.valtype.i32, initExpr: i32_const(1) })
-  }
+  constructor(private paramValues: Map<t.Num, number>) {}
 
-  maybeAllocateGlobals(num: t.Num): number {
-    // For every Identifiable node, allocate two globals: (1) an f64 for the
-    // cached value, and (2) an u32 for the validity value.
-    // TODO: Should we be concerned about alignment here?
+  allocateGlobal(num: t.Num): number {
     const idx = this.globals.length
     this.idToGlobalidx.set(num.id, idx)
 
-    const validity = this.paramValues.has(num) ? U32_MAX : 0
     const initialVal = this.paramValues.get(num) ?? Math.random()
-    this.globals.push(
-      { type: w.valtype.f64, initExpr: f64_const(initialVal) },
-      { type: w.valtype.i32, initExpr: i32_const(validity) },
-    )
+    this.globals.push({ type: w.valtype.f64, initExpr: f64_const(initialVal) })
     return idx
   }
 
   globalidx(num: t.Num): number {
     return this.idToGlobalidx.get(num.id) ?? -1
   }
+
+  typeidxForFunctype(type: w.BytecodeFragment): w.BytecodeFragment {
+    return w.typeidx(this.functypeToIdx.get(JSON.stringify(type))!)
+  }
+
+  recordFunctype(type: w.BytecodeFragment): number {
+    const k = JSON.stringify(type)
+    if (this.functypeToIdx.has(k)) {
+      return this.functypeToIdx.get(k)!
+    }
+    const idx = this.functypeToIdx.size
+    this.functypeToIdx.set(k, idx)
+    this.functypes.push(type)
+    return idx
+  }
+}
+
+interface WasmFunction {
+  name: string
+  type: w.BytecodeFragment
+  body: w.BytecodeFragment
 }
 
 function frag(dbg: string, ...fragment: w.BytecodeFragment) {
@@ -79,47 +86,59 @@ function callBuiltin(name: string): w.BytecodeFragment {
   return [w.instr.call, w.funcidx(idx)]
 }
 
-function makeWasmModule(
-  namesAndBodies: { name: string; body: w.BytecodeFragment }[],
-  ctx: CodegenContext,
-) {
-  const mainFuncType = w.functype([], [w.valtype.f64])
-  const builtinFuncType1 = w.functype([w.valtype.f64], [w.valtype.f64])
-  const builtinFuncType2 = w.functype(
+function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
+  const builtinType1 = w.functype([w.valtype.f64], [w.valtype.f64])
+  const builtinType2 = w.functype(
     [w.valtype.f64, w.valtype.f64],
     [w.valtype.f64],
   )
 
+  ;[builtinType1, builtinType2].forEach((t) => ctx.recordFunctype(t))
+  functions.forEach(({ type }) => ctx.recordFunctype(type))
+
   const imports = builtinNames.map((name) => {
     // TODO: Find a cleaner way of doing this?
-    const sigIdx = name === "pow" ? 2 : 1
-    return w.import_("builtins", name, w.importdesc.func(sigIdx))
+    const typeIdx = ctx.recordFunctype(
+      name === "pow" ? builtinType2 : builtinType1,
+    )
+    return frag(
+      "import" + name,
+      w.import_(
+        "builtins",
+        name,
+        frag("importdesc" + name, w.importdesc.func(typeIdx)),
+      ),
+    )
   })
   const bytes = w.module([
-    w.typesec([
-      mainFuncType,
-      builtinFuncType1,
-      builtinFuncType2
-    ]),
-    w.importsec(imports),
-    w.funcsec(new Array(namesAndBodies.length).map(() => w.typeidx(0))),
+    frag("typesec", w.typesec(ctx.functypes)),
+    frag("importsec", w.importsec(frag("imports", ...imports))),
+    frag(
+      "funcsec",
+      w.funcsec(
+        functions.map(({ type }) => w.typeidx(ctx.recordFunctype(type))),
+      ),
+    ),
     w.globalsec(
       ctx.globals.map((g) =>
-        w.global(w.globaltype(g.type, w.mut.var), [g.initExpr, w.instr.end]),
+        frag(
+          "global",
+          w.global(w.globaltype(g.type, w.mut.var), [g.initExpr, w.instr.end]),
+        ),
       ),
     ),
     w.exportsec(
-      namesAndBodies.map(({ name }, i) =>
+      functions.map(({ name }, i) =>
         w.export_(name, w.exportdesc.func(imports.length + i)),
       ),
     ),
     w.codesec(
-      namesAndBodies.map(({ body }) =>
+      functions.map(({ body }) =>
         w.code(w.func([], frag("code", ...body, w.instr.end))),
       ),
     ),
   ])
-  //    debugPrint(bytes)
+  //debugPrint(bytes)
   // `(mod as any[])` to avoid compiler error about excessively deep
   // type instantiation.
   return Uint8Array.from((bytes as any[]).flat(Infinity))
@@ -132,12 +151,12 @@ export function evaluator(
   const { instr } = w
 
   const ctx = new CodegenContext(params)
-  const functionBodies = nums.map((num) => ({
+  const functions = nums.map((num) => ({
     name: `compute${num.id}`,
-    body: compileNum(num, ctx),
+    type: w.functype([], [w.valtype.f64]),
+    body: emitCachedNum(num, ctx),
   }))
-  console.log(functionBodies)
-  const bytes = makeWasmModule(functionBodies, ctx)
+  const bytes = makeWasmModule(functions, ctx)
   const mod = new WebAssembly.Module(bytes)
   const { exports } = new WebAssembly.Instance(mod, { builtins })
 
@@ -145,17 +164,12 @@ export function evaluator(
     if (num.type === t.NumType.Constant) {
       return num.value
     }
-    console.log(`evaluate${num.id}, type ${num.type}`)
     const name = `compute${num.id}`
     if (typeof exports[name] === "function") {
       return (exports as any)[name]()
     } else {
       throw new Error(`export '${name}' not found or not callable`)
     }
-  }
-
-  function compileNum(num: t.Num, ctx: CodegenContext) {
-    return emitCachedNum(num, ctx)
   }
 
   function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
@@ -180,25 +194,17 @@ export function evaluator(
   }
 
   function emitCachedNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
-    const idx = ctx.maybeAllocateGlobals(num)
-    if (idx === -1) {
-      return emitNum(num, ctx) // Not cacheable
-    }
-    // Even indices are cached values (f64), odd indices are flags (i32).
-    const cachedValueIdx = w.u32(idx)
-    const cachedFlagIdx = w.u32(idx + 1)
+    let result = []
 
-    return frag(
-      `CachedNum${cachedValueIdx}`,
-      [instr.global.get, cachedFlagIdx, instr.i32.eqz], // already cached?
-      [instr.if, w.blocktype()],
-      emitNum(num, ctx),
-      [instr.global.set, cachedValueIdx], // update cache
-      // set cached flag
-      [instr.i32.const, 1, instr.global.set, cachedFlagIdx],
-      instr.end,
-      [instr.global.get, cachedValueIdx], // return cached value
-    )
+    let cacheIdx = ctx.globalidx(num)
+    if (cacheIdx === -1) {
+      cacheIdx = ctx.allocateGlobal(num)
+      // Compute the result and write to the cache.
+      result.push(emitNum(num, ctx), instr.global.set, w.u32(cacheIdx))
+    }
+    // Read from the cache.
+    result.push(instr.global.get, w.u32(cacheIdx))
+    return result
   }
 
   function emitSum(
@@ -208,7 +214,6 @@ export function evaluator(
     let result = frag(
       "Sum2",
       f64_const(node.a),
-
       emitCachedNum(node.x, ctx),
       instr.f64.mul,
     )
