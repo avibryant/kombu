@@ -1,7 +1,10 @@
 import * as w from "@wasmgroundup/emit"
 
+import { checkNotNull } from "./assert"
 import { Evaluator } from "./eval"
 import * as t from "./types"
+
+const U32_MAX = 0x00ffffff
 
 const builtins = {
   log: Math.log,
@@ -15,40 +18,42 @@ const builtins = {
 }
 const builtinNames = Object.keys(builtins)
 
-interface Cacheable {
-  id: number
-}
-
-function checkNotNull<T>(x: T): NonNullable<T> {
-  if (x == null) {
-    throw new Error(`unexpected null: ${x}`)
-  }
-  return x
-}
-
 function f64_const(v: number): w.BytecodeFragment {
   return frag("f64_const", w.instr.f64.const, w.f64(v))
 }
 
-class CodegenContext {
-  globalsCount: number = 0
-  private idToGlobalidx = new Map<number, number>()
+function i32_const(v: number): w.BytecodeFragment {
+  return frag("i32_const", w.instr.i32.const, w.u32(v))
+}
 
-  maybeAllocateGlobals(num: t.Num): number {
-    // For every `t.Num` that is cacheable, allocate two globals:
-    // an f64 for the cached value, and an i32 as a flag (is it cached?).
-    // TODO: Should we be concerned about alignment here?
-    if (!("id" in num)) return -1
-    if (!this.idToGlobalidx.has(num.id)) {
-      const idx = this.globalsCount
-      this.globalsCount += 2
-      this.idToGlobalidx.set(num.id, idx)
-    }
-    return checkNotNull(this.idToGlobalidx.get(num.id))
+class CodegenContext {
+  globals: { type: number; initExpr: w.BytecodeFragment | undefined }[] = []
+  idToGlobalidx = new Map<number, number>()
+
+  constructor(private paramValues: Map<t.Num, number>) {
+    // There's always at least one global: the cache epoch.
+    // The first epoch is 1, so that all non-param cache entries are invalid.
+    this.globals.push({ type: w.valtype.i32, initExpr: i32_const(1) })
   }
 
-  globalidx(c: Cacheable): number {
-    return this.idToGlobalidx.get(c.id) ?? -1
+  maybeAllocateGlobals(num: t.Num): number {
+    // For every Identifiable node, allocate two globals: (1) an f64 for the
+    // cached value, and (2) an u32 for the validity value.
+    // TODO: Should we be concerned about alignment here?
+    const idx = this.globals.length
+    this.idToGlobalidx.set(num.id, idx)
+
+    const validity = this.paramValues.has(num) ? U32_MAX : 0
+    const initialVal = this.paramValues.get(num) ?? Math.random()
+    this.globals.push(
+      { type: w.valtype.f64, initExpr: f64_const(initialVal) },
+      { type: w.valtype.i32, initExpr: i32_const(validity) },
+    )
+    return idx
+  }
+
+  globalidx(num: t.Num): number {
+    return this.idToGlobalidx.get(num.id) ?? -1
   }
 }
 
@@ -75,9 +80,8 @@ function callBuiltin(name: string): w.BytecodeFragment {
 }
 
 function makeWasmModule(
-  body: w.BytecodeFragment,
-  numGlobals: number,
-  prefill: Map<number, number>,
+  namesAndBodies: { name: string; body: w.BytecodeFragment }[],
+  ctx: CodegenContext,
 ) {
   const mainFuncType = w.functype([], [w.valtype.f64])
   const builtinFuncType1 = w.functype([w.valtype.f64], [w.valtype.f64])
@@ -91,31 +95,29 @@ function makeWasmModule(
     const sigIdx = name === "pow" ? 2 : 1
     return w.import_("builtins", name, w.importdesc.func(sigIdx))
   })
-  const mainFuncidx = imports.length
-
-  const globals = []
-  for (let i = 0; i < numGlobals; i += 2) {
-    const initialVal = prefill.get(i) ?? Math.random()
-    const initialFlag = prefill.has(i) ? 1 : 0
-    globals.push(
-      w.global(w.globaltype(w.valtype.f64, w.mut.var), [
-        f64_const(initialVal),
-        w.instr.end,
-      ]),
-      w.global(w.globaltype(w.valtype.i32, w.mut.var), [
-        [w.instr.i32.const, initialFlag],
-        w.instr.end,
-      ]),
-    )
-  }
-
   const bytes = w.module([
-    w.typesec([mainFuncType, builtinFuncType1, builtinFuncType2]),
+    w.typesec([
+      mainFuncType,
+      builtinFuncType1,
+      builtinFuncType2
+    ]),
     w.importsec(imports),
-    w.funcsec([w.typeidx(0)]),
-    w.globalsec(globals),
-    w.exportsec([w.export_("main", w.exportdesc.func(mainFuncidx))]),
-    w.codesec([w.code(w.func([], frag("code", ...body, w.instr.end)))]),
+    w.funcsec(new Array(namesAndBodies.length).map(() => w.typeidx(0))),
+    w.globalsec(
+      ctx.globals.map((g) =>
+        w.global(w.globaltype(g.type, w.mut.var), [g.initExpr, w.instr.end]),
+      ),
+    ),
+    w.exportsec(
+      namesAndBodies.map(({ name }, i) =>
+        w.export_(name, w.exportdesc.func(imports.length + i)),
+      ),
+    ),
+    w.codesec(
+      namesAndBodies.map(({ body }) =>
+        w.code(w.func([], frag("code", ...body, w.instr.end))),
+      ),
+    ),
   ])
   //    debugPrint(bytes)
   // `(mod as any[])` to avoid compiler error about excessively deep
@@ -123,25 +125,37 @@ function makeWasmModule(
   return Uint8Array.from((bytes as any[]).flat(Infinity))
 }
 
-export function evaluator(params: Map<t.Param, number>): Evaluator {
+export function evaluator(
+  nums: t.Num[],
+  params: Map<t.Param, number>,
+): Evaluator {
   const { instr } = w
 
+  const ctx = new CodegenContext(params)
+  const functionBodies = nums.map((num) => ({
+    name: `compute${num.id}`,
+    body: compileNum(num, ctx),
+  }))
+  console.log(functionBodies)
+  const bytes = makeWasmModule(functionBodies, ctx)
+  const mod = new WebAssembly.Module(bytes)
+  const { exports } = new WebAssembly.Instance(mod, { builtins })
+
   function evaluate(num: t.Num): number {
-    const ctx = new CodegenContext()
-    const body = emitCachedNum(num, ctx)
-
-    const prefillByIdx = new Map<number, number>()
-
-    for (const [k, v] of params.entries()) {
-      const idx = ctx.globalidx(k)
-      if (idx !== -1) {
-        prefillByIdx.set(idx, v)
-      }
+    if (num.type === t.NumType.Constant) {
+      return num.value
     }
-    const bytes = makeWasmModule(body, ctx.globalsCount, prefillByIdx)
-    const mod = new WebAssembly.Module(bytes)
-    const { exports } = new WebAssembly.Instance(mod, { builtins })
-    return (exports as any).main()
+    console.log(`evaluate${num.id}, type ${num.type}`)
+    const name = `compute${num.id}`
+    if (typeof exports[name] === "function") {
+      return (exports as any)[name]()
+    } else {
+      throw new Error(`export '${name}' not found or not callable`)
+    }
+  }
+
+  function compileNum(num: t.Num, ctx: CodegenContext) {
+    return emitCachedNum(num, ctx)
   }
 
   function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
@@ -229,5 +243,9 @@ export function evaluator(params: Map<t.Param, number>): Evaluator {
     return frag("Unary", emitCachedNum(node, ctx), callBuiltin(type))
   }
 
-  return { evaluate, params }
+  const state = {
+    setParams(params: Map<t.Param, number>) {},
+  }
+
+  return { evaluate, state }
 }

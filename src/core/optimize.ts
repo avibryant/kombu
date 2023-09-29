@@ -4,7 +4,7 @@ import * as g from "./grad"
 
 import { evaluator as wasmEvaluator } from "./evalwasm"
 
-const useWasm = false
+const useWasm = true
 
 export function optimize(
   loss: t.Num,
@@ -20,7 +20,9 @@ export function optimize(
   const epsilon = 0.0001
   let i = iterations
   while (i > 0) {
-    const ev = (useWasm ? wasmEvaluator : e.evaluator)(params)
+    const roots = [loss, ...gradient.values()]
+    // TODO: Push the optimization loop into Wasm
+    const ev = useWasm ? wasmEvaluator(roots, params) : e.evaluator(params)
     const l = ev.evaluate(loss)
     if (i % 1000 == 0) {
       console.log(l)
@@ -34,5 +36,5 @@ export function optimize(
     i = i - 1
   }
 
-  return (useWasm ? wasmEvaluator : e.evaluator)(params)
+  return e.evaluator(params)
 }
