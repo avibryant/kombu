@@ -1,6 +1,6 @@
 import * as w from "@wasmgroundup/emit"
 
-import { checkNotNull } from "./assert"
+import { assert, checkNotNull } from "./assert"
 import * as t from "./types"
 
 const builtins = {
@@ -132,23 +132,77 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
   return Uint8Array.from((bytes as any[]).flat(Infinity))
 }
 
-export function optimizer(nums: t.Num[], params: Map<t.Param, number>) {
+export function optimizer(
+  loss: t.Num,
+  gradient: t.Num[],
+  params: [t.Param, number][],
+) {
   const { instr } = w
   const ctx = new CodegenContext()
-  const functions = nums.map((num) => ({
+
+  // Allocate globals for the params up front.
+  params.forEach(([param, initialVal]) => {
+    ctx.allocateGlobal(param, initialVal)
+  })
+
+  const functions = [loss, ...gradient].map((num) => ({
     name: `compute${num.id}`,
     type: w.functype([], [w.valtype.f64]),
     body: emitCachedNum(num, ctx),
   }))
+
+  const IMPORT_COUNT = 8
+  const EPSILON = 0.0001
+
+  // optimize(iterations: i32): f64[]
+  functions.push({
+    name: "optimize",
+    type: w.functype([w.valtype.i32], params.map(_ => w.valtype.f64)),
+    body: [
+      [0x03, 0x40], // loop, blocktype()
+      [instr.call, w.funcidx(IMPORT_COUNT)], // compute the loss function
+      0x1A, // drop
+
+      // Evaluate all of the gradients
+      gradient.map((_, i) => [
+        // const diff = ev.evaluate(v)
+        [instr.call, w.funcidx(IMPORT_COUNT + i + 1)],
+
+        // const update = old - diff * epsilon
+        f64_const(-EPSILON),
+        instr.f64.mul,
+        [instr.global.get, w.u32(i)],
+        instr.f64.add,
+
+        // params.set(k, update)
+        [instr.global.set, w.u32(i)],
+      ]),
+      // i = i - 1
+      [
+        [instr.local.get, 0],
+        [instr.i32.const, 1],
+        instr.i32.sub,
+        [instr.local.tee, 0],
+      ],
+      [instr.i32.const, 0],
+      0x4B, // i32.gt_u
+      [0x0D, 0], // br_if
+      instr.end,
+      params.map((_, i) => [instr.global.get, w.u32(i)]),
+    ],
+  })
+
   const bytes = makeWasmModule(functions, ctx)
   const mod = new WebAssembly.Module(bytes)
   const { exports } = new WebAssembly.Instance(mod, { builtins })
 
-  function initialCacheValue(num: t.Num): number {
-    if (num.type === t.NumType.Param) {
-      return params.get(num) ?? Math.random()
+  function optimize(iterations: number): number[] {
+    const name = 'optimize'
+    if (typeof exports[name] === "function") {
+      return (exports as any)[name](iterations)
+    } else {
+      throw new Error(`export '${name}' not found or not callable`)
     }
-    return 0
   }
 
   function evaluate(num: t.Num): number {
@@ -190,13 +244,11 @@ export function optimizer(nums: t.Num[], params: Map<t.Param, number>) {
     let result = []
     let cacheIdx = ctx.globalidx(num)
     if (cacheIdx === -1) {
-      cacheIdx = ctx.allocateGlobal(num, initialCacheValue(num))
+      assert(num.type !== t.NumType.Param, "no global found for param")
+      cacheIdx = ctx.allocateGlobal(num, 0)
 
-      // For non-Params, compute the result and write to the cache.
-      // For Params, the global is initialized with the correct value.
-      if (num.type !== t.NumType.Param) {
-        result.push(emitNum(num, ctx), instr.global.set, w.u32(cacheIdx))
-      }
+      // Compute the result and write to the cache.
+      result.push(emitNum(num, ctx), instr.global.set, w.u32(cacheIdx))
     }
     // Read from the cache.
     result.push(instr.global.get, w.u32(cacheIdx))
@@ -244,5 +296,5 @@ export function optimizer(nums: t.Num[], params: Map<t.Param, number>) {
     return frag("Unary", emitCachedNum(node, ctx), callBuiltin(type))
   }
 
-  return { evaluate }
+  return { evaluate, optimize }
 }
