@@ -175,8 +175,8 @@ export function optimizer(
       [instr.block, w.blocktype()],
 
       // while (i > 0)
-      [instr.local.get, 0, instr.i32.eqz, instr.br_if, 0],
       [instr.loop, w.blocktype()],
+      [instr.local.get, 0, instr.i32.eqz, instr.br_if, 1],
 
       // compute the loss function
       [instr.call, w.funcidx(importCount), instr.drop],
@@ -202,7 +202,7 @@ export function optimizer(
         instr.i32.sub,
         [instr.local.set, 0],
       ],
-      instr.end, // end loop
+      [instr.br, 0, instr.end], // end loop
       instr.end, // end block
       paramEntries.map((_, i) => [instr.global.get, w.u32(i)]),
     ],
