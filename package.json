@@ -23,11 +23,5 @@
   },
   "dependencies": {
     "@wasmgroundup/emit": "^0.2.10"
-  },
-  "exports": {
-    ".": {
-      "import": "./build/release.js",
-      "types": "./build/release.d.ts"
-    }
   }
 }
