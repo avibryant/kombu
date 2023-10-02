@@ -117,9 +117,7 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
   const bytes = w.module([
     w.typesec(ctx.functypes),
     w.importsec(imports),
-    w.funcsec(
-      functions.map(({ type }, i) => w.typeidx(ctx.recordFunctype(type))),
-    ),
+    w.funcsec(functions.map(({ type }) => w.typeidx(ctx.recordFunctype(type)))),
     w.globalsec(
       ctx.globals.map((g) =>
         w.global(w.globaltype(g.type, w.mut.var), [g.initExpr, w.instr.end]),
