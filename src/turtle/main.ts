@@ -27,8 +27,6 @@ t.at(o)
 const ctx = canvas.getContext("2d")!
 
 function loop(i: number) {
-  t.optimize(1)
-
   ctx.fillStyle = "black"
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   ctx.lineWidth = 1
@@ -39,6 +37,7 @@ function loop(i: number) {
     ctx.lineTo(s.x2, s.y2)
     ctx.stroke()
   })
+  t.optimize(2)
 
   if (i > 0) {
     setTimeout(function () {
@@ -47,4 +46,4 @@ function loop(i: number) {
   }
 }
 
-loop(1000)
+loop(5000)

@@ -15,6 +15,8 @@ const builtins = {
 }
 const builtinNames = Object.keys(builtins)
 
+type IdentifiableNum = t.Num & { id: number }
+
 function f64_const(v: number): w.BytecodeFragment {
   return frag("f64_const", w.instr.f64.const, w.f64(v))
 }
@@ -25,7 +27,7 @@ class CodegenContext {
   functypeToIdx = new Map<string, number>()
   functypes: w.BytecodeFragment = []
 
-  allocateGlobal(num: t.Num, initialVal: number): number {
+  allocateGlobal(num: IdentifiableNum, initialVal: number): number {
     const idx = this.globals.length
     this.idToGlobalidx.set(num.id, idx)
 
@@ -33,7 +35,7 @@ class CodegenContext {
     return idx
   }
 
-  globalidx(num: t.Num): number {
+  globalidx(num: IdentifiableNum): number {
     return this.idToGlobalidx.get(num.id) ?? -1
   }
 
@@ -115,8 +117,9 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
   const bytes = w.module([
     w.typesec(ctx.functypes),
     w.importsec(imports),
-
-    w.funcsec(functions.map(({ type }) => w.typeidx(ctx.recordFunctype(type)))),
+    w.funcsec(
+      functions.map(({ type }, i) => w.typeidx(ctx.recordFunctype(type))),
+    ),
     w.globalsec(
       ctx.globals.map((g) =>
         w.global(w.globaltype(g.type, w.mut.var), [g.initExpr, w.instr.end]),
@@ -214,7 +217,11 @@ export function optimizer(
   function optimize(iterations: number): Map<t.Param, number> {
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
-    const newVals = (exports as any)["optimize"](iterations)
+
+    // Per the WebAssembly JS API spec, the result is only an array if there's
+    // more than one return value. There's no way to make it always an array.
+    const result = (exports as any)["optimize"](iterations)
+    const newVals = [result].flat() // Ensure it's an array.
     return new Map(paramEntries.map(([param], i) => [param, newVals[i]]))
   }
 

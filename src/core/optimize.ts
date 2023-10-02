@@ -1,4 +1,3 @@
-import { checkNotNull } from "./assert"
 import * as e from "./eval"
 import * as g from "./grad"
 import { optimizer } from "./optimizer"
