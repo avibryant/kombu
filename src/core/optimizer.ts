@@ -106,20 +106,23 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
       ),
     )
   })
+  const exports: w.BytecodeFragment = []
+  functions.forEach(({ name }, i) => {
+    if (name)
+      exports.push(w.export_(name, w.exportdesc.func(imports.length + i)))
+  })
+
   const bytes = w.module([
     w.typesec(ctx.functypes),
-    w.importsec(frag("imports", ...imports)),
+    w.importsec(imports),
+
     w.funcsec(functions.map(({ type }) => w.typeidx(ctx.recordFunctype(type)))),
     w.globalsec(
       ctx.globals.map((g) =>
         w.global(w.globaltype(g.type, w.mut.var), [g.initExpr, w.instr.end]),
       ),
     ),
-    w.exportsec(
-      functions.map(({ name }, i) =>
-        w.export_(name, w.exportdesc.func(imports.length + i)),
-      ),
-    ),
+    w.exportsec(exports),
     w.codesec(
       functions.map(({ body }) =>
         w.code(w.func([], frag("code", ...body, w.instr.end))),
@@ -142,9 +145,7 @@ export function optimizer(
 
   // Get a list of [param, value] in the same order as `gradient.values()`.
   const paramEntries: [t.Param, number][] = Array.from(gradient.keys()).map(
-    (p) => {
-      return [p, checkNotNull(params.get(p))]
-    },
+    (p) => [p, checkNotNull(params.get(p))],
   )
   const gradientValues = Array.from(gradient.values())
 
@@ -154,7 +155,7 @@ export function optimizer(
   })
 
   const functions = [loss, ...gradientValues].map((num) => ({
-    name: `compute${num.id}`,
+    name: "",
     type: w.functype([], [w.valtype.f64]),
     body: emitCachedNum(num, ctx),
   }))
@@ -215,18 +216,6 @@ export function optimizer(
       throw new Error(`export 'optimize' not found or not callable`)
     const newVals = (exports as any)["optimize"](iterations)
     return new Map(paramEntries.map(([param], i) => [param, newVals[i]]))
-  }
-
-  function evaluate(num: t.Num): number {
-    if (num.type === t.NumType.Constant) {
-      return num.value
-    }
-    const name = `compute${num.id}`
-    if (typeof exports[name] === "function") {
-      return (exports as any)[name]()
-    } else {
-      throw new Error(`export '${name}' not found or not callable`)
-    }
   }
 
   function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
@@ -308,5 +297,5 @@ export function optimizer(
     return frag("Unary", emitCachedNum(node, ctx), callBuiltin(type))
   }
 
-  return { evaluate, optimize }
+  return { optimize }
 }
