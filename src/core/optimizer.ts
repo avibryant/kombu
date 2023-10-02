@@ -134,18 +134,24 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
 
 export function optimizer(
   loss: t.Num,
-  gradient: t.Num[],
-  params: [t.Param, number][],
+  gradient: Map<t.Param, t.Num>,
+  params: Map<t.Param, number>,
 ) {
   const { instr } = w
   const ctx = new CodegenContext()
 
+  // Get a list of [param, value] in the same order as `gradient.values()`.
+  const paramEntries: [t.Param, number][] = Array.from(gradient.keys()).map(p => {
+    return [p, checkNotNull(params.get(p))]
+  })
+  const gradientValues = Array.from(gradient.values());
+
   // Allocate globals for the params up front.
-  params.forEach(([param, initialVal]) => {
+  paramEntries.forEach(([param, initialVal]) => {
     ctx.allocateGlobal(param, initialVal)
   })
 
-  const functions = [loss, ...gradient].map((num) => ({
+  const functions = [loss, ...gradientValues].map((num) => ({
     name: `compute${num.id}`,
     type: w.functype([], [w.valtype.f64]),
     body: emitCachedNum(num, ctx),
@@ -157,14 +163,14 @@ export function optimizer(
   // optimize(iterations: i32): f64[]
   functions.push({
     name: "optimize",
-    type: w.functype([w.valtype.i32], params.map(_ => w.valtype.f64)),
+    type: w.functype([w.valtype.i32], paramEntries.map(_ => w.valtype.f64)),
     body: [
       [0x03, 0x40], // loop, blocktype()
       [instr.call, w.funcidx(IMPORT_COUNT)], // compute the loss function
       0x1A, // drop
 
       // Evaluate all of the gradients
-      gradient.map((_, i) => [
+      gradientValues.map((_, i) => [
         // const diff = ev.evaluate(v)
         [instr.call, w.funcidx(IMPORT_COUNT + i + 1)],
 
@@ -188,7 +194,7 @@ export function optimizer(
       0x4B, // i32.gt_u
       [0x0D, 0], // br_if
       instr.end,
-      params.map((_, i) => [instr.global.get, w.u32(i)]),
+      paramEntries.map((_, i) => [instr.global.get, w.u32(i)]),
     ],
   })
 
@@ -196,13 +202,11 @@ export function optimizer(
   const mod = new WebAssembly.Module(bytes)
   const { exports } = new WebAssembly.Instance(mod, { builtins })
 
-  function optimize(iterations: number): number[] {
-    const name = 'optimize'
-    if (typeof exports[name] === "function") {
-      return (exports as any)[name](iterations)
-    } else {
-      throw new Error(`export '${name}' not found or not callable`)
-    }
+  function optimize(iterations: number): Map<t.Param, number> {
+    if (typeof exports.optimize !== "function")
+      throw new Error(`export 'optimize' not found or not callable`)
+    const newVals = (exports as any)['optimize'](iterations)
+    return new Map(paramEntries.map(([param], i) => [param, newVals[i]]))
   }
 
   function evaluate(num: t.Num): number {
