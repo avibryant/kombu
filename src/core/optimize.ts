@@ -1,10 +1,9 @@
-import * as t from "./types"
 import * as e from "./eval"
 import * as g from "./grad"
+import { optimizer } from "./optimizer"
+import * as t from "./types"
 
-import { evaluator as wasmEvaluator } from "./evalwasm"
-
-const useWasm = false
+const useWasm = true
 
 export function optimize(
   loss: t.Num,
@@ -17,10 +16,16 @@ export function optimize(
     if (!params.has(k)) params.set(k, Math.random() * 10)
   })
 
+  if (useWasm) {
+    const { optimize } = optimizer(loss, gradient, params)
+    const newParams = optimize(iterations)
+    return e.evaluator(newParams)
+  }
+
   const epsilon = 0.0001
   let i = iterations
   while (i > 0) {
-    const ev = (useWasm ? wasmEvaluator : e.evaluator)(params)
+    const ev = e.evaluator(params)
     const l = ev.evaluate(loss)
     if (i % 1000 == 0) {
       console.log(l)
@@ -34,5 +39,5 @@ export function optimize(
     i = i - 1
   }
 
-  return (useWasm ? wasmEvaluator : e.evaluator)(params)
+  return e.evaluator(params)
 }
