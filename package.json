@@ -17,6 +17,6 @@
     "vitest": "^0.34.5"
   },
   "dependencies": {
-    "@wasmgroundup/emit": "^0.2.8"
+    "@wasmgroundup/emit": "^0.2.9"
   }
 }

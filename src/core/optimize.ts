@@ -18,9 +18,9 @@ export function optimize(
   })
 
   if (useWasm) {
-    const { optimize } = optimizer(loss, gradient, params);
-    const newParams = optimize(iterations);
-    return e.evaluator(newParams);
+    const { optimize } = optimizer(loss, gradient, params)
+    const newParams = optimize(iterations)
+    return e.evaluator(newParams)
   }
 
   const epsilon = 0.0001

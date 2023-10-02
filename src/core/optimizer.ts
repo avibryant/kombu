@@ -141,10 +141,12 @@ export function optimizer(
   const ctx = new CodegenContext()
 
   // Get a list of [param, value] in the same order as `gradient.values()`.
-  const paramEntries: [t.Param, number][] = Array.from(gradient.keys()).map(p => {
-    return [p, checkNotNull(params.get(p))]
-  })
-  const gradientValues = Array.from(gradient.values());
+  const paramEntries: [t.Param, number][] = Array.from(gradient.keys()).map(
+    (p) => {
+      return [p, checkNotNull(params.get(p))]
+    },
+  )
+  const gradientValues = Array.from(gradient.values())
 
   // Allocate globals for the params up front.
   paramEntries.forEach(([param, initialVal]) => {
@@ -157,25 +159,33 @@ export function optimizer(
     body: emitCachedNum(num, ctx),
   }))
 
-  const IMPORT_COUNT = 8
-  const EPSILON = 0.0001
+  const importCount = builtinNames.length
+  const epsilon = 0.0001
 
   // optimize(iterations: i32): f64[]
   functions.push({
     name: "optimize",
-    type: w.functype([w.valtype.i32], paramEntries.map(_ => w.valtype.f64)),
+    type: w.functype(
+      [w.valtype.i32],
+      paramEntries.map((_) => w.valtype.f64),
+    ),
     body: [
-      [0x03, 0x40], // loop, blocktype()
-      [instr.call, w.funcidx(IMPORT_COUNT)], // compute the loss function
-      0x1A, // drop
+      [instr.block, w.blocktype()],
+
+      // while (i > 0)
+      [instr.local.get, 0, instr.i32.eqz, instr.br_if, 0],
+      [instr.loop, w.blocktype()],
+
+      // compute the loss function
+      [instr.call, w.funcidx(importCount), instr.drop],
 
       // Evaluate all of the gradients
       gradientValues.map((_, i) => [
         // const diff = ev.evaluate(v)
-        [instr.call, w.funcidx(IMPORT_COUNT + i + 1)],
+        [instr.call, w.funcidx(importCount + i + 1)],
 
         // const update = old - diff * epsilon
-        f64_const(-EPSILON),
+        f64_const(-epsilon),
         instr.f64.mul,
         [instr.global.get, w.u32(i)],
         instr.f64.add,
@@ -188,12 +198,10 @@ export function optimizer(
         [instr.local.get, 0],
         [instr.i32.const, 1],
         instr.i32.sub,
-        [instr.local.tee, 0],
+        [instr.local.set, 0],
       ],
-      [instr.i32.const, 0],
-      0x4B, // i32.gt_u
-      [0x0D, 0], // br_if
-      instr.end,
+      instr.end, // end loop
+      instr.end, // end block
       paramEntries.map((_, i) => [instr.global.get, w.u32(i)]),
     ],
   })
@@ -205,7 +213,7 @@ export function optimizer(
   function optimize(iterations: number): Map<t.Param, number> {
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
-    const newVals = (exports as any)['optimize'](iterations)
+    const newVals = (exports as any)["optimize"](iterations)
     return new Map(paramEntries.map(([param], i) => [param, newVals[i]]))
   }
 
