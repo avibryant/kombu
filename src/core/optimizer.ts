@@ -3,13 +3,7 @@ import * as w from "@wasmgroundup/emit"
 import { assert, checkNotNull } from "./assert"
 import * as t from "./types"
 
-import fs from "node:fs"
-
-import {
-  getPrebuiltModuleContents,
-  WasmFunction,
-  ModuleWriter,
-} from "./wasmmodule"
+import prebuiltCodesec from '../../build/release.wasm_codesec';
 
 const builtins = {
   log: Math.log,
@@ -24,6 +18,12 @@ const builtins = {
 const builtinNames = Object.keys(builtins)
 
 type IdentifiableNum = t.Num & { id: number }
+
+export interface WasmFunction {
+  name: string
+  type: w.BytecodeFragment
+  body: w.BytecodeFragment
+}
 
 function f64_const(v: number): w.BytecodeFragment {
   return frag("f64_const", w.instr.f64.const, w.f64(v))
@@ -89,7 +89,12 @@ function callBuiltin(name: string): w.BytecodeFragment {
 }
 
 function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
-  const prebuilt = getPrebuiltModuleContents()
+  //   codesec(codes: w.BytecodeFragment): w.BytecodeFragment {
+  //     const codeSec = checkNotNull(this.prebuilt.codeSec)
+  //     const len = codeSec.len + codes.length
+  //     return w.section(10, [w.u32(len), codes, Array.from(codeSec.contents)])
+  //   }
+
 
   const builtinType1 = w.functype([w.valtype.f64], [w.valtype.f64])
   const builtinType2 = w.functype(
@@ -127,8 +132,6 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
   // Export the externally-defined `optimize` function.
   exports.push(w.export_("optimizex", w.exportdesc.func(userFuncIdx(functions.length))))
 
-
-
   const funcsec = functions.map(({ type }) =>
     w.typeidx(ctx.recordFunctype(type)),
   )
@@ -140,10 +143,14 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
     ),
   )
 
-  const mw = new ModuleWriter()
-
   const funcCount = functions.length
   const minMemSize = (funcCount - 1) * 8
+
+  // Produce a code section combining `codeEls` with the prebuilt code.
+  const codesecWithPrebuilt = (codeEls: w.BytecodeFragment) => {
+    const count = prebuiltCodesec.entryCount + codeEls.length
+    return w.section(10, [w.u32(count), codeEls, Array.from(prebuiltCodesec.contents)])
+  }
 
   const bytes = w.module([
     w.typesec(ctx.functypes),
@@ -169,10 +176,10 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
         functions.map((_, i) => w.funcidx(userFuncIdx(i))),
       ),
     ]),
-    mw.codesec(
+    codesecWithPrebuilt(
       functions.map(({ body }) =>
         w.code(w.func([], frag("code", ...body, w.instr.end))),
-      ),
+      )
     ),
   ])
   //debugPrint(bytes)
@@ -209,7 +216,7 @@ export function optimizer(
   const importCount = builtinNames.length
 
   const bytes = makeWasmModule(functions, ctx)
-  fs.writeFileSync("module.wasm", bytes)
+  //  fs.writeFileSync("module.wasm", bytes)
   const mod = new WebAssembly.Module(bytes)
   const { exports } = new WebAssembly.Instance(mod, { builtins })
 
