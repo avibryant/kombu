@@ -14,7 +14,7 @@ function checkPreamble(bytes: Uint8Array): void {
   }
 }
 
-type VecContents = {
+export type VecContents = {
   entryCount: number
   contents: Uint8Array
 }
@@ -25,14 +25,6 @@ function getModuleFunctions(bytes: Uint8Array) {
   function peekSectionId(): number {
     return bytes[pos]
   }
-
-  // function parseSection<T>(parseContents: (size: number) => T) {
-  //   const id = bytes[pos++]
-  //   console.log("parsing section id ", id)
-  //   const size = parseU32()
-  //   const contents = parseContents(size)
-  //   return { id, contents }
-  // }
 
   function skipSection() {
     // @ts-ignore unused variable
@@ -105,39 +97,8 @@ function getModuleFunctions(bytes: Uint8Array) {
   }
 }
 
-// class ModuleWriter {
-//   prebuilt = getModuleFunctions(moduleTemplate)
-
-//   codesec(codes: w.BytecodeFragment): w.BytecodeFragment {
-//     const codeSec = checkNotNull(this.prebuilt.codeSec)
-//     const len = codeSec.len + codes.length
-//     return w.section(10, [w.u32(len), codes, Array.from(codeSec.contents)])
-//   }
-
-//   // tablesec(tables: w.BytecodeFragment): w.BytecodeFragment {
-//   //   return w.section(4, w.vec(tables))
-//   // }
-
-//   // table(tt: w.BytecodeFragment) {
-//   //   return tt
-//   // }
-
-//   // // et:elemtype lim:limits
-//   // tabletype(elemtype: number, limits: w.BytecodeFragment) {
-//   //   return [elemtype, limits]
-//   // }
-
-//   // limits(min: number, max?: number) {
-//   //   if (max === undefined) {
-//   //     return [0x00, w.u32(min)]
-//   //   }
-//   //   return [0x01, w.u32(min), w.u32(max)]
-//   // }
-
-//   // funcref = 0x70
-// }
-
-export function extractCodeSection(bytes: Uint8Array): VecContents {
+// Extracts the code section from the Wasm module in `bytes`.
+export function extractCodesec(bytes: Uint8Array): VecContents {
   const {codesec} = getModuleFunctions(bytes);
   return codesec
 }

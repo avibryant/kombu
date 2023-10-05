@@ -6,14 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "bundlewasm": "ts-node --esm scripts/bundlewasm.ts",
+    "bundlewasm": "npm run asbuild:release && ts-node --esm scripts/bundlewasm.ts",
     "check": "tsc --noEmit",
     "format": "prettier --write --no-semi .",
     "preview": "vite preview",
     "test": "vitest",
     "asbuild:release": "asc assembly/index.ts --target release --runtime stub -O0 --noExportMemory",
-    "asbuild": "npm run asbuild:release && npm run bundlewasm",
-    "start": "npx serve ."
+    "asbuild": "npm run asbuild:release"
   },
   "devDependencies": {
     "assemblyscript": "^0.27.11",

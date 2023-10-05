@@ -1,3 +1,14 @@
+/*
+  A naive optimization function.
+
+  The code relies on the following assumptions:
+  - The module contains a table, with numParams + 1 functions: the loss
+    function (at index 0) followed by the components of the gradient.
+  - The functions in the table all have signature () => f64.
+  - That signature must have typeidx 0 in the final module. (TODO: investigate
+    why this is assumed by AssemblyScript and if there's a way to change it.)
+  - The params are f64s stored contingously at the beginning of memory 0.
+ */
 export function optimize(numParams: u32, iterations: u32): void {
   const epsilon: f64 = 0.0001
   let i = iterations
