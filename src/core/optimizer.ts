@@ -3,7 +3,7 @@ import * as w from "@wasmgroundup/emit"
 import { assert, checkNotNull } from "./assert"
 import * as t from "./types"
 
-import prebuiltCodesec from '../../build/release.wasm_codesec';
+import prebuiltCodesec from "../../build/release.wasm_codesec"
 
 const builtins = {
   log: Math.log,
@@ -18,12 +18,6 @@ const builtins = {
 const builtinNames = Object.keys(builtins)
 
 type IdentifiableNum = t.Num & { id: number }
-
-export interface WasmFunction {
-  name: string
-  type: w.BytecodeFragment
-  body: w.BytecodeFragment
-}
 
 function f64_const(v: number): w.BytecodeFragment {
   return frag("f64_const", w.instr.f64.const, w.f64(v))
@@ -66,6 +60,12 @@ class CodegenContext {
   }
 }
 
+interface WasmFunction {
+  name: string
+  type: w.BytecodeFragment
+  body: w.BytecodeFragment
+}
+
 function frag(dbg: string, ...fragment: w.BytecodeFragment) {
   const arr = Array.from(fragment)
   ;(arr as any).dbg = dbg
@@ -89,20 +89,16 @@ function callBuiltin(name: string): w.BytecodeFragment {
 }
 
 function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
-  //   codesec(codes: w.BytecodeFragment): w.BytecodeFragment {
-  //     const codeSec = checkNotNull(this.prebuilt.codeSec)
-  //     const len = codeSec.len + codes.length
-  //     return w.section(10, [w.u32(len), codes, Array.from(codeSec.contents)])
-  //   }
-
-
   const builtinType1 = w.functype([w.valtype.f64], [w.valtype.f64])
   const builtinType2 = w.functype(
     [w.valtype.f64, w.valtype.f64],
     [w.valtype.f64],
   )
 
-  ctx.recordFunctype(w.functype([], [w.valtype.f64])); // Must be the first recorded type
+  // This must be the first recorded type — it's implicitly used for any
+  // `call_indirect` in the prebuilt AssemblyScript code.
+  // TODO: Find a cleaner way to do this.
+  ctx.recordFunctype(w.functype([], [w.valtype.f64]))
 
   ;[builtinType1, builtinType2].forEach((t) => ctx.recordFunctype(t))
   functions.forEach(({ type }) => ctx.recordFunctype(type))
@@ -121,7 +117,7 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
       ),
     )
   })
-  // Go from an "user" function index (0: loss function, 1...n: gradients)
+  // Go from a "user" function index (0: loss function, 1...n: gradients)
   // to the actual index in the module.
   const userFuncIdx = (idx: number) => imports.length + idx
 
@@ -130,7 +126,9 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
     if (name) exports.push(w.export_(name, w.exportdesc.func(userFuncIdx(i))))
   })
   // Export the externally-defined `optimize` function.
-  exports.push(w.export_("optimizex", w.exportdesc.func(userFuncIdx(functions.length))))
+  exports.push(
+    w.export_("optimize", w.exportdesc.func(userFuncIdx(functions.length))),
+  )
 
   const funcsec = functions.map(({ type }) =>
     w.typeidx(ctx.recordFunctype(type)),
@@ -149,7 +147,11 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
   // Produce a code section combining `codeEls` with the prebuilt code.
   const codesecWithPrebuilt = (codeEls: w.BytecodeFragment) => {
     const count = prebuiltCodesec.entryCount + codeEls.length
-    return w.section(10, [w.u32(count), codeEls, Array.from(prebuiltCodesec.contents)])
+    return w.section(10, [
+      w.u32(count),
+      codeEls,
+      Array.from(prebuiltCodesec.contents),
+    ])
   }
 
   const bytes = w.module([
@@ -179,7 +181,7 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
     codesecWithPrebuilt(
       functions.map(({ body }) =>
         w.code(w.func([], frag("code", ...body, w.instr.end))),
-      )
+      ),
     ),
   ])
   //debugPrint(bytes)
@@ -207,7 +209,7 @@ export function optimizer(
     ctx.allocateGlobal(param, initialVal)
   })
 
-  const functions = [loss, ...gradientValues].map((num, i) => ({
+  const functions = [loss, ...gradientValues].map((num) => ({
     name: "",
     type: w.functype([], [w.valtype.f64]),
     body: emitCachedNum(num, ctx),
@@ -221,12 +223,12 @@ export function optimizer(
   const { exports } = new WebAssembly.Instance(mod, { builtins })
 
   function optimize(iterations: number): Map<t.Param, number> {
-    if (typeof exports.optimizex !== "function")
-      throw new Error(`export 'optimizex' not found or not callable`)
+    if (typeof exports.optimize !== "function")
+      throw new Error(`export 'optimize' not found or not callable`)
 
     // Per the WebAssembly JS API spec, the result is only an array if there's
     // more than one return value. There's no way to make it always an array.
-    const result = (exports as any)["optimizex"](paramEntries.length, iterations)
+    const result = (exports as any)["optimize"](paramEntries.length, iterations)
     const newVals = [result].flat() // Ensure it's an array.
     return new Map(paramEntries.map(([param], i) => [param, newVals[i]]))
   }

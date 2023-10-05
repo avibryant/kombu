@@ -93,12 +93,12 @@ function getModuleFunctions(bytes: Uint8Array) {
   return {
     typesec: checkNotNull(typesec),
     functionsec: checkNotNull(functionsec),
-    codesec: checkNotNull(codesec)
+    codesec: checkNotNull(codesec),
   }
 }
 
 // Extracts the code section from the Wasm module in `bytes`.
 export function extractCodesec(bytes: Uint8Array): VecContents {
-  const {codesec} = getModuleFunctions(bytes);
+  const { codesec } = getModuleFunctions(bytes)
   return codesec
 }
