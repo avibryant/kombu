@@ -3,6 +3,14 @@ import * as w from "@wasmgroundup/emit"
 import { assert, checkNotNull } from "./assert"
 import * as t from "./types"
 
+import fs from "node:fs"
+
+import {
+  getPrebuiltModuleContents,
+  WasmFunction,
+  ModuleWriter,
+} from "./wasmmodule"
+
 const builtins = {
   log: Math.log,
   exp: Math.exp,
@@ -47,19 +55,15 @@ class CodegenContext {
   recordFunctype(type: w.BytecodeFragment): number {
     const k = JSON.stringify(type)
     if (this.functypeToIdx.has(k)) {
+      console.log(k, this.functypeToIdx.get(k))
       return this.functypeToIdx.get(k)!
     }
     const idx = this.functypeToIdx.size
     this.functypeToIdx.set(k, idx)
     this.functypes.push(type)
+    console.log(k, this.functypeToIdx.get(k))
     return idx
   }
-}
-
-interface WasmFunction {
-  name: string
-  type: w.BytecodeFragment
-  body: w.BytecodeFragment
 }
 
 function frag(dbg: string, ...fragment: w.BytecodeFragment) {
@@ -85,11 +89,15 @@ function callBuiltin(name: string): w.BytecodeFragment {
 }
 
 function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
+  const prebuilt = getPrebuiltModuleContents()
+
   const builtinType1 = w.functype([w.valtype.f64], [w.valtype.f64])
   const builtinType2 = w.functype(
     [w.valtype.f64, w.valtype.f64],
     [w.valtype.f64],
   )
+
+  ctx.recordFunctype(w.functype([], [w.valtype.f64])); // Must be the first recorded type
 
   ;[builtinType1, builtinType2].forEach((t) => ctx.recordFunctype(t))
   functions.forEach(({ type }) => ctx.recordFunctype(type))
@@ -108,23 +116,60 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
       ),
     )
   })
+  // Go from an "user" function index (0: loss function, 1...n: gradients)
+  // to the actual index in the module.
+  const userFuncIdx = (idx: number) => imports.length + idx
+
   const exports: w.BytecodeFragment = []
   functions.forEach(({ name }, i) => {
-    if (name)
-      exports.push(w.export_(name, w.exportdesc.func(imports.length + i)))
+    if (name) exports.push(w.export_(name, w.exportdesc.func(userFuncIdx(i))))
   })
+  // Export the externally-defined `optimize` function.
+  exports.push(w.export_("optimizex", w.exportdesc.func(userFuncIdx(functions.length))))
+
+
+
+  const funcsec = functions.map(({ type }) =>
+    w.typeidx(ctx.recordFunctype(type)),
+  )
+
+  // Append an entry for the externally-defined `optimize` function.
+  funcsec.push(
+    w.typeidx(
+      ctx.recordFunctype(w.functype([w.valtype.i32, w.valtype.i32], [])),
+    ),
+  )
+
+  const mw = new ModuleWriter()
+
+  const funcCount = functions.length
+  const minMemSize = (funcCount - 1) * 8
 
   const bytes = w.module([
     w.typesec(ctx.functypes),
     w.importsec(imports),
-    w.funcsec(functions.map(({ type }) => w.typeidx(ctx.recordFunctype(type)))),
+    w.funcsec(funcsec),
+    w.tablesec([
+      w.table(
+        w.tabletype(w.elemtype.funcref, w.limits.minmax(funcCount, funcCount)),
+      ),
+    ]),
+    w.memsec([w.mem(w.limits.min(minMemSize))]),
     w.globalsec(
       ctx.globals.map((g) =>
         w.global(w.globaltype(g.type, w.mut.var), [g.initExpr, w.instr.end]),
       ),
     ),
     w.exportsec(exports),
-    w.codesec(
+    // Initialize the table
+    w.elemsec([
+      w.elem(
+        0 /*w.tableidx*/,
+        [w.instr.i32.const, 0, w.instr.end],
+        functions.map((_, i) => w.funcidx(userFuncIdx(i))),
+      ),
+    ]),
+    mw.codesec(
       functions.map(({ body }) =>
         w.code(w.func([], frag("code", ...body, w.instr.end))),
       ),
@@ -155,70 +200,26 @@ export function optimizer(
     ctx.allocateGlobal(param, initialVal)
   })
 
-  const functions = [loss, ...gradientValues].map((num) => ({
+  const functions = [loss, ...gradientValues].map((num, i) => ({
     name: "",
     type: w.functype([], [w.valtype.f64]),
     body: emitCachedNum(num, ctx),
   }))
 
   const importCount = builtinNames.length
-  const epsilon = 0.0001
-
-  // optimize(iterations: i32): f64[]
-  functions.push({
-    name: "optimize",
-    type: w.functype(
-      [w.valtype.i32],
-      paramEntries.map((_) => w.valtype.f64),
-    ),
-    body: [
-      [instr.block, w.blocktype()],
-
-      // while (i > 0)
-      [instr.loop, w.blocktype()],
-      [instr.local.get, 0, instr.i32.eqz, instr.br_if, 1],
-
-      // compute the loss function
-      [instr.call, w.funcidx(importCount), instr.drop],
-
-      // Evaluate all of the gradients
-      gradientValues.map((_, i) => [
-        // const diff = ev.evaluate(v)
-        [instr.call, w.funcidx(importCount + i + 1)],
-
-        // const update = old - diff * epsilon
-        f64_const(-epsilon),
-        instr.f64.mul,
-        [instr.global.get, w.u32(i)],
-        instr.f64.add,
-
-        // params.set(k, update)
-        [instr.global.set, w.u32(i)],
-      ]),
-      // i = i - 1
-      [
-        [instr.local.get, 0],
-        [instr.i32.const, 1],
-        instr.i32.sub,
-        [instr.local.set, 0],
-      ],
-      [instr.br, 0, instr.end], // end loop
-      instr.end, // end block
-      paramEntries.map((_, i) => [instr.global.get, w.u32(i)]),
-    ],
-  })
 
   const bytes = makeWasmModule(functions, ctx)
+  fs.writeFileSync("module.wasm", bytes)
   const mod = new WebAssembly.Module(bytes)
   const { exports } = new WebAssembly.Instance(mod, { builtins })
 
   function optimize(iterations: number): Map<t.Param, number> {
-    if (typeof exports.optimize !== "function")
-      throw new Error(`export 'optimize' not found or not callable`)
+    if (typeof exports.optimizex !== "function")
+      throw new Error(`export 'optimizex' not found or not callable`)
 
     // Per the WebAssembly JS API spec, the result is only an array if there's
     // more than one return value. There's no way to make it always an array.
-    const result = (exports as any)["optimize"](iterations)
+    const result = (exports as any)["optimizex"](paramEntries.length, iterations)
     const newVals = [result].flat() // Ensure it's an array.
     return new Map(paramEntries.map(([param], i) => [param, newVals[i]]))
   }
