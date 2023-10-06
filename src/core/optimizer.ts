@@ -99,7 +99,6 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
   // `call_indirect` in the prebuilt AssemblyScript code.
   // TODO: Find a cleaner way to do this.
   ctx.recordFunctype(w.functype([], [w.valtype.f64]))
-
   ;[builtinType1, builtinType2].forEach((t) => ctx.recordFunctype(t))
   functions.forEach(({ type }) => ctx.recordFunctype(type))
 
@@ -173,7 +172,7 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
     // Initialize the table
     w.elemsec([
       w.elem(
-        0 /*w.tableidx*/,
+        w.tableidx(0),
         [w.instr.i32.const, 0, w.instr.end],
         functions.map((_, i) => w.funcidx(userFuncIdx(i))),
       ),
@@ -214,8 +213,6 @@ export function optimizer(
     type: w.functype([], [w.valtype.f64]),
     body: emitCachedNum(num, ctx),
   }))
-
-  const importCount = builtinNames.length
 
   const bytes = makeWasmModule(functions, ctx)
   //  fs.writeFileSync("module.wasm", bytes)
