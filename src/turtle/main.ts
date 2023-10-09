@@ -37,7 +37,7 @@ function loop(i: number) {
     ctx.lineTo(s.x2, s.y2)
     ctx.stroke()
   })
-  t.optimize(2)
+  t.optimize(1000)
 
   if (i > 0) {
     setTimeout(function () {
@@ -46,4 +46,4 @@ function loop(i: number) {
   }
 }
 
-loop(5000)
+loop(10)

@@ -20,6 +20,6 @@ test("simple case with one param", () => {
   let loss = k.pow(x, 2)
 
   // Start close to the solution (0) and run for only a few iterations.
-  const ev = optimize(loss, new Map([[x, 0.01]]), 10)
-  expect(ev.evaluate(x)).toBeCloseTo(0, 1)
+  const ev = optimize(loss, new Map([[x, 0.1]]), 100)
+  expect(ev.evaluate(x)).toBeCloseTo(0, 2)
 })
