@@ -261,8 +261,8 @@ export function optimizer(
   // For each param, we allocate two 64-bit slots in the cache.
   // The first slot holds the param value, the 2nd slot is for internal
   // use during optimization.
-  const getParam = (idx) => cacheView[idx * 2]
-  const setParam = (idx, val) => {
+  const getParam = (idx: number) => cacheView[idx * 2]
+  const setParam = (idx: number, val: number) => {
     cacheView[idx * 2] = val
   }
 
