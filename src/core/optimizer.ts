@@ -27,9 +27,6 @@ function f64_const(v: number) {
 const alignmentAndOffset = w.memarg(3 /* bits */, 0)
 
 function f64_load(offset: number) {
-  if (offset & 0x80000000) {
-    throw new Error(offset)
-  }
   return [
     [w.instr.i32.const, w.i32(offset)],
     [w.instr.f64.load, alignmentAndOffset],
@@ -185,7 +182,7 @@ export function optimizer(
   const gradientValues = Array.from(gradient.values())
 
   // Allocate storage for the params up front.
-  paramEntries.forEach(([param, initialVal], i) => {
+  paramEntries.forEach(([param, initialVal]) => {
     ctx.allocateCache(param, initialVal)
   })
 
