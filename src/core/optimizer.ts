@@ -3,6 +3,8 @@ import * as w from "@wasmgroundup/emit"
 import { assert, checkNotNull } from "./assert"
 import * as t from "./types"
 
+import prebuiltCodesec from "../../build/release.wasm_codesec"
+
 const SIZEOF_F64 = 8
 
 const builtins = {
@@ -118,6 +120,10 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
     [w.valtype.f64],
   )
 
+  // This must be the first recorded type — it's implicitly used for any
+  // `call_indirect` in the prebuilt AssemblyScript code.
+  // TODO: Find a cleaner way to do this.
+  ctx.recordFunctype(w.functype([], [w.valtype.f64]))
   ;[builtinType1, builtinType2].forEach((t) => ctx.recordFunctype(t))
   functions.forEach(({ type }) => ctx.recordFunctype(type))
 
@@ -136,11 +142,41 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
     )
   })
 
+  // Go from a "user" function index (0: loss function, 1...n: gradients)
+  // to the actual index in the module.
+  const userFuncIdx = (idx: number) => builtinNames.length + idx
+
   const exports: w.BytecodeFragment = []
   functions.forEach(({ name }, i) => {
-    if (name)
-      exports.push(w.export_(name, w.exportdesc.func(imports.length + i)))
+    if (name) exports.push(w.export_(name, w.exportdesc.func(userFuncIdx(i))))
   })
+  // Export the externally-defined `optimize` function.
+  exports.push(
+    w.export_("optimize", w.exportdesc.func(userFuncIdx(functions.length))),
+  )
+
+  const funcsec = functions.map(({ type }) =>
+    w.typeidx(ctx.recordFunctype(type)),
+  )
+
+  // Append an entry for the externally-defined `optimize` function.
+  funcsec.push(
+    w.typeidx(
+      ctx.recordFunctype(w.functype([w.valtype.i32, w.valtype.i32, w.valtype.f64], [])),
+    ),
+  )
+
+  const funcCount = functions.length
+
+  // Produce a code section combining `codeEls` with the prebuilt code.
+  const codesecWithPrebuilt = (codeEls: w.BytecodeFragment) => {
+    const count = prebuiltCodesec.entryCount + codeEls.length
+    return w.section(10, [
+      w.u32(count),
+      codeEls,
+      Array.from(prebuiltCodesec.contents),
+    ])
+  }
 
   imports.push(
     w.import_(
@@ -153,9 +189,22 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
   const bytes = w.module([
     w.typesec(ctx.functypes),
     w.importsec(imports),
-    w.funcsec(functions.map(({ type }) => w.typeidx(ctx.recordFunctype(type)))),
+    w.funcsec(funcsec),
+    w.tablesec([
+      w.table(
+        w.tabletype(w.elemtype.funcref, w.limits.minmax(funcCount, funcCount)),
+      ),
+    ]),
     w.exportsec(exports),
-    w.codesec(
+    // Initialize the table
+    w.elemsec([
+      w.elem(
+        w.tableidx(0),
+        [w.instr.i32.const, 0, w.instr.end],
+        functions.map((_, i) => w.funcidx(userFuncIdx(i))),
+      ),
+    ]),
+    codesecWithPrebuilt(
       functions.map(({ body }) =>
         w.code(w.func([], frag("code", ...body, w.instr.end))),
       ),
@@ -192,63 +241,6 @@ export function optimizer(
     body: emitCachedNum(num, ctx),
   }))
 
-  const importCount = builtinNames.length
-  const epsilon = 0.0001
-
-  // optimize(iterations: i32): f64[]
-  functions.push({
-    name: "optimize",
-    type: w.functype(
-      [w.valtype.i32],
-      paramEntries.map((_) => w.valtype.f64),
-    ),
-    body: [
-      [instr.block, w.blocktype()],
-
-      // while (i > 0)
-      [instr.loop, w.blocktype()],
-      [instr.local.get, 0, instr.i32.eqz, instr.br_if, 1],
-
-      // compute the loss function
-      [instr.call, w.funcidx(importCount), instr.drop],
-
-      // Evaluate all of the gradients
-      gradientValues.map((_, i) => {
-        const [param] = paramEntries[i]
-        const cacheOffset = ctx.cacheOffsetForParam(param)
-        return [
-          // params.set(k, update)
-          f64_store(
-            cacheOffset,
-            frag(
-              "f64_storeval",
-              // const diff = ev.evaluate(v)
-              [instr.call, w.funcidx(importCount + i + 1)],
-
-              // const update = old - diff * epsilon
-              f64_const(-epsilon),
-              instr.f64.mul,
-              f64_load(cacheOffset),
-              instr.f64.add,
-            ),
-          ),
-        ]
-      }),
-      // i = i - 1
-      [
-        [instr.local.get, 0],
-        [instr.i32.const, 1],
-        instr.i32.sub,
-        [instr.local.set, 0],
-      ],
-      [instr.br, 0, instr.end], // end loop
-      instr.end, // end block
-      paramEntries.map(([p, _]) => {
-        const offset = checkNotNull(ctx.cacheOffset(p))
-        return f64_load(offset)
-      }),
-    ],
-  })
   // Allocate and initialize the memory for the cache.
   const cache = new WebAssembly.Memory({ initial: ctx.memorySize() })
   const cacheView = new Float64Array(cache.buffer)
@@ -257,6 +249,7 @@ export function optimizer(
   })
 
   const bytes = makeWasmModule(functions, ctx)
+  //  fs.writeFileSync("module.wasm", bytes)
   const mod = new WebAssembly.Module(bytes)
   const { exports } = new WebAssembly.Instance(mod, {
     builtins,
@@ -266,7 +259,7 @@ export function optimizer(
   function optimize(iterations: number): Map<t.Param, number> {
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
-    ;(exports as any)["optimize"](iterations)
+    ;(exports as any)["optimize"](paramEntries.length, iterations, 0.0001)
 
     return new Map(
       paramEntries.map(([param], i) => {
