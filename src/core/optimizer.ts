@@ -3,6 +3,8 @@ import * as w from "@wasmgroundup/emit"
 import { assert, checkNotNull } from "./assert"
 import * as t from "./types"
 
+const SIZEOF_F64 = 8
+
 const builtins = {
   log: Math.log,
   exp: Math.exp,
@@ -17,26 +19,50 @@ const builtinNames = Object.keys(builtins)
 
 type IdentifiableNum = t.Num & { id: number }
 
-function f64_const(v: number): w.BytecodeFragment {
+function f64_const(v: number) {
   return frag("f64_const", w.instr.f64.const, w.f64(v))
 }
 
+// Required as an immediate arg for all loads/stores.
+const alignmentAndOffset = w.memarg(3 /* bits */, 0)
+
+function f64_load(offset: number) {
+  if (offset & 0x80000000) {
+    throw new Error(offset)
+  }
+  return [
+    [w.instr.i32.const, w.i32(offset)],
+    [w.instr.f64.load, alignmentAndOffset],
+  ]
+}
+
+function f64_store(offset: number, frag: w.BytecodeFragment) {
+  return [
+    [w.instr.i32.const, w.i32(offset)],
+    frag,
+    [w.instr.f64.store, alignmentAndOffset],
+  ]
+}
+
 class CodegenContext {
-  globals: { type: number; initExpr: w.BytecodeFragment | undefined }[] = []
-  idToGlobalidx = new Map<number, number>()
+  cacheEntries: { initExpr: w.BytecodeFragment | undefined }[] = []
+  cacheOffsetById = new Map<number, number>()
   functypeToIdx = new Map<string, number>()
   functypes: w.BytecodeFragment = []
 
-  allocateGlobal(num: IdentifiableNum, initialVal: number): number {
-    const idx = this.globals.length
-    this.idToGlobalidx.set(num.id, idx)
-
-    this.globals.push({ type: w.valtype.f64, initExpr: f64_const(initialVal) })
-    return idx
+  allocateCache(num: IdentifiableNum, initialVal: number): number {
+    const offset = this.cacheEntries.length * SIZEOF_F64
+    this.cacheOffsetById.set(num.id, offset)
+    this.cacheEntries.push({ initExpr: f64_const(initialVal) })
+    return offset
   }
 
-  globalidx(num: IdentifiableNum): number {
-    return this.idToGlobalidx.get(num.id) ?? -1
+  cacheOffset(num: IdentifiableNum): number | undefined {
+    return this.cacheOffsetById.get(num.id)
+  }
+
+  cacheOffsetForParam(p: t.Param) {
+    return checkNotNull(this.cacheOffset(p))
   }
 
   typeidxForFunctype(type: w.BytecodeFragment): w.BytecodeFragment {
@@ -53,6 +79,10 @@ class CodegenContext {
     this.functypeToIdx.set(k, idx)
     this.functypes.push(type)
     return idx
+  }
+
+  memorySize() {
+    return this.cacheEntries.length * SIZEOF_F64
   }
 }
 
@@ -104,25 +134,29 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
       w.import_(
         "builtins",
         name,
-        frag("importdesc" + name, w.importdesc.func(typeIdx)),
+        frag("importdesc" + name, w.importdesc.func(w.typeidx(typeIdx))),
       ),
     )
   })
+
   const exports: w.BytecodeFragment = []
   functions.forEach(({ name }, i) => {
     if (name)
       exports.push(w.export_(name, w.exportdesc.func(imports.length + i)))
   })
 
+  imports.push(
+    w.import_(
+      "memory",
+      "cache",
+      w.importdesc.mem(w.memtype(w.limits.min(ctx.memorySize()))),
+    ),
+  )
+
   const bytes = w.module([
     w.typesec(ctx.functypes),
     w.importsec(imports),
     w.funcsec(functions.map(({ type }) => w.typeidx(ctx.recordFunctype(type)))),
-    w.globalsec(
-      ctx.globals.map((g) =>
-        w.global(w.globaltype(g.type, w.mut.var), [g.initExpr, w.instr.end]),
-      ),
-    ),
     w.exportsec(exports),
     w.codesec(
       functions.map(({ body }) =>
@@ -130,7 +164,7 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
       ),
     ),
   ])
-  //debugPrint(bytes)
+  //  debugPrint(bytes)
   // `(mod as any[])` to avoid compiler error about excessively deep
   // type instantiation.
   return Uint8Array.from((bytes as any[]).flat(Infinity))
@@ -150,9 +184,9 @@ export function optimizer(
   )
   const gradientValues = Array.from(gradient.values())
 
-  // Allocate globals for the params up front.
-  paramEntries.forEach(([param, initialVal]) => {
-    ctx.allocateGlobal(param, initialVal)
+  // Allocate storage for the params up front.
+  paramEntries.forEach(([param, initialVal], i) => {
+    ctx.allocateCache(param, initialVal)
   })
 
   const functions = [loss, ...gradientValues].map((num) => ({
@@ -182,19 +216,27 @@ export function optimizer(
       [instr.call, w.funcidx(importCount), instr.drop],
 
       // Evaluate all of the gradients
-      gradientValues.map((_, i) => [
-        // const diff = ev.evaluate(v)
-        [instr.call, w.funcidx(importCount + i + 1)],
+      gradientValues.map((_, i) => {
+        const [param] = paramEntries[i]
+        const cacheOffset = ctx.cacheOffsetForParam(param)
+        return [
+          // params.set(k, update)
+          f64_store(
+            cacheOffset,
+            frag(
+              "f64_storeval",
+              // const diff = ev.evaluate(v)
+              [instr.call, w.funcidx(importCount + i + 1)],
 
-        // const update = old - diff * epsilon
-        f64_const(-epsilon),
-        instr.f64.mul,
-        [instr.global.get, w.u32(i)],
-        instr.f64.add,
-
-        // params.set(k, update)
-        [instr.global.set, w.u32(i)],
-      ]),
+              // const update = old - diff * epsilon
+              f64_const(-epsilon),
+              instr.f64.mul,
+              f64_load(cacheOffset),
+              instr.f64.add,
+            ),
+          ),
+        ]
+      }),
       // i = i - 1
       [
         [instr.local.get, 0],
@@ -204,23 +246,36 @@ export function optimizer(
       ],
       [instr.br, 0, instr.end], // end loop
       instr.end, // end block
-      paramEntries.map((_, i) => [instr.global.get, w.u32(i)]),
+      paramEntries.map(([p, _]) => {
+        const offset = checkNotNull(ctx.cacheOffset(p))
+        return f64_load(offset)
+      }),
     ],
+  })
+  // Allocate and initialize the memory for the cache.
+  const cache = new WebAssembly.Memory({ initial: ctx.memorySize() })
+  const cacheView = new Float64Array(cache.buffer)
+  paramEntries.forEach(([_, val], i) => {
+    cacheView[i] = val
   })
 
   const bytes = makeWasmModule(functions, ctx)
   const mod = new WebAssembly.Module(bytes)
-  const { exports } = new WebAssembly.Instance(mod, { builtins })
+  const { exports } = new WebAssembly.Instance(mod, {
+    builtins,
+    memory: { cache },
+  })
 
   function optimize(iterations: number): Map<t.Param, number> {
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
+    ;(exports as any)["optimize"](iterations)
 
-    // Per the WebAssembly JS API spec, the result is only an array if there's
-    // more than one return value. There's no way to make it always an array.
-    const result = (exports as any)["optimize"](iterations)
-    const newVals = [result].flat() // Ensure it's an array.
-    return new Map(paramEntries.map(([param], i) => [param, newVals[i]]))
+    return new Map(
+      paramEntries.map(([param], i) => {
+        return [param, cacheView[i]]
+      }),
+    )
   }
 
   function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
@@ -248,16 +303,16 @@ export function optimizer(
     if (num.type === t.NumType.Constant) return emitNum(num, ctx)
 
     let result = []
-    let cacheIdx = ctx.globalidx(num)
-    if (cacheIdx === -1) {
-      assert(num.type !== t.NumType.Param, "no global found for param")
-      cacheIdx = ctx.allocateGlobal(num, 0)
+    let cacheOffset = ctx.cacheOffset(num)
+    if (cacheOffset === undefined) {
+      assert(num.type !== t.NumType.Param, "no cache found for param")
+      cacheOffset = ctx.allocateCache(num, 0)
 
       // Compute the result and write to the cache.
-      result.push(emitNum(num, ctx), instr.global.set, w.u32(cacheIdx))
+      result.push(f64_store(cacheOffset, emitNum(num, ctx)))
     }
     // Read from the cache.
-    result.push(instr.global.get, w.u32(cacheIdx))
+    result.push(f64_load(cacheOffset))
     return result
   }
 
