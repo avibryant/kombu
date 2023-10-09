@@ -72,13 +72,11 @@ class CodegenContext {
   recordFunctype(type: w.BytecodeFragment): number {
     const k = JSON.stringify(type)
     if (this.functypeToIdx.has(k)) {
-      console.log(k, this.functypeToIdx.get(k))
       return this.functypeToIdx.get(k)!
     }
     const idx = this.functypeToIdx.size
     this.functypeToIdx.set(k, idx)
     this.functypes.push(type)
-    console.log(k, this.functypeToIdx.get(k))
     return idx
   }
 
@@ -146,7 +144,7 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
 
   // Go from a "user" function index (0: loss function, 1...n: gradients)
   // to the actual index in the module.
-  const userFuncIdx = (idx: number) => imports.length + idx
+  const userFuncIdx = (idx: number) => builtinNames.length + idx
 
   const exports: w.BytecodeFragment = []
   functions.forEach(({ name }, i) => {
@@ -169,7 +167,6 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
   )
 
   const funcCount = functions.length
-  const minMemSize = (funcCount - 1) * 8
 
   // Produce a code section combining `codeEls` with the prebuilt code.
   const codesecWithPrebuilt = (codeEls: w.BytecodeFragment) => {
@@ -262,7 +259,9 @@ export function optimizer(
   function optimize(iterations: number): Map<t.Param, number> {
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
-    ;(exports as any)["optimize"](iterations)
+
+
+    ;(exports as any)["optimize"](paramEntries.length, iterations)
 
     return new Map(
       paramEntries.map(([param], i) => {
