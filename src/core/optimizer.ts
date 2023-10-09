@@ -259,7 +259,7 @@ export function optimizer(
   function optimize(iterations: number): Map<t.Param, number> {
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
-    ;(exports as any)["optimize"](paramEntries.length, iterations)
+    ;(exports as any)["optimize"](paramEntries.length, iterations, 0.0001)
 
     return new Map(
       paramEntries.map(([param], i) => {

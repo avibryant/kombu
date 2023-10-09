@@ -9,8 +9,7 @@
     why this is assumed by AssemblyScript and if there's a way to change it.)
   - The params are f64s stored contingously at the beginning of memory 0.
  */
-export function optimize(numParams: u32, iterations: u32): void {
-  const epsilon: f64 = 0.0001
+export function optimize(numParams: u32, iterations: u32, epsilon: f64): void {
   let i = iterations
   while (i > 0) {
     call_indirect<f64>(0) // Evaluate loss
