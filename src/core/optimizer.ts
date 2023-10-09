@@ -162,7 +162,7 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
   // Append an entry for the externally-defined `optimize` function.
   funcsec.push(
     w.typeidx(
-      ctx.recordFunctype(w.functype([w.valtype.i32, w.valtype.i32], [])),
+      ctx.recordFunctype(w.functype([w.valtype.i32, w.valtype.i32, w.valtype.f64], [])),
     ),
   )
 
