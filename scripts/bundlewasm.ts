@@ -15,9 +15,13 @@ const { entryCount, contents } = extractCodesec(buf)
 
 const base64Contents = JSON.stringify(Buffer.from(contents).toString("base64"))
 const output = `const bytes = atob(${base64Contents});
+const buf = new Uint8Array(bytes.length);
+for (let i = 0; i < bytes.length; i++) {
+  buf[i] = bytes.charCodeAt(i);
+}
 export default {
   entryCount: ${JSON.stringify(entryCount)},
-  contents: new Uint8Array(Array.prototype.map.call(bytes, c => c.charCodeAt(0)))
+  contents: buf
 }
 `
 fs.writeFileSync(outputUrl, output, "utf8")
