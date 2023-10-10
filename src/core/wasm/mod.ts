@@ -6,13 +6,14 @@ import prebuiltCodesec from "../../../build/release.wasm_codesec"
 
 const WASM_PAGE_SIZE = 65536
 
-function frag(dbg: string, ...fragment: w.BytecodeFragment) {
-  const arr = Array.from(fragment)
-  ;(arr as any).dbg = dbg
-  return arr
-}
+// Signature for the externally-defined `optimize` function.
+// TODO: Parse this from the prebuilt module.
+const OPTIMIZE_FUNCTYPE = w.functype(
+  [w.valtype.i32, w.valtype.i32, w.valtype.f64, w.valtype.f64, w.valtype.f64],
+  [],
+)
 
-export interface WasmFunction {
+interface Function {
   name: string
   type: w.BytecodeFragment
   body: w.BytecodeFragment
@@ -24,51 +25,63 @@ interface BuiltinFunction {
   impl: Function
 }
 
-class Functypes {
-  funcidxByType = new Map<string, number>()
-  functypes: w.BytecodeFragment = []
+// Wasm modules have a separate section for function types, and function
+// declarations use an index into that section.
+// This creates a mapping from function type to typeidx.
+function functypeIndex(types: w.BytecodeFragment[]) {
+  const typeToString = (t: w.BytecodeFragment) => JSON.stringify(t)
 
-  typeidxForFunctype(type: w.BytecodeFragment): w.BytecodeFragment {
-    const idx = checkNotNull(this.funcidxByType.get(JSON.stringify(type)))
-    return w.typeidx(idx)
+  const typeidxByString = new Map<string, number>()
+  const uniqueTypes: w.BytecodeFragment[] = []
+
+  for (const t of types) {
+    const k = typeToString(t)
+    if (!typeidxByString.has(k)) {
+      typeidxByString.set(k, uniqueTypes.length)
+      uniqueTypes.push(t)
+    }
   }
 
-  recordFunctype(type: w.BytecodeFragment): number {
-    const k = JSON.stringify(type)
-    if (this.funcidxByType.has(k)) {
-      return this.funcidxByType.get(k)!
-    }
-    const idx = this.funcidxByType.size
-    this.funcidxByType.set(k, idx)
-    this.functypes.push(type)
-    return idx
+  return {
+    // Return the typeidx for the given type `t`.
+    typeidx(t: w.BytecodeFragment): w.BytecodeFragment {
+      const idx = checkNotNull(typeidxByString.get(typeToString(t)))
+      return w.typeidx(idx)
+    },
+    // Return a valid typesec for the module.
+    typesec() {
+      return uniqueTypes
+    },
   }
 }
 
 export function instantiateModule(
   builtinFunctions: BuiltinFunction[],
-  functions: WasmFunction[],
+  functions: Function[],
   memory: WebAssembly.Memory,
 ) {
-  const ctx = new Functypes()
-
-  // This must be the first recorded type — it's implicitly used for any
-  // `call_indirect` in the prebuilt AssemblyScript code.
-  // TODO: Find a cleaner way to do this.
-  ctx.recordFunctype(w.functype([], [w.valtype.f64]))
-  functions.forEach(({ type }) => ctx.recordFunctype(type))
+  const functypes = functypeIndex([
+    // This must be the first recorded type — it's implicitly used for any
+    // `call_indirect` in the prebuilt AssemblyScript code.
+    // TODO: Find a cleaner way to do this.
+    w.functype([], [w.valtype.f64]),
+    ...builtinFunctions.map(({ type }) => type),
+    ...functions.map(({ type }) => type),
+    OPTIMIZE_FUNCTYPE,
+  ])
 
   const imports = builtinFunctions.map(({ name, type }) => {
-    const typeIdx = ctx.recordFunctype(type)
-    return frag(
-      "import" + name,
-      w.import_(
-        "builtins",
-        name,
-        frag("importdesc" + name, w.importdesc.func(w.typeidx(typeIdx))),
-      ),
-    )
+    const typeIdx = functypes.typeidx(type)
+    return w.import_("builtins", name, [w.importdesc.func(typeIdx)])
   })
+  const memorySize = memory.buffer.byteLength / WASM_PAGE_SIZE
+  imports.push(
+    w.import_(
+      "memory",
+      "cache",
+      w.importdesc.mem(w.memtype(w.limits.min(memorySize))),
+    ),
+  )
 
   // Go from a "user" function index (0: loss function, 1...n: gradients)
   // to the actual index in the module.
@@ -83,29 +96,10 @@ export function instantiateModule(
     w.export_("optimize", w.exportdesc.func(userFuncIdx(functions.length))),
   )
 
-  const funcsec = functions.map(({ type }) =>
-    w.typeidx(ctx.recordFunctype(type)),
-  )
-
-  // Append an entry for the externally-defined `optimize` function.
-  funcsec.push(
-    w.typeidx(
-      ctx.recordFunctype(
-        w.functype(
-          [
-            w.valtype.i32,
-            w.valtype.i32,
-            w.valtype.f64,
-            w.valtype.f64,
-            w.valtype.f64,
-          ],
-          [],
-        ),
-      ),
-    ),
-  )
-
-  const funcCount = functions.length
+  const funcsec = [
+    ...functions.map(({ type }) => functypes.typeidx(type)),
+    functypes.typeidx(OPTIMIZE_FUNCTYPE),
+  ]
 
   // Produce a code section combining `codeEls` with the prebuilt code.
   const codesecWithPrebuilt = (codeEls: w.BytecodeFragment) => {
@@ -117,23 +111,12 @@ export function instantiateModule(
     ])
   }
 
-  const memorySize = memory.buffer.byteLength / WASM_PAGE_SIZE
-  imports.push(
-    w.import_(
-      "memory",
-      "cache",
-      w.importdesc.mem(w.memtype(w.limits.min(memorySize))),
-    ),
-  )
-
   const fragment = w.module([
-    w.typesec(ctx.functypes),
+    w.typesec(functypes.typesec()),
     w.importsec(imports),
     w.funcsec(funcsec),
     w.tablesec([
-      w.table(
-        w.tabletype(w.elemtype.funcref, w.limits.minmax(funcCount, funcCount)),
-      ),
+      w.table(w.tabletype(w.elemtype.funcref, w.limits.min(functions.length))),
     ]),
     w.exportsec(exports),
     // Initialize the table
@@ -145,9 +128,7 @@ export function instantiateModule(
       ),
     ]),
     codesecWithPrebuilt(
-      functions.map(({ body }) =>
-        w.code(w.func([], frag("code", ...body, w.instr.end))),
-      ),
+      functions.map(({ body }) => w.code(w.func([], [...body, w.instr.end]))),
     ),
   ])
   //  debugPrint(bytes)
