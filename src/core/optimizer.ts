@@ -1,23 +1,11 @@
 import * as w from "@wasmgroundup/emit"
 
 import { assert, checkNotNull } from "./assert"
+import { builtins } from "./wasm/builtins"
+import { instantiateModule } from "./wasm/mod"
 import * as t from "./types"
 
-import prebuiltCodesec from "../../build/release.wasm_codesec"
-
 const SIZEOF_F64 = 8
-
-const builtins = {
-  log: Math.log,
-  exp: Math.exp,
-  pow: Math.pow,
-  sign: Math.sign,
-  abs: Math.abs,
-  cos: Math.cos,
-  sin: Math.sin,
-  atan: Math.atan,
-}
-const builtinNames = Object.keys(builtins)
 
 type IdentifiableNum = t.Num & { id: number }
 
@@ -43,11 +31,38 @@ function f64_store(offset: number, frag: w.BytecodeFragment) {
   ]
 }
 
+// For each parameter, we reserve multiple f64 slots.
+// The first slot holds the parameter value itself. Currently the second
+// slot is used to hold the moving average the gradient.
+const cacheSlotsPerParam = 2
+
+class OptimizerCache {
+  memory: WebAssembly.Memory
+  cache: Float64Array
+
+  constructor(size: number) {
+    this.memory = new WebAssembly.Memory({ initial: size })
+    this.cache = new Float64Array(this.memory.buffer)
+  }
+
+  getParam(idx: number): number {
+    return this.cache[idx * cacheSlotsPerParam]
+  }
+
+  setParam(idx: number, val: number): void {
+    this.cache[idx * cacheSlotsPerParam] = val
+  }
+
+  setParams(entries: [t.Param, number][]): void {
+    entries.forEach(([_, val], i) => {
+      this.setParam(i, val)
+    })
+  }
+}
+
 class CodegenContext {
   cacheEntries = 0
   cacheOffsetById = new Map<number, number>()
-  functypeToIdx = new Map<string, number>()
-  functypes: w.BytecodeFragment = []
 
   allocateCache(num: IdentifiableNum, numSlots = 1): number {
     const offset = this.cacheEntries * SIZEOF_F64
@@ -64,31 +79,9 @@ class CodegenContext {
     return checkNotNull(this.cacheOffset(p))
   }
 
-  typeidxForFunctype(type: w.BytecodeFragment): w.BytecodeFragment {
-    const idx = checkNotNull(this.functypeToIdx.get(JSON.stringify(type)))
-    return w.typeidx(idx)
-  }
-
-  recordFunctype(type: w.BytecodeFragment): number {
-    const k = JSON.stringify(type)
-    if (this.functypeToIdx.has(k)) {
-      return this.functypeToIdx.get(k)!
-    }
-    const idx = this.functypeToIdx.size
-    this.functypeToIdx.set(k, idx)
-    this.functypes.push(type)
-    return idx
-  }
-
   memorySize() {
     return this.cacheEntries * SIZEOF_F64
   }
-}
-
-interface WasmFunction {
-  name: string
-  type: w.BytecodeFragment
-  body: w.BytecodeFragment
 }
 
 function frag(dbg: string, ...fragment: w.BytecodeFragment) {
@@ -108,123 +101,9 @@ function debugPrint(frag: any[], depth = 0) {
 }
 
 function callBuiltin(name: string): w.BytecodeFragment {
-  const idx = builtinNames.indexOf(name)
+  const idx = builtins.findIndex((fn) => fn.name === name)
   if (idx === -1) throw new Error(`builtin '${name}' not found`)
   return [w.instr.call, w.funcidx(idx)]
-}
-
-function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
-  const builtinType1 = w.functype([w.valtype.f64], [w.valtype.f64])
-  const builtinType2 = w.functype(
-    [w.valtype.f64, w.valtype.f64],
-    [w.valtype.f64],
-  )
-
-  // This must be the first recorded type — it's implicitly used for any
-  // `call_indirect` in the prebuilt AssemblyScript code.
-  // TODO: Find a cleaner way to do this.
-  ctx.recordFunctype(w.functype([], [w.valtype.f64]))
-  ;[builtinType1, builtinType2].forEach((t) => ctx.recordFunctype(t))
-  functions.forEach(({ type }) => ctx.recordFunctype(type))
-
-  const imports = builtinNames.map((name) => {
-    // TODO: Find a cleaner way of doing this?
-    const typeIdx = ctx.recordFunctype(
-      name === "pow" ? builtinType2 : builtinType1,
-    )
-    return frag(
-      "import" + name,
-      w.import_(
-        "builtins",
-        name,
-        frag("importdesc" + name, w.importdesc.func(w.typeidx(typeIdx))),
-      ),
-    )
-  })
-
-  // Go from a "user" function index (0: loss function, 1...n: gradients)
-  // to the actual index in the module.
-  const userFuncIdx = (idx: number) => builtinNames.length + idx
-
-  const exports: w.BytecodeFragment = []
-  functions.forEach(({ name }, i) => {
-    if (name) exports.push(w.export_(name, w.exportdesc.func(userFuncIdx(i))))
-  })
-  // Export the externally-defined `optimize` function.
-  exports.push(
-    w.export_("optimize", w.exportdesc.func(userFuncIdx(functions.length))),
-  )
-
-  const funcsec = functions.map(({ type }) =>
-    w.typeidx(ctx.recordFunctype(type)),
-  )
-
-  // Append an entry for the externally-defined `optimize` function.
-  funcsec.push(
-    w.typeidx(
-      ctx.recordFunctype(
-        w.functype(
-          [
-            w.valtype.i32,
-            w.valtype.i32,
-            w.valtype.f64,
-            w.valtype.f64,
-            w.valtype.f64,
-          ],
-          [],
-        ),
-      ),
-    ),
-  )
-
-  const funcCount = functions.length
-
-  // Produce a code section combining `codeEls` with the prebuilt code.
-  const codesecWithPrebuilt = (codeEls: w.BytecodeFragment) => {
-    const count = prebuiltCodesec.entryCount + codeEls.length
-    return w.section(10, [
-      w.u32(count),
-      codeEls,
-      Array.from(prebuiltCodesec.contents),
-    ])
-  }
-
-  imports.push(
-    w.import_(
-      "memory",
-      "cache",
-      w.importdesc.mem(w.memtype(w.limits.min(ctx.memorySize()))),
-    ),
-  )
-
-  const bytes = w.module([
-    w.typesec(ctx.functypes),
-    w.importsec(imports),
-    w.funcsec(funcsec),
-    w.tablesec([
-      w.table(
-        w.tabletype(w.elemtype.funcref, w.limits.minmax(funcCount, funcCount)),
-      ),
-    ]),
-    w.exportsec(exports),
-    // Initialize the table
-    w.elemsec([
-      w.elem(
-        w.tableidx(0),
-        [w.instr.i32.const, 0, w.instr.end],
-        functions.map((_, i) => w.funcidx(userFuncIdx(i))),
-      ),
-    ]),
-    codesecWithPrebuilt(
-      functions.map(({ body }) =>
-        w.code(w.func([], frag("code", ...body, w.instr.end))),
-      ),
-    ),
-  ])
-  //  debugPrint(bytes)
-  // `(mod as any[])` to avoid compiler error about excessively deep
-  // type instantiation.
-  return Uint8Array.from((bytes as any[]).flat(Infinity))
 }
 
 export function optimizer(
@@ -254,29 +133,10 @@ export function optimizer(
     body: emitCachedNum(num, ctx),
   }))
 
-  // Allocate and initialize the memory for the cache.
-  const cache = new WebAssembly.Memory({ initial: ctx.memorySize() })
-  const cacheView = new Float64Array(cache.buffer)
+  const cache = new OptimizerCache(ctx.memorySize())
+  cache.setParams(paramEntries)
 
-  // For each param, we allocate two 64-bit slots in the cache.
-  // The first slot holds the param value, the 2nd slot is for internal
-  // use during optimization.
-  const getParam = (idx: number) => cacheView[idx * 2]
-  const setParam = (idx: number, val: number) => {
-    cacheView[idx * 2] = val
-  }
-
-  paramEntries.forEach(([_, val], i) => {
-    setParam(i, val)
-  })
-
-  const bytes = makeWasmModule(functions, ctx)
-  //  fs.writeFileSync("module.wasm", bytes)
-  const mod = new WebAssembly.Module(bytes)
-  const { exports } = new WebAssembly.Instance(mod, {
-    builtins,
-    memory: { cache },
-  })
+  const { exports } = instantiateModule(builtins, functions, cache.memory)
 
   function optimize(iterations: number): Map<t.Param, number> {
     if (typeof exports.optimize !== "function")
@@ -291,7 +151,7 @@ export function optimizer(
 
     return new Map(
       paramEntries.map(([param], i) => {
-        return [param, getParam(i)]
+        return [param, cache.getParam(i)]
       }),
     )
   }
@@ -369,9 +229,6 @@ export function optimizer(
     type: t.UnaryFn,
     ctx: CodegenContext,
   ): w.BytecodeFragment {
-    if (!builtinNames.includes(type)) {
-      throw new Error(`not supported: ${type}`)
-    }
     return frag("Unary", emitCachedNum(node, ctx), callBuiltin(type))
   }
 
