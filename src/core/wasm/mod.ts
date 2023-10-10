@@ -6,9 +6,9 @@ import { BuiltinFunction } from "./builtins"
 import * as prebuilt from "../../../build/release.wasm_sections"
 
 // https://webassembly.github.io/spec/core/bikeshed/index.html#sections%E2%91%A0
-const SECTION_ID_TYPE = 1;
-const SECTION_ID_FUNCTION = 3;
-const SECTION_ID_CODE = 10;
+const SECTION_ID_TYPE = 1
+const SECTION_ID_FUNCTION = 3
+const SECTION_ID_CODE = 10
 
 const WASM_PAGE_SIZE = 65536
 
@@ -23,20 +23,21 @@ interface PrebuiltSection {
   contents: number[]
 }
 
-// Produce a code section combining `codeEls` with the prebuilt code.
-// Note that funcidxs are not rewritten, so the types
-function mergeSections(sectionId: number, prebuilt: PrebuiltSection, els: w.BytecodeFragment) {
+// Produce a section combining `els` with the corresponding prebuilt section.
+// This only does a naive merge; no type or function indices are rewritten.
+function mergeSections(
+  sectionId: number,
+  prebuilt: PrebuiltSection,
+  els: w.BytecodeFragment,
+) {
   const count = prebuilt.entryCount + els.length
-  return w.section(sectionId, [
-    w.u32(count),
-    prebuilt.contents,
-    els,
-  ])
+  return w.section(sectionId, [w.u32(count), prebuilt.contents, els])
 }
 
 // Wasm modules have a separate section for function types, and function
 // declarations use an index into that section.
-// This creates a mapping from function type to typeidx.
+// This creates a mapping from function type to typeidx. `startIdx`
+// specifies indices that should be reserved at the beginning.
 function functypeIndex(types: w.BytecodeFragment[], startIdx: number) {
   const typeToString = (t: w.BytecodeFragment) => JSON.stringify(t)
 
@@ -69,10 +70,13 @@ export function instantiateModule(
   functions: WasmFunction[],
   memory: WebAssembly.Memory,
 ) {
-  const functypes = functypeIndex([
-    ...builtinFunctions.map(({ type }) => type),
-    ...functions.map(({ type }) => type),
-  ], prebuilt.typesec.entryCount)
+  const functypes = functypeIndex(
+    [
+      ...builtinFunctions.map(({ type }) => type),
+      ...functions.map(({ type }) => type),
+    ],
+    prebuilt.typesec.entryCount,
+  )
 
   const imports = builtinFunctions.map(({ name, type }) => {
     const typeIdx = functypes.typeidx(type)
@@ -89,7 +93,8 @@ export function instantiateModule(
 
   // Go from a "user" function index (0: loss function, 1...n: gradients)
   // to the actual index in the module.
-  const userFuncIdx = (idx: number) => builtinFunctions.length + prebuilt.codesec.entryCount + idx
+  const userFuncIdx = (idx: number) =>
+    builtinFunctions.length + prebuilt.codesec.entryCount + idx
 
   const exports: w.BytecodeFragment = []
   functions.forEach(({ name }, i) => {
@@ -97,14 +102,16 @@ export function instantiateModule(
   })
   // Export the externally-defined `optimize` function.
   // TODO: Look up the correct index in the prebuilt module.
-  exports.push(
-    w.export_("optimize", w.exportdesc.func(userFuncIdx(-1))),
-  )
+  exports.push(w.export_("optimize", w.exportdesc.func(userFuncIdx(-1))))
 
   const fragment = w.module([
     mergeSections(SECTION_ID_TYPE, prebuilt.typesec, functypes.typesec()),
     w.importsec(imports),
-    mergeSections(SECTION_ID_FUNCTION, prebuilt.funcsec, functions.map(({ type }) => functypes.typeidx(type))),
+    mergeSections(
+      SECTION_ID_FUNCTION,
+      prebuilt.funcsec,
+      functions.map(({ type }) => functypes.typeidx(type)),
+    ),
     w.tablesec([
       w.table(w.tabletype(w.elemtype.funcref, w.limits.min(functions.length))),
     ]),
@@ -117,7 +124,9 @@ export function instantiateModule(
         functions.map((_, i) => w.funcidx(userFuncIdx(i))),
       ),
     ]),
-    mergeSections(SECTION_ID_CODE, prebuilt.codesec,
+    mergeSections(
+      SECTION_ID_CODE,
+      prebuilt.codesec,
       functions.map(({ body }) => w.code(w.func([], [...body, w.instr.end]))),
     ),
   ])
