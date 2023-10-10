@@ -1,6 +1,7 @@
 import * as w from "@wasmgroundup/emit"
 
 import { assert, checkNotNull } from "./assert"
+import { OptimizerCache } from "./OptimizerCache"
 import * as t from "./types"
 
 import prebuiltCodesec from "../../build/release.wasm_codesec"
@@ -254,28 +255,15 @@ export function optimizer(
     body: emitCachedNum(num, ctx),
   }))
 
-  // Allocate and initialize the memory for the cache.
-  const cache = new WebAssembly.Memory({ initial: ctx.memorySize() })
-  const cacheView = new Float64Array(cache.buffer)
-
-  // For each param, we allocate two 64-bit slots in the cache.
-  // The first slot holds the param value, the 2nd slot is for internal
-  // use during optimization.
-  const getParam = (idx: number) => cacheView[idx * 2]
-  const setParam = (idx: number, val: number) => {
-    cacheView[idx * 2] = val
-  }
-
-  paramEntries.forEach(([_, val], i) => {
-    setParam(i, val)
-  })
+  const cache = new OptimizerCache(ctx.memorySize())
+  cache.setParams(paramEntries)
 
   const bytes = makeWasmModule(functions, ctx)
   //  fs.writeFileSync("module.wasm", bytes)
   const mod = new WebAssembly.Module(bytes)
   const { exports } = new WebAssembly.Instance(mod, {
     builtins,
-    memory: { cache },
+    memory: { cache: cache.memory },
   })
 
   function optimize(iterations: number): Map<t.Param, number> {
@@ -291,7 +279,7 @@ export function optimizer(
 
     return new Map(
       paramEntries.map(([param], i) => {
-        return [param, getParam(i)]
+        return [param, cache.getParam(i)]
       }),
     )
   }
