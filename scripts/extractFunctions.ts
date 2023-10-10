@@ -19,7 +19,8 @@ export type VecContents = {
   contents: Uint8Array
 }
 
-function getModuleFunctions(bytes: Uint8Array) {
+// Extracts the type, function, and code sections from a Wasm module.
+export function extractFunctions(bytes: Uint8Array) {
   checkPreamble(bytes)
 
   function peekSectionId(): number {
@@ -65,7 +66,7 @@ function getModuleFunctions(bytes: Uint8Array) {
   }
 
   let typesec: VecContents | undefined = undefined
-  let functionsec: VecContents | undefined = undefined
+  let funcsec: VecContents | undefined = undefined
   let codesec: VecContents | undefined = undefined
 
   let pos = 8
@@ -83,7 +84,7 @@ function getModuleFunctions(bytes: Uint8Array) {
     if (id === 1) {
       typesec = parseSectionOpaque(id)
     } else if (id === 3) {
-      functionsec = parseSectionOpaque(id)
+      funcsec = parseSectionOpaque(id)
     } else if (id === 10) {
       codesec = parseSectionOpaque(id)
     } else {
@@ -92,13 +93,7 @@ function getModuleFunctions(bytes: Uint8Array) {
   }
   return {
     typesec: checkNotNull(typesec),
-    functionsec: checkNotNull(functionsec),
+    funcsec: checkNotNull(funcsec),
     codesec: checkNotNull(codesec),
   }
-}
-
-// Extracts the code section from the Wasm module in `bytes`.
-export function extractCodesec(bytes: Uint8Array): VecContents {
-  const { codesec } = getModuleFunctions(bytes)
-  return codesec
 }
