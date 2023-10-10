@@ -3,7 +3,6 @@ import * as w from "@wasmgroundup/emit"
 import { assert, checkNotNull } from "./assert"
 import { builtins } from "./wasm/builtins"
 import { instantiateModule } from "./wasm/mod"
-import { OptimizerCache } from "./OptimizerCache"
 import * as t from "./types"
 
 const SIZEOF_F64 = 8
@@ -30,6 +29,35 @@ function f64_store(offset: number, frag: w.BytecodeFragment) {
     frag,
     [w.instr.f64.store, alignmentAndOffset],
   ]
+}
+
+// For each parameter, we reserve multiple f64 slots.
+// The first slot holds the parameter value itself. Currently the second
+// slot is used to hold the moving average the gradient.
+const cacheSlotsPerParam = 2
+
+class OptimizerCache {
+  memory: WebAssembly.Memory
+  cache: Float64Array
+
+  constructor(size: number) {
+    this.memory = new WebAssembly.Memory({ initial: size })
+    this.cache = new Float64Array(this.memory.buffer)
+  }
+
+  getParam(idx: number): number {
+    return this.cache[idx * cacheSlotsPerParam]
+  }
+
+  setParam(idx: number, val: number): void {
+    this.cache[idx * cacheSlotsPerParam] = val
+  }
+
+  setParams(entries: [t.Param, number][]): void {
+    entries.forEach(([_, val], i) => {
+      this.setParam(i, val)
+    })
+  }
 }
 
 class CodegenContext {
