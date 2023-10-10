@@ -1,6 +1,7 @@
 import * as w from "@wasmgroundup/emit"
 
 import { checkNotNull } from "../assert"
+import { BuiltinFunction } from "./builtins"
 
 import prebuiltCodesec from "../../../build/release.wasm_codesec"
 
@@ -13,16 +14,10 @@ const OPTIMIZE_FUNCTYPE = w.functype(
   [],
 )
 
-interface Function {
+interface WasmFunction {
   name: string
   type: w.BytecodeFragment
   body: w.BytecodeFragment
-}
-
-interface BuiltinFunction {
-  name: string
-  type: w.BytecodeFragment
-  impl: Function
 }
 
 // Wasm modules have a separate section for function types, and function
@@ -57,7 +52,7 @@ function functypeIndex(types: w.BytecodeFragment[]) {
 
 export function instantiateModule(
   builtinFunctions: BuiltinFunction[],
-  functions: Function[],
+  functions: WasmFunction[],
   memory: WebAssembly.Memory,
 ) {
   const functypes = functypeIndex([

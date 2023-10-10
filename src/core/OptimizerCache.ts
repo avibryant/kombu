@@ -1,5 +1,8 @@
 import * as t from "./types"
 
+// For each parameter, we reserve multiple f64 slots.
+// The first slot holds the parameter value itself. Currently the second
+// slot is used to hold the moving average the gradient.
 const paramSizeSlots = 2
 
 export class OptimizerCache {
