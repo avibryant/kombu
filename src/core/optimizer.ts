@@ -44,15 +44,15 @@ function f64_store(offset: number, frag: w.BytecodeFragment) {
 }
 
 class CodegenContext {
-  cacheEntries: { initExpr: w.BytecodeFragment | undefined }[] = []
+  cacheEntries = 0
   cacheOffsetById = new Map<number, number>()
   functypeToIdx = new Map<string, number>()
   functypes: w.BytecodeFragment = []
 
-  allocateCache(num: IdentifiableNum, initialVal: number): number {
-    const offset = this.cacheEntries.length * SIZEOF_F64
+  allocateCache(num: IdentifiableNum, numSlots = 1): number {
+    const offset = this.cacheEntries * SIZEOF_F64
     this.cacheOffsetById.set(num.id, offset)
-    this.cacheEntries.push({ initExpr: f64_const(initialVal) })
+    this.cacheEntries += numSlots
     return offset
   }
 
@@ -81,7 +81,7 @@ class CodegenContext {
   }
 
   memorySize() {
-    return this.cacheEntries.length * SIZEOF_F64
+    return this.cacheEntries * SIZEOF_F64
   }
 }
 
@@ -162,7 +162,18 @@ function makeWasmModule(functions: WasmFunction[], ctx: CodegenContext) {
   // Append an entry for the externally-defined `optimize` function.
   funcsec.push(
     w.typeidx(
-      ctx.recordFunctype(w.functype([w.valtype.i32, w.valtype.i32, w.valtype.f64], [])),
+      ctx.recordFunctype(
+        w.functype(
+          [
+            w.valtype.i32,
+            w.valtype.i32,
+            w.valtype.f64,
+            w.valtype.f64,
+            w.valtype.f64,
+          ],
+          [],
+        ),
+      ),
     ),
   )
 
@@ -230,9 +241,11 @@ export function optimizer(
   )
   const gradientValues = Array.from(gradient.values())
 
-  // Allocate storage for the params up front.
-  paramEntries.forEach(([param, initialVal]) => {
-    ctx.allocateCache(param, initialVal)
+  // Allocate storage for the params up front. For each parameter, allocate
+  // two f64 slots: one for the current value, and one for temporary data
+  // used by the optimization algorithm.
+  paramEntries.forEach(([param]) => {
+    ctx.allocateCache(param, 2)
   })
 
   const functions = [loss, ...gradientValues].map((num) => ({
@@ -244,8 +257,17 @@ export function optimizer(
   // Allocate and initialize the memory for the cache.
   const cache = new WebAssembly.Memory({ initial: ctx.memorySize() })
   const cacheView = new Float64Array(cache.buffer)
+
+  // For each param, we allocate two 64-bit slots in the cache.
+  // The first slot holds the param value, the 2nd slot is for internal
+  // use during optimization.
+  const getParam = (idx: number) => cacheView[idx * 2]
+  const setParam = (idx: number, val: number) => {
+    cacheView[idx * 2] = val
+  }
+
   paramEntries.forEach(([_, val], i) => {
-    cacheView[i] = val
+    setParam(i, val)
   })
 
   const bytes = makeWasmModule(functions, ctx)
@@ -259,11 +281,17 @@ export function optimizer(
   function optimize(iterations: number): Map<t.Param, number> {
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
-    ;(exports as any)["optimize"](paramEntries.length, iterations, 0.0001)
+    ;(exports as any)["optimize"](
+      paramEntries.length,
+      iterations,
+      0.001, // learning rate
+      1e-6, // epsilon
+      0.99, // decay
+    )
 
     return new Map(
       paramEntries.map(([param], i) => {
-        return [param, cacheView[i]]
+        return [param, getParam(i)]
       }),
     )
   }
@@ -296,7 +324,7 @@ export function optimizer(
     let cacheOffset = ctx.cacheOffset(num)
     if (cacheOffset === undefined) {
       assert(num.type !== t.NumType.Param, "no cache found for param")
-      cacheOffset = ctx.allocateCache(num, 0)
+      cacheOffset = ctx.allocateCache(num)
 
       // Compute the result and write to the cache.
       result.push(f64_store(cacheOffset, emitNum(num, ctx)))
