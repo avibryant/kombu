@@ -1,35 +1,13 @@
 import * as w from "@wasmgroundup/emit"
 
 import { assert, checkNotNull } from "./assert"
-import { builtins } from "./wasm/builtins"
+import { callBuiltin, f64_const, f64_load, f64_store } from "./wasm/instr"
 import { instantiateModule } from "./wasm/mod"
 import * as t from "./types"
 
 const SIZEOF_F64 = 8
 
 type IdentifiableNum = t.Num & { id: number }
-
-function f64_const(v: number) {
-  return frag("f64_const", w.instr.f64.const, w.f64(v))
-}
-
-// Required as an immediate arg for all loads/stores.
-const alignmentAndOffset = w.memarg(3 /* bits */, 0)
-
-function f64_load(offset: number) {
-  return [
-    [w.instr.i32.const, w.i32(offset)],
-    [w.instr.f64.load, alignmentAndOffset],
-  ]
-}
-
-function f64_store(offset: number, frag: w.BytecodeFragment) {
-  return [
-    [w.instr.i32.const, w.i32(offset)],
-    frag,
-    [w.instr.f64.store, alignmentAndOffset],
-  ]
-}
 
 // For each parameter, we reserve multiple f64 slots.
 // The first slot holds the parameter value itself. Currently the second
@@ -100,12 +78,6 @@ function debugPrint(frag: any[], depth = 0) {
   else log(`@${count++} ${frag} (0x${(frag as any).toString(16)})`)
 }
 
-function callBuiltin(name: string): w.BytecodeFragment {
-  const idx = builtins.findIndex((fn) => fn.name === name)
-  if (idx === -1) throw new Error(`builtin '${name}' not found`)
-  return [w.instr.call, w.funcidx(idx)]
-}
-
 export function optimizer(
   loss: t.Num,
   gradient: Map<t.Param, t.Num>,
@@ -136,7 +108,7 @@ export function optimizer(
   const cache = new OptimizerCache(ctx.memorySize())
   cache.setParams(paramEntries)
 
-  const { exports } = instantiateModule(builtins, functions, cache.memory)
+  const { exports } = instantiateModule(functions, cache.memory)
 
   function optimize(iterations: number): Map<t.Param, number> {
     if (typeof exports.optimize !== "function")
