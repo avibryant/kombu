@@ -11,7 +11,7 @@ const WASM_NUMTYPES = [0x7c, 0x7d, 0x7e, 0x7f]
 const WASM_VECTYPE = 0x7b
 const WASM_REFTYPES = [0x6f, 0x70]
 
-function checkPreamble(bytes: Uint8Array): void {
+function skipPreamble(bytes: Uint8Array): void {
   // prettier-ignore
   const expected = new Uint8Array([
     0, ...Array.from("asm").map((c) => checkNotNull(c.codePointAt(0))),
@@ -52,7 +52,7 @@ interface ExtractOptions {
 
 // Extracts the type, import, function, and code sections from a Wasm module.
 export function extractSections(bytes: Uint8Array, opts: ExtractOptions = {}) {
-  checkPreamble(bytes)
+  skipPreamble(bytes)
 
   const parseU32 = () => {
     const [val, count] = decodeULEB128(bytes.slice(pos))
