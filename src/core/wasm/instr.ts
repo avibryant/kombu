@@ -1,7 +1,7 @@
-import * as w from '@wasmgroundup/emit'
+import * as w from "@wasmgroundup/emit"
 
 import * as prebuilt from "../../../build/release.wasm_sections"
-import { builtins } from './builtins'
+import { builtins } from "./builtins"
 
 // Required as an immediate arg for all loads/stores.
 const ALIGNMENT_AND_OFFSET = w.memarg(3 /* bits */, 0)

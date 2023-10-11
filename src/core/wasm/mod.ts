@@ -71,10 +71,7 @@ export function instantiateModule(
   memory: WebAssembly.Memory,
 ) {
   const functypes = functypeIndex(
-    [
-      ...builtins.map(({ type }) => type),
-      ...functions.map(({ type }) => type),
-    ],
+    [...builtins.map(({ type }) => type), ...functions.map(({ type }) => type)],
     prebuilt.typesec.entryCount,
   )
 
@@ -145,7 +142,7 @@ export function instantiateModule(
     ),
     memory: { cache: memory },
     env: {
-      "console.log": console.log
-    }
+      "console.log": console.log,
+    },
   })
 }

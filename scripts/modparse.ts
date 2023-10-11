@@ -1,9 +1,15 @@
-import { assert, checkNotNull } from "../src/core/assert.ts"
+import { decodeULEB128, decodeSLEB128 } from "@thi.ng/leb128"
 import * as w from "@wasmgroundup/emit"
+
+import { assert, checkNotNull } from "../src/core/assert.ts"
 
 // For sanity checking, assume that the number of locals is never
 // above a certain number. (We can raise this if necessary.)
-const MAX_LOCALS = 50;
+const MAX_LOCALS = 50
+
+const WASM_NUMTYPES = [0x7c, 0x7d, 0x7e, 0x7f]
+const WASM_VECTYPE = 0x7b
+const WASM_REFTYPES = [0x6f, 0x70]
 
 function checkPreamble(bytes: Uint8Array): void {
   // prettier-ignore
@@ -19,36 +25,20 @@ function checkPreamble(bytes: Uint8Array): void {
   }
 }
 
-function checkValtype(t: number): number {
-  assert(
-    (0x7c <= t && t <= 0x7f) || // numtype
-      t === 0x7b || // vectype
-      (0x6f <= t && t <= 0x70), // reftype
-    `unrecognized valtype: 0x${t.toString(2)}`,
+function isValtype(t: number): boolean {
+  return (
+    WASM_NUMTYPES.includes(t) || WASM_VECTYPE === t || WASM_REFTYPES.includes(t)
   )
+}
+
+function checkValtype(t: number): number {
+  assert(isValtype(t), `unrecognized valtype: 0x${t.toString(2)}`)
   return t
 }
 
 function checkU32(b: bigint): number {
-  assert(b >= 0n && b < 2n**32n, `not a valid U32 value: ${b}`);
-  return Number(b);
-}
-
-// Parse a LEB128-encoded value (u32 or u34).
-// Return [val, count], where `val` is the decoded value, and `count`
-// is the number of bytes it was encoded with.
-function parseULEB128(
-  arr: Uint8Array | number[],
-  start: number,
-): [bigint, number] {
-  let result = 0n
-  let pos = start
-  for (let i = 0; i < 8; i++) {
-    const b = arr[pos++]
-    result |= BigInt((b & 0b01111111) << (i * 7))
-    if (b < 0b10000000) break
-  }
-  return [result, pos - start]
+  assert(b >= 0n && b < 2n ** 32n, `not a valid U32 value: ${b}`)
+  return Number(b)
 }
 
 export type VecContents = {
@@ -57,15 +47,15 @@ export type VecContents = {
 }
 
 interface ExtractOptions {
-  destImportCount?: number,
+  destImportCount?: number
 }
 
 // Extracts the type, import, function, and code sections from a Wasm module.
-export function extractSections(bytes: Uint8Array, opts: ExtractOptions={}) {
+export function extractSections(bytes: Uint8Array, opts: ExtractOptions = {}) {
   checkPreamble(bytes)
 
   const parseU32 = () => {
-    const [val, count] = parseULEB128(bytes, pos)
+    const [val, count] = decodeULEB128(bytes.slice(pos))
     pos += count
     return checkU32(val)
   }
@@ -129,8 +119,12 @@ export function extractSections(bytes: Uint8Array, opts: ExtractOptions={}) {
       // Rewrite the code section to account for the number of imports that
       // will exist in the final module.
       const srcImportCount = importsec?.entryCount ?? 0
-      const destImportCount = opts.destImportCount ??  0
-      codesec.contents = rewriteCodesecContents(codesec.contents, srcImportCount, destImportCount)
+      const destImportCount = opts.destImportCount ?? 0
+      codesec.contents = rewriteCodesecContents(
+        codesec.contents,
+        srcImportCount,
+        destImportCount,
+      )
     } else {
       skipSection()
     }
@@ -144,21 +138,21 @@ export function extractSections(bytes: Uint8Array, opts: ExtractOptions={}) {
 }
 
 function rewriteCodeEntry(
-  bytes: Uint8Array | number[],
+  bytes: Uint8Array,
   srcImportCount: number,
-  destImportCount: number
+  destImportCount: number,
 ): number[] {
-  console.log('rewriteCodeEntry');
+  console.log("rewriteCodeEntry")
   const { instr } = w
   let pos = 0
 
   const parseU32 = () => {
-    const [val, count] = parseULEB128(bytes, pos)
+    const [val, count] = decodeULEB128(bytes, pos)
     pos += count
     return checkU32(val)
   }
 
-  function parseLocals() {
+  function skipLocals() {
     const len = parseU32()
     for (let i = 0; i < len; i++) {
       const count = parseU32()
@@ -167,11 +161,29 @@ function rewriteCodeEntry(
     }
   }
 
-  parseLocals()
+  // See https://webassembly.github.io/spec/core/bikeshed/#binary-blocktype
+  function skipBlocktype() {
+    const b = bytes[pos]
+    if (b === 0x40 || isValtype(b)) {
+      pos += 1
+      return
+    }
+    // From the spec:
+    // > Unlike any other occurrence, the type index in a block type is encoded
+    // > as a positive signed integer, so that its signed LEB128 bit pattern
+    // > cannot collide with the encoding of value types or the special code
+    // > 0x40, which correspond to the LEB128 encoding of negative integers.
+    const [idx, count] = decodeSLEB128(bytes.slice(pos))
+    pos += count
+    assert(idx >= 0, `unexpected typeidx in blocktype: ${idx}`)
+  }
+
+  skipLocals()
 
   const result: number[] = []
   let sliceStart = 0
 
+  // Walk through the function's bytecode.
   while (pos < bytes.length) {
     const bc = bytes[pos++]
 
@@ -181,7 +193,7 @@ function rewriteCodeEntry(
       case instr.block:
       case instr.loop:
       case instr.if:
-        pos++
+        skipBlocktype()
         break
       case instr.end:
         break
@@ -196,7 +208,7 @@ function rewriteCodeEntry(
       case instr.call:
         // Rewrite `call` instructions so that the index is valid for the
         // target module.
-        result.push(...bytes.slice(sliceStart, pos));
+        result.push(...bytes.slice(sliceStart, pos))
         let idx = parseU32()
 
         // Function indices in a Wasm bundle are automatically assigned.
@@ -204,7 +216,7 @@ function rewriteCodeEntry(
         // Since the dest module has additional imports, we need to rewrite
         // the funcidx if and only if it referred to a user function.
         if (idx >= srcImportCount) {
-          idx += destImportCount;
+          idx += destImportCount
         }
         result.push(...w.u32(idx))
         sliceStart = pos
@@ -226,8 +238,9 @@ function rewriteCodeEntry(
         parseU32()
         break
       case instr.i64.const:
-        const [_, count] = parseULEB128(bytes, pos)
+        const [_, count] = decodeULEB128(bytes.slice(pos))
         assert(count <= 8, `too many bytes (${count}) for i64`)
+        pos += 8
         break
       case instr.f32.const:
         pos += 4
@@ -237,7 +250,6 @@ function rewriteCodeEntry(
         break
       default:
         if (instr.i32.load <= bc && bc <= instr.i64.store32) {
-          // loads & stores
           parseU32()
           parseU32()
         } else if (
@@ -252,14 +264,21 @@ function rewriteCodeEntry(
     }
   }
   result.push(...bytes.slice(sliceStart))
-  return result;
+  return result
 }
 
-function rewriteCodesecContents(bytes: Uint8Array, srcImportCount: number, destImportCount: number): Uint8Array {
+// Rewrite the contents of the prebuilt code section, changing the funcidx of
+// `call` instructions to account for the correct number of imports in the
+// final module.
+function rewriteCodesecContents(
+  bytes: Uint8Array,
+  srcImportCount: number,
+  destImportCount: number,
+): Uint8Array {
   let pos = 0
 
   const parseU32 = () => {
-    const [val, count] = parseULEB128(bytes, pos)
+    const [val, count] = decodeULEB128(bytes.slice(pos))
     pos += count
     return checkU32(val)
   }
@@ -268,10 +287,14 @@ function rewriteCodesecContents(bytes: Uint8Array, srcImportCount: number, destI
 
   while (pos < bytes.length) {
     const size = parseU32()
-    const newEntry = rewriteCodeEntry(bytes.slice(pos, pos + size), srcImportCount, destImportCount)
+    const newEntry = rewriteCodeEntry(
+      bytes.slice(pos, pos + size),
+      srcImportCount,
+      destImportCount,
+    )
     newBytes.push(...w.u32(newEntry.length), ...newEntry)
     pos += size
   }
 
-  return new Uint8Array(newBytes);
+  return new Uint8Array(newBytes)
 }

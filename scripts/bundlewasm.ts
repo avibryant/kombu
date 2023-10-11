@@ -14,7 +14,7 @@ const outputUrl = new URL(inputPath + "_sections.ts", import.meta.url)
 
 const buf = fs.readFileSync(inputUrl)
 const sections = extractSections(buf, {
-  destImportCount: builtins.length
+  destImportCount: builtins.length,
 })
 
 let output = `function decodeBase64(str: string) {
@@ -26,7 +26,7 @@ let output = `function decodeBase64(str: string) {
   return result
 }
 
-`;
+`
 
 for (const [secName, { entryCount, contents }] of Object.entries(sections)) {
   const base64Contents = Buffer.from(contents).toString("base64")
