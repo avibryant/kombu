@@ -43,14 +43,12 @@ export function optimize(
   }
 }
 
-
-@inline
+//@inline
 function getState(i: u32): f64 {
   return load<f64>(i * 16 + 8)
 }
 
-
-@inline
+//@inline
 function setState(i: u32, val: f64): void {
   store<f64>(i * 16 + 8, val)
 }

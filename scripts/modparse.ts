@@ -142,7 +142,6 @@ function rewriteCodeEntry(
   srcImportCount: number,
   destImportCount: number,
 ): number[] {
-  console.log("rewriteCodeEntry")
   const { instr } = w
   let pos = 0
 
@@ -182,6 +181,7 @@ function rewriteCodeEntry(
 
   const result: number[] = []
   let sliceStart = 0
+  let nesting = 1
 
   // Walk through the function's bytecode.
   while (pos < bytes.length) {
@@ -194,8 +194,10 @@ function rewriteCodeEntry(
       case instr.loop:
       case instr.if:
         skipBlocktype()
+        ++nesting
         break
       case instr.end:
+        assert(--nesting >= 0, `bad nesting @${pos - 1}`)
         break
       case instr.br:
       case instr.br_if:
@@ -238,8 +240,9 @@ function rewriteCodeEntry(
         parseU32()
         break
       case instr.i64.const:
+        const origPos = pos
         const [_, count] = decodeULEB128(bytes.slice(pos))
-        assert(count <= 8, `too many bytes (${count}) for i64`)
+        assert(count <= 8, `too many bytes (${count}) for i64 @${origPos}`)
         pos += 8
         break
       case instr.f32.const:
