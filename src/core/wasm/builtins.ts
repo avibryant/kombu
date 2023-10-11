@@ -1,12 +1,6 @@
 import * as w from "@wasmgroundup/emit"
 import { checkNotNull } from "../assert"
 
-export interface BuiltinFunction {
-  name: string
-  type: w.BytecodeFragment
-  impl: WebAssembly.ImportValue
-}
-
 export const builtins = ["log", "exp", "sign", "abs", "cos", "sin", "atan"].map(
   (name) => ({
     name,

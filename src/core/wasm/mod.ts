@@ -1,12 +1,13 @@
 import * as w from "@wasmgroundup/emit"
 
 import { checkNotNull } from "../assert"
-import { BuiltinFunction } from "./builtins"
+import { builtins } from "./builtins"
 
 import * as prebuilt from "../../../build/release.wasm_sections"
 
 // https://webassembly.github.io/spec/core/bikeshed/index.html#sections%E2%91%A0
 const SECTION_ID_TYPE = 1
+const SECTION_ID_IMPORT = 2
 const SECTION_ID_FUNCTION = 3
 const SECTION_ID_CODE = 10
 
@@ -66,19 +67,15 @@ function functypeIndex(types: w.BytecodeFragment[], startIdx: number) {
 }
 
 export function instantiateModule(
-  builtinFunctions: BuiltinFunction[],
   functions: WasmFunction[],
   memory: WebAssembly.Memory,
 ) {
   const functypes = functypeIndex(
-    [
-      ...builtinFunctions.map(({ type }) => type),
-      ...functions.map(({ type }) => type),
-    ],
+    [...builtins.map(({ type }) => type), ...functions.map(({ type }) => type)],
     prebuilt.typesec.entryCount,
   )
 
-  const imports = builtinFunctions.map(({ name, type }) => {
+  const imports = builtins.map(({ name, type }) => {
     const typeIdx = functypes.typeidx(type)
     return w.import_("builtins", name, [w.importdesc.func(typeIdx)])
   })
@@ -91,10 +88,12 @@ export function instantiateModule(
     ),
   )
 
+  const importCount = prebuilt.importsec.entryCount + builtins.length
+
   // Go from a "user" function index (0: loss function, 1...n: gradients)
   // to the actual index in the module.
   const userFuncIdx = (idx: number) =>
-    builtinFunctions.length + prebuilt.codesec.entryCount + idx
+    importCount + prebuilt.codesec.entryCount + idx
 
   const exports: w.BytecodeFragment = []
   functions.forEach(({ name }, i) => {
@@ -106,7 +105,7 @@ export function instantiateModule(
 
   const fragment = w.module([
     mergeSections(SECTION_ID_TYPE, prebuilt.typesec, functypes.typesec()),
-    w.importsec(imports),
+    mergeSections(SECTION_ID_IMPORT, prebuilt.importsec, imports),
     mergeSections(
       SECTION_ID_FUNCTION,
       prebuilt.funcsec,
@@ -139,8 +138,11 @@ export function instantiateModule(
   const mod = new WebAssembly.Module(bytes)
   return new WebAssembly.Instance(mod, {
     builtins: Object.fromEntries(
-      builtinFunctions.map(({ name, impl }) => [name, impl]),
+      builtins.map(({ name, impl }) => [name, impl]),
     ),
     memory: { cache: memory },
+    env: {
+      "console.log": console.log,
+    },
   })
 }

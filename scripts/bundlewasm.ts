@@ -1,5 +1,7 @@
 import fs from "node:fs"
-import { extractFunctions } from "./extractFunctions.ts"
+
+import { builtins } from "../src/core/wasm/builtins"
+import { extractSections } from "./modparse"
 
 /*
   Extracts the code section from the AssemblyScript release build
@@ -11,24 +13,27 @@ const inputUrl = new URL(inputPath, import.meta.url)
 const outputUrl = new URL(inputPath + "_sections.ts", import.meta.url)
 
 const buf = fs.readFileSync(inputUrl)
-const sections = extractFunctions(buf)
+const sections = extractSections(buf, {
+  destImportCount: builtins.length,
+})
 
-let output = ""
-for (const [secName, { entryCount, contents }] of Object.entries(sections)) {
-  const base64Contents = JSON.stringify(
-    Buffer.from(contents).toString("base64"),
-  )
-  output += `export const ${secName} = (() => {
-  const bytes = atob(${base64Contents});
-  const buf = new Uint8Array(bytes.length);
+let output = `function decodeBase64(str: string) {
+  const bytes = atob(str)
+  const result: number[] = []
   for (let i = 0; i < bytes.length; i++) {
-    buf[i] = bytes.charCodeAt(i);
+    result[i] = bytes.charCodeAt(i)
   }
-  return {
-    entryCount: ${JSON.stringify(entryCount)},
-    contents: Array.from(buf)
-  }
-})()
+  return result
+}
+
+`
+
+for (const [secName, { entryCount, contents }] of Object.entries(sections)) {
+  const base64Contents = Buffer.from(contents).toString("base64")
+  output += `export const ${secName} = {
+  entryCount: ${JSON.stringify(entryCount)},
+  contents: decodeBase64(${JSON.stringify(base64Contents)})
+}
 `
 }
 fs.writeFileSync(outputUrl, output, "utf8")
