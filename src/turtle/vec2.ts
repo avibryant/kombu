@@ -71,4 +71,10 @@ export function subAngles(a: Vec2, b: Vec2): Vec2 {
   return { x, y }
 }
 
+export function dist(a: Vec2, b: Vec2): k.Num {
+  let dx = k.sub(b.x, a.x)
+  let dy = k.sub(b.y, a.y)
+  return k.sqrt(k.add(k.pow(dx, 2), k.pow(dy, 2)))
+}
+
 export const origin = vec2(200, 200)
