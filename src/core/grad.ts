@@ -32,7 +32,7 @@ export function gradient(output: t.Num): Map<t.Param, t.Num> {
         case t.NumType.Constant:
           break
         case t.NumType.Param:
-          params.add(num)
+          if (!num.fixed) params.add(num)
           break
         case t.NumType.Unary:
           diff(num.term).parts.push({

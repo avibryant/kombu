@@ -20,8 +20,8 @@ export interface Param {
   type: NumType.Param
   id: number
   name: string
-  value: number
   bounds: Bounds
+  fixed: boolean
 }
 
 export type SumTerm = Product | Unary | Param

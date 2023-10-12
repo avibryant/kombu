@@ -18,7 +18,7 @@ Good defaults:
 - gamma = 0.9 - 0.99
 */
 export function optimize(
-  numParams: u32,
+  numFreeParams: u32,
   iterations: u32,
   learningRate: f64,
   epsilon: f64,
@@ -27,7 +27,7 @@ export function optimize(
   let i = iterations
   while (i > 0) {
     evaluateLoss()
-    for (let i: u32 = 0; i < numParams; ++i) {
+    for (let i: u32 = 0; i < numFreeParams; ++i) {
       const g = evaluateGradient(i)
       const s = getState(i)
 
