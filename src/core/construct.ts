@@ -12,13 +12,23 @@ export function nodeCount() {
   return id
 }
 
-export function param(name: string, value: number = 1): t.Param {
+export function param(name: string): t.Param {
   return {
     type: t.NumType.Param,
     id: nextID(),
     name,
-    value,
     bounds: o.Unbounded,
+    fixed: false,
+  }
+}
+
+export function observation(name: string): t.Param {
+  return {
+    type: t.NumType.Param,
+    id: nextID(),
+    name,
+    bounds: o.Unbounded,
+    fixed: true,
   }
 }
 

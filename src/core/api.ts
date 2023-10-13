@@ -1,6 +1,6 @@
 export type { Num, Param } from "./types"
 export type { AnyNum } from "./num"
-export { param, zero, one, nodeCount } from "./construct"
+export { param, observation, zero, one, nodeCount } from "./construct"
 export { tex } from "./tex"
 export { evaluator } from "./eval"
 export { gradient } from "./grad"

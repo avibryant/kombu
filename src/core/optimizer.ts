@@ -90,6 +90,10 @@ export function optimizer(
   const paramEntries: [t.Param, number][] = Array.from(gradient.keys()).map(
     (p) => [p, checkNotNull(params.get(p))],
   )
+  // Add on any params that are not in the gradient; these are fixed.
+  params.forEach((val, p) => {
+    if (!gradient.has(p)) paramEntries.push([p, val])
+  })
   const gradientValues = Array.from(gradient.values())
 
   // Allocate storage for the params up front. For each parameter, allocate
@@ -114,7 +118,7 @@ export function optimizer(
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
     ;(exports as any)["optimize"](
-      paramEntries.length,
+      gradientValues.length,
       iterations,
       0.001, // learning rate
       1e-6, // epsilon
