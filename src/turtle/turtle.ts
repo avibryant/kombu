@@ -13,7 +13,8 @@ export function reverse(seg: VecSegment): VecSegment {
   }
 }
 
-interface Segment {
+export interface Segment {
+  id: number
   x1: number
   y1: number
   x2: number
@@ -28,13 +29,44 @@ export class Turtle {
   counter: number
   params: Map<k.Param, number>
 
+  pinState?: {
+    params: { x: k.Param; y: k.Param }
+    unpinnedLoss: k.Num
+  }
+
   constructor() {
-    this.vecSegments = []
     this.loss = k.zero
+    this.vecSegments = []
     this.position = v.origin
     this.direction = v.degrees(k.zero)
     this.counter = 0
     this.params = new Map()
+  }
+
+  pin(segmentIdx: number, which: "from" | "to", x: number, y: number) {
+    if (!this.pinState) {
+      const x = k.observation("pinX")
+      const y = k.observation("pinY")
+      const vec = this.vecSegments[segmentIdx][which]
+      const prx = k.normalLikelihood(k.sub(vec.x, x))
+      const pry = k.normalLikelihood(k.sub(vec.y, y))
+      this.pinState = {
+        params: { x, y },
+        unpinnedLoss: this.loss,
+      }
+      this.loss = k.sub(this.loss, k.add(prx, pry))
+    }
+    this.params.set(this.pinState.params.x, x)
+    this.params.set(this.pinState.params.y, y)
+  }
+
+  unpin() {
+    if (this.pinState) {
+      this.loss = this.pinState.unpinnedLoss
+      this.params.delete(this.pinState.params.x)
+      this.params.delete(this.pinState.params.y)
+      this.pinState = undefined
+    }
   }
 
   forward(s: k.AnyNum): VecSegment {
@@ -62,8 +94,9 @@ export class Turtle {
 
   segments(): Array<Segment> {
     const ev = k.evaluator(this.params)
-    return this.vecSegments.map((vs) => {
+    return this.vecSegments.map((vs, i) => {
       return {
+        id: i,
         x1: ev.evaluate(vs.from.x),
         y1: ev.evaluate(vs.from.y),
         x2: ev.evaluate(vs.to.x),
@@ -91,7 +124,7 @@ export class Turtle {
     anyLength(): k.Num {
 
     }
-    
+
 
     somewhereOn(seg: VecSegment): v.Vec2 {
 
