@@ -4,10 +4,12 @@ import { checkNotNull } from "./assert"
 import * as k from "./api"
 import * as g from "./grad"
 
-import { optimizer } from "./optimizer"
+import { wasmOptimizer } from "./wasmopt"
 
 function optimize(loss: k.Num, init: Map<k.Param, number>, iterations: number) {
-  const params = optimizer(loss, g.gradient(loss), init).optimize(iterations)
+  const params = wasmOptimizer(loss, g.gradient(loss), init).optimize(
+    iterations,
+  )
   return {
     evaluate(p: k.Param) {
       return checkNotNull(params.get(p))

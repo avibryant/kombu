@@ -1,6 +1,6 @@
 import * as e from "./eval"
 import * as g from "./grad"
-import { optimizer } from "./optimizer"
+import { wasmOptimizer } from "./wasmopt"
 import * as t from "./types"
 
 const useWasm = true
@@ -17,7 +17,7 @@ export function optimize(
   })
 
   if (useWasm) {
-    const { optimize } = optimizer(loss, gradient, params)
+    const { optimize } = wasmOptimizer(loss, gradient, params)
     const newParams = optimize(iterations)
     return e.evaluator(newParams)
   }
