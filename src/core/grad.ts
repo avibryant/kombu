@@ -162,7 +162,5 @@ function toNum(d: Diff): t.Num {
         case "exp":
           return n.mul(toNum(d.gradient), d.child)
       }
-    default:
-      assertUnreachable(d)
   }
 }
