@@ -83,7 +83,6 @@ export function optimizer(
   gradient: Map<t.Param, t.Num>,
   params: Map<t.Param, number>,
 ) {
-  const startTime = window.performance.now()
   const { instr } = w
   const ctx = new CodegenContext()
 
@@ -209,6 +208,5 @@ export function optimizer(
     return frag("Unary", emitCachedNum(node, ctx), callBuiltin(type))
   }
 
-  //  console.log(`created optimizer in ${window.performance.now() - startTime}ms`)
   return { optimize }
 }
