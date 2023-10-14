@@ -23,5 +23,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/core", "src/turtle/main.ts"]
+  "include": ["src/core", "src/turtle/main.ts", "src/turtle/variable.ts"]
 }
