@@ -47,6 +47,8 @@ export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
     if (!freeParams.has(k)) freeParams.set(k, Math.random() * 10)
   })
 
+  // The internal interface for optimizers is basically the same as the public
+  // API, but implementations can assume that param values are fully specified.
   let optimizeImpl = (useWasm ? wasmOptimizer : basicOptimizer)(
     loss,
     gradient,
