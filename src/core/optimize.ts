@@ -71,6 +71,7 @@ export function optimize(
   loss: t.Num,
   init: Map<t.Param, number>,
   iterations: number,
+  observations?: Map<t.Param, number>
 ): e.Evaluator {
-  return optimizer(loss, init).optimize(iterations)
+  return optimizer(loss, init).optimize(iterations, observations)
 }
