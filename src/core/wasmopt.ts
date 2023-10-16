@@ -78,7 +78,7 @@ function debugPrint(frag: any[], depth = 0) {
   else log(`@${count++} ${frag} (0x${(frag as any).toString(16)})`)
 }
 
-export function optimizer(
+export function wasmOptimizer(
   loss: t.Num,
   gradient: Map<t.Param, t.Num>,
   params: Map<t.Param, number>,

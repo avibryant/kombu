@@ -1,6 +1,7 @@
 import * as t from "./types"
 import * as c from "./construct"
 import * as n from "./num"
+import { assertUnreachable } from "./assert"
 
 export function gradient(output: t.Num): Map<t.Param, t.Num> {
   const diffs = new Map<t.Num, CompoundDiff>()
@@ -48,6 +49,8 @@ export function gradient(output: t.Num): Map<t.Param, t.Num> {
         case t.NumType.Product:
           visitProductTerm(num, num.firstTerm, diff(num))
           break
+        default:
+          assertUnreachable(num)
       }
     }
   }
