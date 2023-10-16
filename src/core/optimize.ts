@@ -14,10 +14,10 @@ export interface Optimizer {
 function basicOptimizer(
   loss: t.Num,
   gradient: Map<t.Param, t.Num>,
-  freeParams: Map<t.Param, number>,
+  init: Map<t.Param, number>,
 ) {
   return (iterations: number, observations: Map<t.Param, number>) => {
-    const params = new Map([...freeParams, ...observations])
+    const params = new Map([...init, ...observations])
     const epsilon = 0.0001
     let i = iterations
     while (i > 0) {
