@@ -11,12 +11,12 @@ export interface Optimizer {
   optimize(iterations: number, observations?: Map<t.Param, number>): e.Evaluator
 }
 
-function basicOptimizer(loss: t.Num, gradient: Map<t.Param, t.Num>) {
-  return (
-    freeParams: Map<t.Param, number>,
-    observations: Map<t.Param, number>,
-    iterations: number,
-  ) => {
+function basicOptimizer(
+  loss: t.Num,
+  gradient: Map<t.Param, t.Num>,
+  freeParams: Map<t.Param, number>,
+) {
+  return (iterations: number, observations: Map<t.Param, number>) => {
     const params = new Map([...freeParams, ...observations])
     const epsilon = 0.0001
     let i = iterations
@@ -34,20 +34,24 @@ function basicOptimizer(loss: t.Num, gradient: Map<t.Param, t.Num>) {
       })
       i = i - 1
     }
-    return params.entries()
+    return new Map(params.entries())
   }
 }
 
 export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
   const gradient = g.gradient(loss)
 
-  let optimizeImpl = (useWasm ? wasmOptimizer : basicOptimizer)(loss, gradient)
-
   // Ensure that we have an initial value for all free parameters.
   const freeParams = new Map(init)
   gradient.forEach((_, k) => {
     if (!freeParams.has(k)) freeParams.set(k, Math.random() * 10)
   })
+
+  let optimizeImpl = (useWasm ? wasmOptimizer : basicOptimizer)(
+    loss,
+    gradient,
+    freeParams,
+  )
 
   return {
     optimize(iterations: number, observations = new Map<t.Param, number>()) {
@@ -61,7 +65,10 @@ export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
           )
         })
 
-      const newParams = optimizeImpl(freeParams, observations, iterations)
+      const newParams = optimizeImpl(iterations, observations)
+      newParams.forEach((v, p) => {
+        freeParams.set(p, v)
+      })
       return e.evaluator(new Map(newParams))
     },
   }
@@ -71,7 +78,7 @@ export function optimize(
   loss: t.Num,
   init: Map<t.Param, number>,
   iterations: number,
-  observations?: Map<t.Param, number>
+  observations?: Map<t.Param, number>,
 ): e.Evaluator {
   return optimizer(loss, init).optimize(iterations, observations)
 }

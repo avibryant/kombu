@@ -1,10 +1,12 @@
-export type { Num, Param } from "./types"
 export type { AnyNum } from "./num"
+export type { Optimizer } from "./optimize"
+export type { Num, Param } from "./types"
+
 export { param, observation, zero, one, nodeCount } from "./construct"
 export { tex } from "./tex"
 export { evaluator } from "./eval"
 export { gradient } from "./grad"
-export { optimize } from "./optimize"
+export { optimize, optimizer } from "./optimize"
 export {
   num,
   add,

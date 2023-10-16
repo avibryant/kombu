@@ -7,13 +7,13 @@ import * as g from "./grad"
 import { wasmOptimizer } from "./wasmopt"
 
 function optimize(
-    loss: k.Num,
-    init: Map<k.Param, number>,
-    iterations: number,
-    observations: Map<k.Param, number> = new Map()
-  ): e.Evaluator {
-  const optimizeImpl = wasmOptimizer(loss, g.gradient(loss))
-  const params = optimizeImpl(init, observations, iterations)
+  loss: k.Num,
+  init: Map<k.Param, number>,
+  iterations: number,
+  observations: Map<k.Param, number> = new Map(),
+) {
+  const optimizeImpl = wasmOptimizer(loss, g.gradient(loss), init)
+  const params = optimizeImpl(iterations, observations)
   return {
     evaluate(p: k.Param) {
       return checkNotNull(params.get(p))
@@ -39,5 +39,7 @@ test("free and fixed params", () => {
   const ev = optimize(loss, new Map([[x, 0.1]]), 100, new Map([[y, 1]]))
   expect(ev.evaluate(x)).toBeCloseTo(0, 2)
 
-  expect(() => optimize(loss, new Map([[x, 0.1]]), 100)).toThrowError(/Missing observation 'y'/)
+  expect(() => optimize(loss, new Map([[x, 0.1]]), 100)).toThrowError(
+    /Missing observation 'y'/,
+  )
 })

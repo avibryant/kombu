@@ -79,7 +79,11 @@ function debugPrint(frag: any[], depth = 0) {
   else log(`@${count++} ${frag} (0x${(frag as any).toString(16)})`)
 }
 
-export function wasmOptimizer(loss: t.Num, gradient: Map<t.Param, t.Num>) {
+export function wasmOptimizer(
+  loss: t.Num,
+  gradient: Map<t.Param, t.Num>,
+  init: Map<t.Param, number>,
+) {
   const { instr } = w
   const ctx = new CodegenContext()
 
@@ -104,33 +108,32 @@ export function wasmOptimizer(loss: t.Num, gradient: Map<t.Param, t.Num>) {
   }))
 
   const cache = new OptimizerCache(ctx.memorySize())
+
+  // Initialize the cache with values for the free params.
+  cache.setParams(freeParams.map((p) => [p, checkNotNull(init.get(p))]))
+
   const { exports } = instantiateModule(functions, cache.memory)
 
   function optimize(
-    freeParams: Map<t.Param, number>,
-    observations: Map<t.Param, number>,
     iterations: number,
+    observations: Map<t.Param, number>,
   ): Map<t.Param, number> {
-    const paramEntries = [
-      ...freeParams,
-      ...fixedParams.map((p): [t.Param, number] => {
-        assert(observations.has(p), `Missing observation '${p.name}'`)
-        return [p, checkNotNull(observations.get(p))]
-      }),
-    ]
-    cache.setParams(paramEntries)
+    fixedParams.forEach((p, i) => {
+      assert(observations.has(p), `Missing observation '${p.name}'`)
+      const idx = freeParams.length + i
+      cache.setParam(idx, checkNotNull(observations.get(p)))
+    })
 
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
     ;(exports as any)["optimize"](
-      freeParams.size,
+      freeParams.length,
       iterations,
       0.001, // learning rate
       1e-6, // epsilon
       0.99, // decay
     )
-
-    return new Map(paramEntries.map(([p], i) => [p, cache.getParam(i)]))
+    return new Map(params.map((p, i) => [p, cache.getParam(i)]))
   }
 
   function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
