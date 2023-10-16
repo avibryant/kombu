@@ -114,7 +114,7 @@ export function wasmOptimizer(loss: t.Num, gradient: Map<t.Param, t.Num>) {
     const paramEntries = [
       ...freeParams,
       ...fixedParams.map((p): [t.Param, number] => {
-        assert(observations.has(p), `missing observation '${p.name}'`)
+        assert(observations.has(p), `Missing observation '${p.name}'`)
         return [p, checkNotNull(observations.get(p))]
       }),
     ]
