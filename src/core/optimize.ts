@@ -43,7 +43,7 @@ export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
 
   let optimizeImpl = (useWasm ? wasmOptimizer : basicOptimizer)(loss, gradient)
 
-  // Ensure that all the free params have an initial value.
+  // Ensure that we have an initial value for all free parameters.
   const freeParams = new Map(init)
   gradient.forEach((_, k) => {
     if (!freeParams.has(k)) freeParams.set(k, Math.random() * 10)
@@ -51,7 +51,7 @@ export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
 
   return {
     optimize(iterations: number, observations = new Map<t.Param, number>()) {
-      // Ensure we have a value for all fixed parameters.
+      // Ensure that we have a value for all fixed parameters.
       collectParams(loss)
         .filter((p) => p.fixed)
         .forEach((p) => {
