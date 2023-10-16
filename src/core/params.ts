@@ -1,12 +1,8 @@
 import { assertUnreachable } from "./assert"
 import * as t from "./types"
 
-export function collectParams(root: t.Num): {
-  free: Set<t.Param>
-  fixed: Set<t.Param>
-} {
-  const free = new Set<t.Param>()
-  const fixed = new Set<t.Param>()
+export function collectParams(root: t.Num): Set<t.Param> {
+  const params = new Set<t.Param>()
   const visited = new Set<t.Num>()
 
   function visitNum(num: t.Num) {
@@ -17,11 +13,7 @@ export function collectParams(root: t.Num): {
         case t.NumType.Constant:
           break
         case t.NumType.Param:
-          if (num.fixed) {
-            fixed.add(num)
-          } else {
-            free.add(num)
-          }
+          params.add(num)
           break
         case t.NumType.Sum:
           return visitSum(num.firstTerm)
@@ -46,5 +38,6 @@ export function collectParams(root: t.Num): {
   }
 
   visitNum(root)
-  return { free, fixed }
+
+  return params
 }
