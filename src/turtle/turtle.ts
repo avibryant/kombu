@@ -87,10 +87,19 @@ export class Turtle {
     this.direction = v.addAngles(this.direction, angle)
   }
 
-  optimize(iterations: number) {
-    const ev = k.optimize(this.loss, this.params, iterations)
-    this.params = ev.params
-  }
+  optimize: (iterations: number) => void = (() => {
+    // Reuse the optimizer as long as the loss function is unchanged.
+    let currLoss: k.Num
+    let opt: k.Optimizer
+    return (iterations) => {
+      if (!currLoss || this.loss !== currLoss) {
+        opt = k.optimizer(this.loss, this.params)
+        currLoss = this.loss
+      }
+      const ev = opt.optimize(iterations)
+      this.params = ev.params
+    }
+  })()
 
   segments(): Array<Segment> {
     const ev = k.evaluator(this.params)
