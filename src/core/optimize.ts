@@ -1,4 +1,4 @@
-import { assert, checkNotNull } from "./assert"
+import { assert } from "./assert"
 import * as e from "./eval"
 import * as g from "./grad"
 import { collectParams } from "./params"
@@ -62,7 +62,7 @@ export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
         .filter((p) => p.fixed)
         .forEach((p) => {
           assert(
-            !!checkNotNull(observations.get(p)),
+            !!observations.get(p),
             `missing value for observation '${p.name}'`,
           )
         })
