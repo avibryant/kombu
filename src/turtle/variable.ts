@@ -13,6 +13,7 @@ export interface VariableDisplay {
 
 export interface Variable {
     param: t.Param
+    value: t.Num
     loss: t.Num
     display: (ev: Evaluator) => VariableDisplay
 }
