@@ -7,9 +7,8 @@ import * as g from "./grad"
 import { wasmOptimizer } from "./wasmopt"
 
 function optimize(loss: k.Num, init: Map<k.Param, number>, iterations: number) {
-  const params = wasmOptimizer(loss, g.gradient(loss), init).optimize(
-    iterations,
-  )
+  const optimizeImpl = wasmOptimizer(loss, g.gradient(loss))
+  const params = optimizeImpl(init, new Map(), iterations)
   return {
     evaluate(p: k.Param) {
       return checkNotNull(params.get(p))
