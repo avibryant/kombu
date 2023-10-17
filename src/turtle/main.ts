@@ -1,26 +1,63 @@
+import htm from "htm"
+import { h, render as preactRender } from "preact"
+import { useEffect } from "preact/hooks"
+import { useSignal } from "@preact/signals"
+
 import "./style.css"
 
 import { checkNotNull } from "../core/assert"
 import { Rect, contains } from "./rect"
 import { Turtle } from "./turtle"
 
-document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
-  <div>
-    <canvas id="canvas"></canvas>
-  </div>
-`
+const html = htm.bind(h)
+
+function Canvas(props: {
+  onPointerDown: (e: PointerEvent) => void
+  onPointerMove: (e: PointerEvent) => void
+  onPointerUp: (e: PointerEvent) => void
+}) {
+  const width = useSignal(window.innerWidth)
+  const height = useSignal(window.innerHeight)
+
+  const onResize = () => {
+    width.value = window.innerWidth
+    height.value = window.innerHeight
+  }
+
+  useEffect(() => {
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
+
+  return html`
+    <div>
+      <canvas
+        id="canvas"
+        width=${width}
+        height=${height}
+        onPointerDown=${props.onPointerDown}
+        onPointerMove=${props.onPointerMove}
+        onPointerUp=${props.onPointerUp}
+      >
+      </canvas>
+    </div>
+  `
+}
+
+function App() {
+  return html` <${Canvas}
+    onPointerDown=${handlePointerDown}
+    onPointerMove=${handlePointerMove}
+    onPointerUp=${handlePointerUp}
+  />`
+}
+
+preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
 
 const bgColor = "black"
 const fgColor = "white"
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
-
-function resizeCanvas() {
-  canvas.width = window.innerWidth - canvas.offsetLeft
-  canvas.height = window.innerHeight - canvas.offsetTop
-}
-
-resizeCanvas()
 
 const t = new Turtle()
 const o = t.position
@@ -117,7 +154,7 @@ interface PointerState {
 
 const pointerState = new Map<number, PointerState>()
 
-canvas.onpointermove = (e) => {
+function handlePointerMove(e: PointerEvent) {
   pointerState.forEach(({ draggedId }) => {
     const { dragging } = checkNotNull(nodeState.get(draggedId))
     if (dragging) {
@@ -127,7 +164,7 @@ canvas.onpointermove = (e) => {
   })
 }
 
-canvas.onpointerdown = (e) => {
+function handlePointerDown(e: PointerEvent) {
   nodeState.forEach((state, id) => {
     if (contains(state.rect, e.offsetX, e.offsetY)) {
       mergeState(id, { dragging: true })
@@ -137,7 +174,7 @@ canvas.onpointerdown = (e) => {
   })
 }
 
-canvas.onpointerup = (e) => {
+function handlePointerUp(e: PointerEvent) {
   if (!pointerState.has(e.pointerId)) return
   const { draggedId } = pointerState.get(e.pointerId)!
   mergeState(draggedId, { dragging: false })

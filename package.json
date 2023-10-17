@@ -13,9 +13,12 @@
     "test:watch": "make prebuilt-wasm && vitest"
   },
   "devDependencies": {
+    "@preact/signals": "^1.2.1",
     "@thi.ng/leb128": "^3.0.37",
     "assemblyscript": "^0.27.11",
     "assemblyscript-prettier": "^3.0.1",
+    "htm": "^3.1.1",
+    "preact": "^10.18.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.2",
     "vite": "^4.4.5",
