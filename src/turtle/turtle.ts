@@ -34,6 +34,9 @@ export class Turtle {
     unpinnedLoss: k.Num
   }
 
+  private prevLoss?: k.Num
+  private optimizer?: k.Optimizer
+
   constructor() {
     this.loss = k.zero
     this.vecSegments = []
@@ -87,19 +90,15 @@ export class Turtle {
     this.direction = v.addAngles(this.direction, angle)
   }
 
-  optimize: (iterations: number) => void = (() => {
+  optimize(iterations: number): void {
     // Reuse the optimizer as long as the loss function is unchanged.
-    let currLoss: k.Num
-    let opt: k.Optimizer
-    return (iterations) => {
-      if (!currLoss || this.loss !== currLoss) {
-        opt = k.optimizer(this.loss, this.params)
-        currLoss = this.loss
-      }
-      const ev = opt.optimize(iterations)
-      this.params = ev.params
+    if (!this.optimizer || this.loss !== this.prevLoss) {
+      this.optimizer = k.optimizer(this.loss, this.params)
+      this.prevLoss = this.loss
     }
-  })()
+    const ev = this.optimizer.optimize(iterations)
+    this.params = ev.params
+  }
 
   segments(): Array<Segment> {
     const ev = k.evaluator(this.params)
