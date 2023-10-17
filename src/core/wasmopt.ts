@@ -1,6 +1,7 @@
 import * as w from "@wasmgroundup/emit"
 
 import { assert, checkNotNull } from "./assert"
+import { collectParams } from "./params"
 import { callBuiltin, f64_const, f64_load, f64_store } from "./wasm/instr"
 import { instantiateModule } from "./wasm/mod"
 import * as t from "./types"
@@ -81,26 +82,23 @@ function debugPrint(frag: any[], depth = 0) {
 export function wasmOptimizer(
   loss: t.Num,
   gradient: Map<t.Param, t.Num>,
-  params: Map<t.Param, number>,
+  init: Map<t.Param, number>,
 ) {
   const { instr } = w
   const ctx = new CodegenContext()
 
-  // Get a list of [param, value] in the same order as `gradient.values()`.
-  const paramEntries: [t.Param, number][] = Array.from(gradient.keys()).map(
-    (p) => [p, checkNotNull(params.get(p))],
-  )
-  // Add on any params that are not in the gradient; these are fixed.
-  params.forEach((val, p) => {
-    if (!gradient.has(p)) paramEntries.push([p, val])
-  })
-  const gradientValues = Array.from(gradient.values())
+  const params = collectParams(loss)
+  const freeParams = params.filter((p) => !p.fixed)
+  const fixedParams = params.filter((p) => p.fixed)
 
-  // Allocate storage for the params up front. For each parameter, allocate
-  // two f64 slots: one for the current value, and one for temporary data
-  // used by the optimization algorithm.
-  paramEntries.forEach(([param]) => {
-    ctx.allocateCache(param, 2)
+  // Get a list of gradient values in the same order as `freeParams`.
+  const gradientValues = freeParams.map((p) => checkNotNull(gradient.get(p)))
+
+  // For each parameter, allocate two f64 slots: one for the current value,
+  // and one for temporary data used by the optimization algorithm.
+  // Order is important — the generated code assumes free params come first.
+  ;[...freeParams, ...fixedParams].forEach((p) => {
+    ctx.allocateCache(p, 2)
   })
 
   const functions = [loss, ...gradientValues].map((num) => ({
@@ -110,26 +108,32 @@ export function wasmOptimizer(
   }))
 
   const cache = new OptimizerCache(ctx.memorySize())
-  cache.setParams(paramEntries)
+
+  // Initialize the cache with values for the free params.
+  cache.setParams(freeParams.map((p) => [p, checkNotNull(init.get(p))]))
 
   const { exports } = instantiateModule(functions, cache.memory)
 
-  function optimize(iterations: number): Map<t.Param, number> {
+  function optimize(
+    iterations: number,
+    observations: Map<t.Param, number>,
+  ): Map<t.Param, number> {
+    fixedParams.forEach((p, i) => {
+      assert(observations.has(p), `Missing observation '${p.name}'`)
+      const idx = freeParams.length + i
+      cache.setParam(idx, checkNotNull(observations.get(p)))
+    })
+
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
     ;(exports as any)["optimize"](
-      gradientValues.length,
+      freeParams.length,
       iterations,
       0.001, // learning rate
       1e-6, // epsilon
       0.99, // decay
     )
-
-    return new Map(
-      paramEntries.map(([param], i) => {
-        return [param, cache.getParam(i)]
-      }),
-    )
+    return new Map(params.map((p, i) => [p, cache.getParam(i)]))
   }
 
   function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
@@ -208,5 +212,5 @@ export function wasmOptimizer(
     return frag("Unary", emitCachedNum(node, ctx), callBuiltin(type))
   }
 
-  return { optimize }
+  return optimize
 }

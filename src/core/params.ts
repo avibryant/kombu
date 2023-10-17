@@ -1,7 +1,7 @@
 import { assertUnreachable } from "./assert"
 import * as t from "./types"
 
-export function collectParams(root: t.Num): Set<t.Param> {
+export function collectParams(root: t.Num): t.Param[] {
   const params = new Set<t.Param>()
   const visited = new Set<t.Num>()
 
@@ -39,5 +39,5 @@ export function collectParams(root: t.Num): Set<t.Param> {
 
   visitNum(root)
 
-  return params
+  return Array.from(params)
 }

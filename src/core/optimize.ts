@@ -1,43 +1,60 @@
+import { assert } from "./assert"
 import * as e from "./eval"
 import * as g from "./grad"
-import { wasmOptimizer } from "./wasmopt"
+import { collectParams } from "./params"
 import * as t from "./types"
+import { wasmOptimizer } from "./wasmopt"
 
-const useWasm = true
+export interface Optimizer {
+  optimize(iterations: number, observations?: Map<t.Param, number>): e.Evaluator
+}
+
+function standardNormalRandom() {
+  return (
+    Math.sqrt(-2 * Math.log(1 - Math.random())) *
+    Math.cos(2 * Math.PI * Math.random())
+  )
+}
+
+export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
+  const gradient = g.gradient(loss)
+
+  // Ensure that we have an initial value for all free parameters.
+  const freeParams = new Map(init)
+  gradient.forEach((_, k) => {
+    if (!freeParams.has(k)) freeParams.set(k, standardNormalRandom())
+  })
+
+  // The internal optimizer inteface is similar to the public API, but we
+  // assume that param values are fully specified.
+  let optimizeImpl = wasmOptimizer(loss, gradient, freeParams)
+
+  return {
+    optimize(iterations: number, observations = new Map<t.Param, number>()) {
+      // Ensure that we have a value for all fixed parameters.
+      collectParams(loss)
+        .filter((p) => p.fixed)
+        .forEach((p) => {
+          assert(
+            !!observations.get(p),
+            `missing value for observation '${p.name}'`,
+          )
+        })
+
+      const newParams = optimizeImpl(iterations, observations)
+      newParams.forEach((v, p) => {
+        freeParams.set(p, v)
+      })
+      return e.evaluator(new Map(newParams))
+    },
+  }
+}
 
 export function optimize(
   loss: t.Num,
   init: Map<t.Param, number>,
   iterations: number,
+  observations?: Map<t.Param, number>,
 ): e.Evaluator {
-  const gradient = g.gradient(loss)
-  const params = new Map(init)
-  gradient.forEach((_, k) => {
-    if (!params.has(k)) params.set(k, Math.random() * 10)
-  })
-
-  if (useWasm) {
-    const { optimize } = wasmOptimizer(loss, gradient, params)
-    const newParams = optimize(iterations)
-    return e.evaluator(newParams)
-  }
-
-  const epsilon = 0.0001
-  let i = iterations
-  while (i > 0) {
-    const ev = e.evaluator(params)
-    const l = ev.evaluate(loss)
-    if (i % 1000 == 0) {
-      console.log(l)
-    }
-    gradient.forEach((v, k) => {
-      const diff = ev.evaluate(v)
-      const old = params.get(k) || 0
-      const update = old - diff * epsilon
-      params.set(k, update)
-    })
-    i = i - 1
-  }
-
-  return e.evaluator(params)
+  return optimizer(loss, init).optimize(iterations, observations)
 }
