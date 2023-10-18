@@ -1,6 +1,6 @@
 import * as k from "../core/api"
 import * as v from "./vec2"
-import {Variable} from "./variable"
+import * as u from "./variable"
 
 export interface VecSegment {
   from: v.Vec2
@@ -22,10 +22,16 @@ export interface Segment {
   y2: number
 }
 
+function atLoss(from: v.Vec2, to: v.Vec2): k.Num {
+  const dx = k.sub(from.x, to.x)
+  const dy = k.sub(from.y, to.y)
+  return k.add(k.mul(dx,dx),k.mul(dy,dy))
+}
+
 export class Turtle {
   vecSegments: VecSegment[]
   ats: VecSegment[]
-  variables: Variable[]
+  variables: u.Variable[]
   position: v.Vec2
   direction: v.Vec2
   params: Map<k.Param, number>
@@ -104,7 +110,14 @@ export class Turtle {
   }
 
   computeLoss(): k.Num {
-    //todo
+    const varLosses = this.variables.map((vr) => vr.loss)
+    const atLosses = this.ats.map((vs) => atLoss(vs.from, vs.to))
+    let pinLosses: k.Num[] = []
+    if(this.pinState) {
+      pinLosses.push(atLoss(this.pinState.mouseParams, this.pinState.point))
+    }
+    const allLosses = varLosses.concat(atLosses).concat(pinLosses)
+    return allLosses.reduce(k.add)
   }
 
   segments(): Array<Segment> {
@@ -120,12 +133,18 @@ export class Turtle {
     })
   }
 
-  approxLength(name: string, mean: number, sd: number = 20): k.Num {
-    //todo
+  approxLength(name: string, len: k.AnyNum): k.Num {
+    const lv = u.lengthVariable(name, k.num(len))
+    this.variables.push(lv)
+    return lv.value
   }
 
-  anyAngle(): v.Vec2 {
-    //todo
+  anyAngle(name: string): v.Vec2 {
+    const av = u.angleVariable(name)
+    this.variables.push(av)
+    const sin = av.value
+    const cos = k.neg(k.sqrt(k.sub(k.one, k.mul(sin, sin))))
+    return { x: cos, y: sin }
   }
 
   /*

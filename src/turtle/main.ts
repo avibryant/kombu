@@ -7,6 +7,7 @@ import { checkNotNull } from "../core/assert"
 import { Canvas } from './canvas'
 import { Rect, rectContains, rect } from "./rect"
 import { Turtle } from "./turtle"
+import {degrees} from "./vec2"
 
 const html = htm.bind(h)
 
@@ -28,11 +29,20 @@ const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
 
 const t = new Turtle()
 const o = t.position
-t.forward(t.approxLength(100))
-t.right(t.anyAngle())
-t.forward(t.approxLength(200))
-t.right(t.anyAngle())
-t.forward(t.approxLength(300))
+/*t.forward(t.approxLength("A", 100))
+t.right(t.anyAngle("q"))
+t.forward(t.approxLength("B", 200))
+t.right(t.anyAngle("r"))
+t.forward(t.approxLength("C", 300))
+t.at(o)*/
+
+t.forward(t.approxLength("A", 100))
+t.right(degrees(90))
+t.forward(t.approxLength("B", 100))
+t.right(degrees(90))
+t.forward(t.approxLength("C", 100))
+t.right(degrees(90))
+t.forward(100)
 t.at(o)
 
 const ctx = canvas.getContext("2d")!
