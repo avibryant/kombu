@@ -87,17 +87,19 @@ export function wasmOptimizer(
   const { instr } = w
   const ctx = new CodegenContext()
 
-  const params = collectParams(loss)
+  let params = collectParams(loss)
   const freeParams = params.filter((p) => !p.fixed)
   const fixedParams = params.filter((p) => p.fixed)
+
+  // Reorder params — the generated code assumes free params come first.
+  params = [...freeParams, ...fixedParams]
 
   // Get a list of gradient values in the same order as `freeParams`.
   const gradientValues = freeParams.map((p) => checkNotNull(gradient.get(p)))
 
   // For each parameter, allocate two f64 slots: one for the current value,
   // and one for temporary data used by the optimization algorithm.
-  // Order is important — the generated code assumes free params come first.
-  ;[...freeParams, ...fixedParams].forEach((p) => {
+  params.forEach((p) => {
     ctx.allocateCache(p, 2)
   })
 
