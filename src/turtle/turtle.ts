@@ -32,6 +32,7 @@ export class Turtle {
   pinState?: {
     params: { x: k.Param; y: k.Param }
     unpinnedLoss: k.Num
+    observations: Map<k.Param, number>
   }
 
   private prevLoss?: k.Num
@@ -48,19 +49,20 @@ export class Turtle {
 
   pin(segmentIdx: number, which: "from" | "to", x: number, y: number) {
     if (!this.pinState) {
-      const x = k.observation("pinX")
-      const y = k.observation("pinY")
+      const pinX = k.observation("pinX")
+      const pinY = k.observation("pinY")
       const vec = this.vecSegments[segmentIdx][which]
-      const prx = k.normalLikelihood(k.sub(vec.x, x))
-      const pry = k.normalLikelihood(k.sub(vec.y, y))
+      const prx = k.normalLikelihood(k.sub(vec.x, pinX))
+      const pry = k.normalLikelihood(k.sub(vec.y, pinY))
       this.pinState = {
-        params: { x, y },
+        params: { x: pinX, y: pinY },
         unpinnedLoss: this.loss,
+        observations: new Map()
       }
       this.loss = k.sub(this.loss, k.add(prx, pry))
     }
-    this.params.set(this.pinState.params.x, x)
-    this.params.set(this.pinState.params.y, y)
+    this.pinState.observations.set(this.pinState.params.x, x)
+    this.pinState.observations.set(this.pinState.params.y, y)
   }
 
   unpin() {
@@ -96,7 +98,7 @@ export class Turtle {
       this.optimizer = k.optimizer(this.loss, this.params)
       this.prevLoss = this.loss
     }
-    const ev = this.optimizer.optimize(iterations)
+    const ev = this.optimizer.optimize(iterations, this.pinState?.observations)
     this.params = ev.params
   }
 
