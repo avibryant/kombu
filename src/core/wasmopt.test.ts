@@ -23,7 +23,7 @@ function optimize(
 
 test("simple case with one param", () => {
   const x = k.param("x")
-  let loss = k.pow(x, 2)
+  const loss = k.pow(x, 2)
 
   // Start close to the solution (0) and run for only a few iterations.
   const ev = optimize(loss, new Map([[x, 0.1]]), 100)
@@ -32,14 +32,26 @@ test("simple case with one param", () => {
 
 test("free and fixed params", () => {
   const x = k.param("x")
+  const h = k.observation("h")
   const y = k.observation("y")
-  let loss = k.add(k.pow(x, 2), y)
+  const loss = k.add(k.pow(k.sub(x, h), 2), y)
 
-  // Start close to the solution (1) and run for only a few iterations.
-  const ev = optimize(loss, new Map([[x, 0.1]]), 100, new Map([[y, 1]]))
-  expect(ev.evaluate(x)).toBeCloseTo(0, 2)
+  const obs = new Map([
+    [y, 10 ** 12],
+    [h, 2500],
+  ])
+
+  // Start close to the solution and run for only a few iterations.
+  let min = checkNotNull(obs.get(h))
+  let ev = optimize(loss, new Map([[x, min + 0.1]]), 100, obs)
+  expect(ev.evaluate(x)).toBeCloseTo(min, 2)
+
+  obs.set(h, 5)
+  min = 5
+  ev = optimize(loss, new Map([[x, min + 0.1]]), 100, obs)
+  expect(ev.evaluate(x)).toBeCloseTo(min, 2)
 
   expect(() => optimize(loss, new Map([[x, 0.1]]), 100)).toThrowError(
-    /Missing observation 'y'/,
+    /Missing observation 'h'/,
   )
 })
