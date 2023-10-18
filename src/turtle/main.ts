@@ -1,55 +1,22 @@
 import htm from "htm"
 import { h, render as preactRender } from "preact"
-import { useEffect } from "preact/hooks"
-import { useSignal } from "@preact/signals"
 
 import "./style.css"
 
 import { checkNotNull } from "../core/assert"
-import { Rect, contains } from "./rect"
+import { Canvas } from './canvas'
+import { Rect, rectContains, rect } from "./rect"
 import { Turtle } from "./turtle"
 
 const html = htm.bind(h)
 
-function Canvas(props: {
-  onPointerDown: (e: PointerEvent) => void
-  onPointerMove: (e: PointerEvent) => void
-  onPointerUp: (e: PointerEvent) => void
-}) {
-  const width = useSignal(window.innerWidth)
-  const height = useSignal(window.innerHeight)
-
-  const onResize = () => {
-    width.value = window.innerWidth
-    height.value = window.innerHeight
-  }
-
-  useEffect(() => {
-    window.addEventListener("resize", onResize)
-    return () => window.removeEventListener("resize", onResize)
-  }, [])
-
-  return html`
-    <div>
-      <canvas
-        id="canvas"
-        width=${width}
-        height=${height}
-        onPointerDown=${props.onPointerDown}
-        onPointerMove=${props.onPointerMove}
-        onPointerUp=${props.onPointerUp}
-      >
-      </canvas>
-    </div>
-  `
-}
-
 function App() {
-  return html` <${Canvas}
-    onPointerDown=${handlePointerDown}
-    onPointerMove=${handlePointerMove}
-    onPointerUp=${handlePointerUp}
-  />`
+  return html`
+    <${Canvas}
+      onPointerDown=${handlePointerDown}
+      onPointerMove=${handlePointerMove}
+      onPointerUp=${handlePointerUp}
+    />`
 }
 
 preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
@@ -70,54 +37,32 @@ t.at(o)
 
 const ctx = canvas.getContext("2d")!
 
-interface NodeState {
-  dragging: boolean
-  rect: Rect
-}
-
 type DragHandler = (x: number, y: number) => any
 
-let nodeState: Map<string, NodeState> = new Map()
-let prevState: Map<string, NodeState> = new Map()
+const dragHandlers: Map<string, DragHandler> = new Map()
+const nodeRects: Map<string, Rect> = new Map()
 
-let dragHandlers: Map<string, DragHandler> = new Map()
-
-function mergeState(id: string, update: Partial<NodeState>) {
-  const old = prevState.get(id) ?? {
-    dragging: false,
-    rect: { x: 0, y: 0, w: 0, h: 0 },
-  }
-  const state = {
-    ...old,
-    ...update,
-  }
-  nodeState.set(id, state)
-  return state
-}
+let draggedNodeId = ''
+let draggingPointerId: number | undefined
 
 function renderNode(id: string, x: number, y: number) {
   const size = 8
-  const rect = {
-    x: x - size / 2,
-    y: y - size / 2,
-    w: size,
-    h: size,
-  }
-  const state = mergeState(id, { rect })
+  const r = rect(x - size / 2, y - size / 2, size, size)
+  nodeRects.set(id, r)
 
   ctx.save()
-  ctx.fillStyle = state.dragging ? "#7DEF4A" : fgColor
-  ctx.fillRect(rect.x, rect.y, rect.w, rect.h)
+  ctx.fillStyle = draggedNodeId === id ? "#7DEF4A" : fgColor
+  ctx.fillRect(r.x, r.y, r.w, r.h)
   ctx.restore()
 }
 
-function render(i = 1) {
-  // Transient state
-  dragHandlers = new Map()
+function render() {
+  t.optimize(1000)
 
-  // State that is persisted across frames
-  prevState = nodeState
-  nodeState = new Map()
+  // Transient render state that is reset every frame.
+  // This shouldn't be reactive.
+  dragHandlers.clear()
+  nodeRects.clear()
 
   ctx.fillStyle = bgColor
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
@@ -141,44 +86,34 @@ function render(i = 1) {
       t.pin(s.id, "to", x, y)
     })
   })
-  t.optimize(1000)
 
-  //  if (i > 0) {
-  requestAnimationFrame(() => render(i - 1))
-  //  }
+  requestAnimationFrame(render)
 }
-
-interface PointerState {
-  draggedId: string
-}
-
-const pointerState = new Map<number, PointerState>()
 
 function handlePointerMove(e: PointerEvent) {
-  pointerState.forEach(({ draggedId }) => {
-    const { dragging } = checkNotNull(nodeState.get(draggedId))
-    if (dragging) {
-      const onDrag = checkNotNull(dragHandlers.get(draggedId))
-      onDrag(e.offsetX, e.offsetY)
-    }
-  })
+  if (e.pointerId !== draggingPointerId) return;
+
+  if (draggedNodeId) {
+    const onDrag = checkNotNull(dragHandlers.get(draggedNodeId))
+    onDrag(e.offsetX, e.offsetY)
+  }
 }
 
 function handlePointerDown(e: PointerEvent) {
-  nodeState.forEach((state, id) => {
-    if (contains(state.rect, e.offsetX, e.offsetY)) {
-      mergeState(id, { dragging: true })
+  nodeRects.forEach((r, id) => {
+    if (rectContains(r, e.offsetX, e.offsetY)) {
+      draggedNodeId = id
+      draggingPointerId = e.pointerId
       canvas.setPointerCapture(e.pointerId)
-      pointerState.set(e.pointerId, { draggedId: id })
     }
   })
 }
 
 function handlePointerUp(e: PointerEvent) {
-  if (!pointerState.has(e.pointerId)) return
-  const { draggedId } = pointerState.get(e.pointerId)!
-  mergeState(draggedId, { dragging: false })
-  pointerState.delete(e.pointerId)
+  if (e.pointerId !== draggingPointerId) return;
+
+  draggedNodeId = ''
+  draggingPointerId = undefined
   t.unpin()
 }
 
