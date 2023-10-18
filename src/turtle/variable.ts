@@ -17,13 +17,10 @@ interface LengthVariable extends Variable {
 }
 
 export function lengthVariable(name: string, init?: k.Num): LengthVariable {
+    let mode = init ? init : k.num(100)
     const param = k.param(name)
-    let value = k.exp(param)
-    if(init)
-        value = k.mul(value, init)
-    else
-        value = k.mul(value, 100)
-
+    const value = //k.exp(k.add(k.mul(param,5),k.log(mode)))
+        k.add(k.mul(param,20),mode)
     const loss = k.div(k.mul(param, param), 2)
     return {
         type: "length",

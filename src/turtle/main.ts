@@ -29,21 +29,33 @@ const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
 
 const t = new Turtle()
 const o = t.position
-/*t.forward(t.approxLength("A", 100))
+
+t.forward(t.approxLength("A", 100))
 t.right(t.anyAngle("q"))
 t.forward(t.approxLength("B", 200))
 t.right(t.anyAngle("r"))
 t.forward(t.approxLength("C", 300))
-t.at(o)*/
-
+t.at(o)
+/*
 t.forward(t.approxLength("A", 100))
 t.right(degrees(90))
-t.forward(t.approxLength("B", 100))
+t.forward(t.approxLength("B", 300))
+//t.forward(100)
 t.right(degrees(90))
 t.forward(t.approxLength("C", 100))
 t.right(degrees(90))
-t.forward(100)
+t.forward(t.approxLength("C", 300))
 t.at(o)
+*/
+/*
+t.forward(300)
+t.right(t.anyAngle("q"))
+t.forward(400)
+t.right(t.anyAngle("r"))
+t.forward(500)
+t.at(o)
+*/
+
 
 const ctx = canvas.getContext("2d")!
 

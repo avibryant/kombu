@@ -25,7 +25,7 @@ export interface Segment {
 function atLoss(from: v.Vec2, to: v.Vec2): k.Num {
   const dx = k.sub(from.x, to.x)
   const dy = k.sub(from.y, to.y)
-  return k.add(k.mul(dx,dx),k.mul(dy,dy))
+  return k.div(k.add(k.mul(dx,dx),k.mul(dy,dy)), 2)
 }
 
 export class Turtle {
