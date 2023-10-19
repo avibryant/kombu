@@ -107,6 +107,9 @@ export class Turtle {
     }
     const ev = this.optimizer.optimize(iterations, this.pinState?.observations)
     this.params = ev.params
+    this.params.forEach((n,p) => {
+      console.log(p.name + " = " + n)
+    })
   }
 
   computeLoss(): k.Num {
