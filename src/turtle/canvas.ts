@@ -22,17 +22,12 @@ export function Canvas(props: {
     return () => window.removeEventListener("resize", onResize)
   }, [])
 
-  return html`
-    <div>
-      <canvas
-        id="canvas"
-        width=${width}
-        height=${height}
-        onPointerDown=${props.onPointerDown}
-        onPointerMove=${props.onPointerMove}
-        onPointerUp=${props.onPointerUp}
-      >
-      </canvas>
-    </div>
-  `
+  return html`<canvas
+    id="canvas"
+    width=${width}
+    height=${height}
+    onPointerDown=${props.onPointerDown}
+    onPointerMove=${props.onPointerMove}
+    onPointerUp=${props.onPointerUp}
+  ></canvas>`
 }

@@ -1,27 +1,36 @@
+import { signal } from "@preact/signals"
 import htm from "htm"
 import { h, render as preactRender } from "preact"
+import { Pane } from "tweakpane"
 
 import "./style.css"
 
-import { checkNotNull } from "../core/assert"
 import { Canvas } from "./canvas"
+import * as k from "../core/api"
+import { checkNotNull } from "../core/assert"
+import { Panel } from "./panel"
 import { Rect, rectContains, rect } from "./rect"
 import { Turtle } from "./turtle"
 
 const html = htm.bind(h)
 
+const turtleParams = signal(new Map<k.Param, number>())
+
 function App() {
-  return html` <${Canvas}
-    onPointerDown=${handlePointerDown}
-    onPointerMove=${handlePointerMove}
-    onPointerUp=${handlePointerUp}
-  />`
+  return html`<${Canvas}
+      onPointerDown=${handlePointerDown}
+      onPointerMove=${handlePointerMove}
+      onPointerUp=${handlePointerUp}
+    />
+    <${Panel} params=${turtleParams.value} /> `
 }
 
 preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
 
-const bgColor = "black"
-const fgColor = "white"
+const config = {
+  bgColor: "#000",
+  fgColor: "#fff",
+}
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
 
@@ -51,23 +60,27 @@ function renderNode(id: string, x: number, y: number) {
   nodeRects.set(id, r)
 
   ctx.save()
-  ctx.fillStyle = draggedNodeId === id ? "#7DEF4A" : fgColor
+  ctx.fillStyle = draggedNodeId === id ? "#7DEF4A" : config.fgColor
   ctx.fillRect(r.x, r.y, r.w, r.h)
   ctx.restore()
 }
 
 function render() {
   t.optimize(10000)
+//  renderTweakspane()
+  turtleParams.value = new Map([
+    ...t.params.entries()
+  ])
 
   // Transient render state that is reset every frame.
   // This shouldn't be reactive.
   dragHandlers.clear()
   nodeRects.clear()
 
-  ctx.fillStyle = bgColor
+  ctx.fillStyle = config.bgColor
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   ctx.lineWidth = 1
-  ctx.strokeStyle = fgColor
+  ctx.strokeStyle = config.fgColor
   t.segments().forEach((s) => {
     ctx.beginPath()
     ctx.moveTo(s.x1, s.y1)
@@ -115,6 +128,33 @@ function handlePointerUp(e: PointerEvent) {
   draggedNodeId = ""
   draggingPointerId = undefined
   t.unpin()
+}
+
+let pane: Pane
+
+function renderTweakspane() {
+  if (pane) pane.dispose()
+  pane = new Pane()
+
+  t.params.forEach((value, p) => {
+    const obj = { value }
+    const f = pane.addFolder({
+      title: p.name,
+    })
+    f.addBinding(obj, "value")
+    pane.addBinding(obj, "value", {
+      readonly: true,
+      view: "graph",
+      interval: 16,
+    })
+  })
+
+  const colors = pane.addFolder({
+    title: "Colors",
+  })
+  colors.addBinding(config, "bgColor", { label: "bg" })
+  colors.addBinding(config, "fgColor", { label: "stroke" })
+  //  colors.hidden = true
 }
 
 render()
