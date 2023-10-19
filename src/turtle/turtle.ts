@@ -1,5 +1,6 @@
 import * as k from "../core/api"
 import * as v from "./vec2"
+import * as u from "./variable"
 
 export interface VecSegment {
   from: v.Vec2
@@ -21,55 +22,56 @@ export interface Segment {
   y2: number
 }
 
+function atLoss(from: v.Vec2, to: v.Vec2): k.Num {
+  const dx = k.sub(from.x, to.x)
+  const dy = k.sub(from.y, to.y)
+  return k.div(k.add(k.mul(dx, dx), k.mul(dy, dy)), 2)
+}
+
 export class Turtle {
-  vecSegments: Array<VecSegment>
-  loss: k.Num
+  vecSegments: VecSegment[]
+  ats: VecSegment[]
+  variables: u.Variable[]
   position: v.Vec2
   direction: v.Vec2
-  counter: number
   params: Map<k.Param, number>
 
   pinState?: {
-    params: { x: k.Param; y: k.Param }
-    unpinnedLoss: k.Num
-    observations: Map<k.Param, number>
+    pin: { x: k.Param; y: k.Param }
+    point: v.Vec2
+    observation: { x: number; y: number }
   }
 
   private prevLoss?: k.Num
   private optimizer?: k.Optimizer
 
   constructor() {
-    this.loss = k.zero
     this.vecSegments = []
     this.position = v.origin
     this.direction = v.degrees(k.zero)
-    this.counter = 0
     this.params = new Map()
+    this.variables = []
+    this.ats = []
   }
 
   pin(segmentIdx: number, which: "from" | "to", x: number, y: number) {
     if (!this.pinState) {
       const pinX = k.observation("pinX")
       const pinY = k.observation("pinY")
-      const vec = this.vecSegments[segmentIdx][which]
-      const prx = k.normalLikelihood(k.sub(vec.x, pinX))
-      const pry = k.normalLikelihood(k.sub(vec.y, pinY))
+
+      const point = this.vecSegments[segmentIdx][which]
+
       this.pinState = {
-        params: { x: pinX, y: pinY },
-        unpinnedLoss: this.loss,
-        observations: new Map()
+        pin: { x: pinX, y: pinY },
+        point,
+        observation: { x, y },
       }
-      this.loss = k.sub(this.loss, k.add(prx, pry))
     }
-    this.pinState.observations.set(this.pinState.params.x, x)
-    this.pinState.observations.set(this.pinState.params.y, y)
+    this.pinState.observation = { x, y }
   }
 
   unpin() {
     if (this.pinState) {
-      this.loss = this.pinState.unpinnedLoss
-      this.params.delete(this.pinState.params.x)
-      this.params.delete(this.pinState.params.y)
       this.pinState = undefined
     }
   }
@@ -92,14 +94,35 @@ export class Turtle {
     this.direction = v.addAngles(this.direction, angle)
   }
 
+  at(pt: v.Vec2) {
+    this.ats.push({ from: this.position, to: pt })
+  }
+
   optimize(iterations: number): void {
     // Reuse the optimizer as long as the loss function is unchanged.
-    if (!this.optimizer || this.loss !== this.prevLoss) {
-      this.optimizer = k.optimizer(this.loss, this.params)
-      this.prevLoss = this.loss
+    const loss = this.computeLoss()
+    if (!this.optimizer || loss !== this.prevLoss) {
+      this.optimizer = k.optimizer(loss, this.params)
+      this.prevLoss = loss
     }
-    const ev = this.optimizer.optimize(iterations, this.pinState?.observations)
+    const observations: Map<k.Param, number> = new Map()
+    if (this.pinState) {
+      observations.set(this.pinState.pin.x, this.pinState.observation.x)
+      observations.set(this.pinState.pin.y, this.pinState.observation.y)
+    }
+    const ev = this.optimizer.optimize(iterations, observations)
     this.params = ev.params
+  }
+
+  computeLoss(): k.Num {
+    const varLosses = this.variables.map((vr) => vr.loss)
+    const atLosses = this.ats.map((vs) => atLoss(vs.from, vs.to))
+    let pinLosses: k.Num[] = []
+    if (this.pinState) {
+      pinLosses.push(atLoss(this.pinState.pin, this.pinState.point))
+    }
+    const allLosses = varLosses.concat(atLosses).concat(pinLosses)
+    return allLosses.reduce(k.add)
   }
 
   segments(): Array<Segment> {
@@ -115,17 +138,16 @@ export class Turtle {
     })
   }
 
-  approxLength(mean: number, sd: number = 20): k.Num {
-    this.counter += 1
-    const pr = k.normalPrior("d" + this.counter)
-    this.loss = k.sub(this.loss, pr.logp)
-    return k.softplus(k.add(k.mul(pr.value, sd), mean))
+  approxLength(name: string, len: k.AnyNum): k.Num {
+    const lv = u.lengthVariable(name, k.num(len))
+    this.variables.push(lv)
+    return lv.value
   }
 
-  anyAngle(): v.Vec2 {
-    this.counter += 1
-    const raw = k.param("a" + this.counter)
-    const sin = k.sub(k.mul(2, k.logistic(raw)), 1)
+  anyAngle(name: string): v.Vec2 {
+    const av = u.angleVariable(name)
+    this.variables.push(av)
+    const sin = av.value
     const cos = k.neg(k.sqrt(k.sub(k.one, k.mul(sin, sin))))
     return { x: cos, y: sin }
   }
@@ -149,9 +171,4 @@ export class Turtle {
 
     }
 */
-  at(pt: v.Vec2) {
-    const prx = k.normalLikelihood(k.sub(this.position.x, pt.x))
-    const pry = k.normalLikelihood(k.sub(this.position.y, pt.y))
-    this.loss = k.sub(this.loss, k.add(prx, pry))
-  }
 }
