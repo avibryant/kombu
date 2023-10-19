@@ -22,8 +22,8 @@ function App() {
 
 preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
 
-const bgColor = "#000"
-const fgColor = "#fff"
+const bgColor = "black"
+const fgColor = "white"
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
 
