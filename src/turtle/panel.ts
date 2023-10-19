@@ -1,11 +1,31 @@
-import { FolderApi, Pane } from "tweakpane"
+import { Pane } from "tweakpane"
 
 import * as k from "../core/api"
 import { checkNotNull } from "../core/assert"
 
+interface Subpanel {
+  dispose: () => void
+  refresh: () => void
+}
+
 interface DisplayState {
-  folder: FolderApi
+  ui: Subpanel
   data: { value: number }
+}
+
+function subpanel(pane: Pane, label: string, data: { value: number }) {
+  const binding = pane.addBinding(data, "value", { label })
+  const sep = pane.addBlade({ view: "separator" })
+
+  return {
+    refresh() {
+      binding.refresh()
+    },
+    dispose() {
+      sep.dispose()
+      binding.dispose()
+    },
+  }
 }
 
 // Internal render state.
@@ -24,23 +44,29 @@ export function renderPanel(paramValues: Map<k.Param, number>) {
   )
 
   removed.forEach((p) => {
-    const { folder } = checkNotNull(displayState.get(p))
-    folder.dispose()
+    const { ui } = checkNotNull(displayState.get(p))
+    ui.dispose()
     displayState.delete(p)
   })
 
   added.forEach((p) => {
-    const folder = pane.addFolder({ title: p.name })
     const data = { value: checkNotNull(paramValues.get(p)) }
-    folder.addBinding(data, "value")
+    const ui = subpanel(pane, p.name, data)
     displayState.set(p, {
-      folder,
+      ui,
       data,
     })
   })
 
-  displayState.forEach(({ folder, data }, p) => {
+  displayState.forEach(({ ui, data }, p) => {
     data.value = checkNotNull(paramValues.get(p))
-    folder.refresh()
+    ui.refresh()
   })
+
+  // Showing the final trailing separator.
+  pane.children.forEach((c) => {
+    c.hidden = false
+  })
+  const lastChild = pane.children.at(-1)
+  if (lastChild) lastChild.hidden = true
 }
