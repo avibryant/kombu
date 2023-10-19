@@ -72,8 +72,6 @@ export class Turtle {
 
   unpin() {
     if (this.pinState) {
-      this.params.delete(this.pinState.pin.x)
-      this.params.delete(this.pinState.pin.y)
       this.pinState = undefined
     }
   }
