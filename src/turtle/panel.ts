@@ -63,7 +63,7 @@ export function renderPanel(paramValues: Map<k.Param, number>) {
     ui.refresh()
   })
 
-  // Showing the final trailing separator.
+  // Avoid showing the final trailing separator.
   pane.children.forEach((c) => {
     c.hidden = false
   })
