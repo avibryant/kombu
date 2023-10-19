@@ -22,10 +22,8 @@ function App() {
 
 preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
 
-const config = {
-  bgColor: "#000",
-  fgColor: "#fff",
-}
+const bgColor = "#000"
+const fgColor = "#fff"
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
 
@@ -55,7 +53,7 @@ function renderNode(id: string, x: number, y: number) {
   nodeRects.set(id, r)
 
   ctx.save()
-  ctx.fillStyle = draggedNodeId === id ? "#7DEF4A" : config.fgColor
+  ctx.fillStyle = draggedNodeId === id ? "#7DEF4A" : fgColor
   ctx.fillRect(r.x, r.y, r.w, r.h)
   ctx.restore()
 }
@@ -72,10 +70,10 @@ function render() {
   dragHandlers.clear()
   nodeRects.clear()
 
-  ctx.fillStyle = config.bgColor
+  ctx.fillStyle = bgColor
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   ctx.lineWidth = 1
-  ctx.strokeStyle = config.fgColor
+  ctx.strokeStyle = fgColor
   t.segments().forEach((s) => {
     ctx.beginPath()
     ctx.moveTo(s.x1, s.y1)
