@@ -4,19 +4,18 @@ import { h, render as preactRender } from "preact"
 import "./style.css"
 
 import { checkNotNull } from "../core/assert"
-import { Canvas } from './canvas'
+import { Canvas } from "./canvas"
 import { Rect, rectContains, rect } from "./rect"
 import { Turtle } from "./turtle"
 
 const html = htm.bind(h)
 
 function App() {
-  return html`
-    <${Canvas}
-      onPointerDown=${handlePointerDown}
-      onPointerMove=${handlePointerMove}
-      onPointerUp=${handlePointerUp}
-    />`
+  return html` <${Canvas}
+    onPointerDown=${handlePointerDown}
+    onPointerMove=${handlePointerMove}
+    onPointerUp=${handlePointerUp}
+  />`
 }
 
 preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
@@ -36,7 +35,6 @@ t.right(t.anyAngle("r"))
 t.forward(t.approxLength("C", 300))
 t.at(o)
 
-
 const ctx = canvas.getContext("2d")!
 
 type DragHandler = (x: number, y: number) => any
@@ -44,7 +42,7 @@ type DragHandler = (x: number, y: number) => any
 const dragHandlers: Map<string, DragHandler> = new Map()
 const nodeRects: Map<string, Rect> = new Map()
 
-let draggedNodeId = ''
+let draggedNodeId = ""
 let draggingPointerId: number | undefined
 
 function renderNode(id: string, x: number, y: number) {
@@ -93,7 +91,7 @@ function render() {
 }
 
 function handlePointerMove(e: PointerEvent) {
-  if (e.pointerId !== draggingPointerId) return;
+  if (e.pointerId !== draggingPointerId) return
 
   if (draggedNodeId) {
     const onDrag = checkNotNull(dragHandlers.get(draggedNodeId))
@@ -112,9 +110,9 @@ function handlePointerDown(e: PointerEvent) {
 }
 
 function handlePointerUp(e: PointerEvent) {
-  if (e.pointerId !== draggingPointerId) return;
+  if (e.pointerId !== draggingPointerId) return
 
-  draggedNodeId = ''
+  draggedNodeId = ""
   draggingPointerId = undefined
   t.unpin()
 }

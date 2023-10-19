@@ -25,7 +25,7 @@ export interface Segment {
 function atLoss(from: v.Vec2, to: v.Vec2): k.Num {
   const dx = k.sub(from.x, to.x)
   const dy = k.sub(from.y, to.y)
-  return k.div(k.add(k.mul(dx,dx),k.mul(dy,dy)), 2)
+  return k.div(k.add(k.mul(dx, dx), k.mul(dy, dy)), 2)
 }
 
 export class Turtle {
@@ -38,8 +38,8 @@ export class Turtle {
 
   pinState?: {
     pin: { x: k.Param; y: k.Param }
-    point: v.Vec2,
-    observation: {x: number, y: number}
+    point: v.Vec2
+    observation: { x: number; y: number }
   }
 
   private prevLoss?: k.Num
@@ -60,14 +60,14 @@ export class Turtle {
       const pinY = k.observation("pinY")
 
       const point = this.vecSegments[segmentIdx][which]
-      
+
       this.pinState = {
-        pin: { x: pinX, y: pinY},
+        pin: { x: pinX, y: pinY },
         point,
-        observation: {x,y}
+        observation: { x, y },
       }
     }
-    this.pinState.observation = {x,y}
+    this.pinState.observation = { x, y }
   }
 
   unpin() {
@@ -97,7 +97,7 @@ export class Turtle {
   }
 
   at(pt: v.Vec2) {
-    this.ats.push({from: this.position, to: pt})
+    this.ats.push({ from: this.position, to: pt })
   }
 
   optimize(iterations: number): void {
@@ -107,8 +107,8 @@ export class Turtle {
       this.optimizer = k.optimizer(loss, this.params)
       this.prevLoss = loss
     }
-    const observations: Map<k.Param,number> = new Map()
-    if(this.pinState) {
+    const observations: Map<k.Param, number> = new Map()
+    if (this.pinState) {
       observations.set(this.pinState.pin.x, this.pinState.observation.x)
       observations.set(this.pinState.pin.y, this.pinState.observation.y)
     }
@@ -120,7 +120,7 @@ export class Turtle {
     const varLosses = this.variables.map((vr) => vr.loss)
     const atLosses = this.ats.map((vs) => atLoss(vs.from, vs.to))
     let pinLosses: k.Num[] = []
-    if(this.pinState) {
+    if (this.pinState) {
       pinLosses.push(atLoss(this.pinState.pin, this.pinState.point))
     }
     const allLosses = varLosses.concat(atLosses).concat(pinLosses)
