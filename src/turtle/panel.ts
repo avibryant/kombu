@@ -1,59 +1,46 @@
-import htm from "htm"
-import { Fragment, h } from "preact"
-import { useEffect, useMemo, useState } from "preact/hooks"
 import { FolderApi, Pane } from "tweakpane"
 
 import * as k from "../core/api"
+import { checkNotNull } from "../core/assert"
 
-let prevParams: Map<k.Param, number> = new Map()
+interface DisplayState {
+  folder: FolderApi
+  data: { value: number }
+}
+
+// Internal render state.
+// TODO: Consider passing this in as an argument.
+let displayState: Map<k.Param, DisplayState> = new Map()
 let pane: Pane
 
-function renderPanel(params: Map<k.Param, number>) {
-  if (!pane) {
-    pane = new Pane()
-  }
-  params.forEach((v, p) => {
-    if (prevParams.has(p)) {
+export function renderPanel(paramValues: Map<k.Param, number>) {
+  if (!pane) pane = new Pane()
 
-    }
-  })
-  prevParams = new Map(params)
-}
+  const removed = Array.from(displayState.keys()).filter(
+    (p) => !paramValues.has(p),
+  )
+  const added = Array.from(paramValues.keys()).filter(
+    (p) => !displayState.has(p),
+  )
 
-const html = htm.bind(h)
-
-export function Panel(props: { params: Map<k.Param, number> }) {
-  let pane = useMemo(() => new Pane(), [])
-
-  useEffect(() => {
-    return () => {
-      pane.dispose()
-    }
-  }, [])
-
-  const paramChildren = Array.from(props.params).map(([p, v]) => {
-    return html`<${ParamDetails} pane=${pane} key=${p.name} param=${p} value=${v} />`
+  removed.forEach((p) => {
+    const { folder } = checkNotNull(displayState.get(p))
+    folder.dispose()
+    displayState.delete(p)
   })
 
-  return html`<${Fragment}>${paramChildren}<//>`
-}
-
-function ParamDetails(props: { pane: Pane; param: k.Param; value: number }) {
-  const { pane, param, value } = props
-
-  const data = useMemo(() => ({ value }), [])
-  data.value = value
-  pane.refresh()
-
-  // onMount
-  useEffect(() => {
-    const f = pane.addFolder({
-      title: param.name,
+  added.forEach((p) => {
+    const folder = pane.addFolder({ title: p.name })
+    const data = { value: checkNotNull(paramValues.get(p)) }
+    folder.addBinding(data, "value")
+    displayState.set(p, {
+      folder,
+      data,
     })
-    f.addBinding(data, "value")
+  })
 
-    return () => {
-      f.dispose()
-    }
-  }, [])
+  displayState.forEach(({ folder, data }, p) => {
+    data.value = checkNotNull(paramValues.get(p))
+    folder.refresh()
+  })
 }

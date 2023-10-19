@@ -1,28 +1,22 @@
-import { signal } from "@preact/signals"
 import htm from "htm"
 import { h, render as preactRender } from "preact"
-import { Pane } from "tweakpane"
 
 import "./style.css"
 
 import { Canvas } from "./canvas"
-import * as k from "../core/api"
 import { checkNotNull } from "../core/assert"
-import { Panel } from "./panel"
+import { renderPanel } from "./panel"
 import { Rect, rectContains, rect } from "./rect"
 import { Turtle } from "./turtle"
 
 const html = htm.bind(h)
 
-const turtleParams = signal(new Map<k.Param, number>())
-
 function App() {
   return html`<${Canvas}
-      onPointerDown=${handlePointerDown}
-      onPointerMove=${handlePointerMove}
-      onPointerUp=${handlePointerUp}
-    />
-    <${Panel} params=${turtleParams.value} /> `
+    onPointerDown=${handlePointerDown}
+    onPointerMove=${handlePointerMove}
+    onPointerUp=${handlePointerUp}
+  />`
 }
 
 preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
@@ -67,10 +61,8 @@ function renderNode(id: string, x: number, y: number) {
 
 function render() {
   t.optimize(10000)
-//  renderTweakspane()
-  turtleParams.value = new Map([
-    ...t.params.entries()
-  ])
+
+  renderPanel(new Map([...t.params.entries()]))
 
   // Transient render state that is reset every frame.
   // This shouldn't be reactive.
@@ -128,33 +120,6 @@ function handlePointerUp(e: PointerEvent) {
   draggedNodeId = ""
   draggingPointerId = undefined
   t.unpin()
-}
-
-let pane: Pane
-
-function renderTweakspane() {
-  if (pane) pane.dispose()
-  pane = new Pane()
-
-  t.params.forEach((value, p) => {
-    const obj = { value }
-    const f = pane.addFolder({
-      title: p.name,
-    })
-    f.addBinding(obj, "value")
-    pane.addBinding(obj, "value", {
-      readonly: true,
-      view: "graph",
-      interval: 16,
-    })
-  })
-
-  const colors = pane.addFolder({
-    title: "Colors",
-  })
-  colors.addBinding(config, "bgColor", { label: "bg" })
-  colors.addBinding(config, "fgColor", { label: "stroke" })
-  //  colors.hidden = true
 }
 
 render()
