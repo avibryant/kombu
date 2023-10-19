@@ -67,6 +67,7 @@ export class Turtle {
         observation: {x,y}
       }
     }
+    this.pinState.observation = {x,y}
   }
 
   unpin() {

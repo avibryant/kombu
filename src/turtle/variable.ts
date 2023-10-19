@@ -18,9 +18,9 @@ interface LengthVariable extends Variable {
 
 const sigma = 1
 export function lengthVariable(name: string, hint?: k.Num): LengthVariable {
-    let mode = hint ? hint : k.num(100)
+    let h = hint ? hint : k.num(100)
     const param = k.param(name)
-    const value = k.exp(k.add(k.mul(param,sigma),k.log(mode)))
+    const value = k.exp(k.add(k.mul(param,sigma),k.log(h)))
     const loss = k.div(k.mul(param, param), 2)
     return {
         type: "length",
@@ -31,6 +31,7 @@ export function lengthVariable(name: string, hint?: k.Num): LengthVariable {
 export function angleVariable(name: string): AngleVariable {
     const param = k.param(name)
     const loss = k.zero
+    //range: (-1,1)
     const value = k.sub(k.mul(2, k.logistic(param)), 1)
 
     return {
