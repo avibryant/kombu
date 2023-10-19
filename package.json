@@ -28,8 +28,8 @@
   "dependencies": {
     "@tweakpane/core": "^2.0.1",
     "@wasmgroundup/emit": "^0.2.16",
-    "preact": "^10.18.1",
     "htm": "^3.1.1",
+    "preact": "^10.18.1",
     "tweakpane": "^4.0.1"
   }
 }
