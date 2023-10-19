@@ -7,16 +7,20 @@
     "dev": "vite",
     "build": "make",
     "check": "tsc --noEmit",
-    "format": "prettier --write --no-semi .",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "format:fix": "prettier --write --log-level warn . && git commit -am prettier",
     "preview": "vite preview",
     "test": "make prebuilt-wasm && vitest run",
-    "test:watch": "make prebuilt-wasm && vitest"
+    "test:watch": "make prebuilt-wasm && vitest",
+    "prepare": "husky install"
   },
   "devDependencies": {
     "@thi.ng/leb128": "^3.0.37",
     "assemblyscript": "^0.27.11",
     "assemblyscript-prettier": "^3.0.1",
     "htm": "^3.1.1",
+    "husky": "^8.0.3",
     "preact": "^10.18.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.2",

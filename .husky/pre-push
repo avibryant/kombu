@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo Running pre-push checks...
+npm run check
+trap 'npm run format:fix; echo "👉 Fixed formatting — push again!"; exit 1' ERR
+npm run format:check
