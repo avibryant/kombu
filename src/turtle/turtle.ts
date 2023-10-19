@@ -37,8 +37,9 @@ export class Turtle {
   params: Map<k.Param, number>
 
   pinState?: {
-    mouseParams: { x: k.Param; y: k.Param }
-    point: v.Vec2
+    pin: { x: k.Param; y: k.Param }
+    point: v.Vec2,
+    observation: {x: number, y: number}
   }
 
   private prevLoss?: k.Num
@@ -55,24 +56,23 @@ export class Turtle {
 
   pin(segmentIdx: number, which: "from" | "to", x: number, y: number) {
     if (!this.pinState) {
-      const x = k.observation("pinX")
-      const y = k.observation("pinY")
+      const pinX = k.observation("pinX")
+      const pinY = k.observation("pinY")
 
       const point = this.vecSegments[segmentIdx][which]
       
       this.pinState = {
-        mouseParams: { x, y },
-        point
+        pin: { x: pinX, y: pinY},
+        point,
+        observation: {x,y}
       }
     }
-    this.params.set(this.pinState.mouseParams.x, x)
-    this.params.set(this.pinState.mouseParams.y, y)
   }
 
   unpin() {
     if (this.pinState) {
-      this.params.delete(this.pinState.mouseParams.x)
-      this.params.delete(this.pinState.mouseParams.y)
+      this.params.delete(this.pinState.pin.x)
+      this.params.delete(this.pinState.pin.y)
       this.pinState = undefined
     }
   }
@@ -101,15 +101,18 @@ export class Turtle {
 
   optimize(iterations: number): void {
     // Reuse the optimizer as long as the loss function is unchanged.
-    if (!this.optimizer || this.loss !== this.prevLoss) {
-      this.optimizer = k.optimizer(this.loss, this.params)
-      this.prevLoss = this.loss
+    const loss = this.computeLoss()
+    if (!this.optimizer || loss !== this.prevLoss) {
+      this.optimizer = k.optimizer(loss, this.params)
+      this.prevLoss = loss
     }
-    const ev = this.optimizer.optimize(iterations, this.pinState?.observations)
+    const observations: Map<k.Param,number> = new Map()
+    if(this.pinState) {
+      observations.set(this.pinState.pin.x, this.pinState.observation.x)
+      observations.set(this.pinState.pin.y, this.pinState.observation.y)
+    }
+    const ev = this.optimizer.optimize(iterations, observations)
     this.params = ev.params
-    this.params.forEach((n,p) => {
-      console.log(p.name + " = " + n)
-    })
   }
 
   computeLoss(): k.Num {
@@ -117,7 +120,7 @@ export class Turtle {
     const atLosses = this.ats.map((vs) => atLoss(vs.from, vs.to))
     let pinLosses: k.Num[] = []
     if(this.pinState) {
-      pinLosses.push(atLoss(this.pinState.mouseParams, this.pinState.point))
+      pinLosses.push(atLoss(this.pinState.pin, this.pinState.point))
     }
     const allLosses = varLosses.concat(atLosses).concat(pinLosses)
     return allLosses.reduce(k.add)

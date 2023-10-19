@@ -7,7 +7,6 @@ import { checkNotNull } from "../core/assert"
 import { Canvas } from './canvas'
 import { Rect, rectContains, rect } from "./rect"
 import { Turtle } from "./turtle"
-import {degrees} from "./vec2"
 
 const html = htm.bind(h)
 
@@ -36,25 +35,6 @@ t.forward(t.approxLength("B", 200))
 t.right(t.anyAngle("r"))
 t.forward(t.approxLength("C", 300))
 t.at(o)
-/*
-t.forward(t.approxLength("A", 100))
-t.right(degrees(90))
-t.forward(t.approxLength("B", 300))
-//t.forward(100)
-t.right(degrees(90))
-t.forward(t.approxLength("C", 100))
-t.right(degrees(90))
-t.forward(t.approxLength("C", 300))
-t.at(o)
-*/
-/*
-t.forward(300)
-t.right(t.anyAngle("q"))
-t.forward(400)
-t.right(t.anyAngle("r"))
-t.forward(500)
-t.at(o)
-*/
 
 
 const ctx = canvas.getContext("2d")!
@@ -79,7 +59,7 @@ function renderNode(id: string, x: number, y: number) {
 }
 
 function render() {
-  t.optimize(1000)
+  t.optimize(10000)
 
   // Transient render state that is reset every frame.
   // This shouldn't be reactive.
