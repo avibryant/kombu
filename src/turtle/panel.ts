@@ -2,71 +2,106 @@ import { Pane } from "tweakpane"
 
 import * as k from "../core/api"
 import { checkNotNull } from "../core/assert"
+import * as v from "./variable"
 
 interface Subpanel {
   dispose: () => void
   refresh: () => void
 }
 
-interface DisplayState {
-  ui: Subpanel
-  data: { value: number }
+interface VarInfo {
+  value: number
+  loss: number
 }
 
-function subpanel(pane: Pane, label: string, data: { value: number }) {
-  const binding = pane.addBinding(data, "value", { label })
+interface DisplayState {
+  ui: Subpanel
+  data: VarInfo
+}
+
+function subpanel(pane: Pane, label: string, data: VarInfo) {
   const sep = pane.addBlade({ view: "separator" })
+  const bindings = [
+    pane.addBinding(data, "value", { label }),
+    pane.addBinding(data, "loss"),
+    pane.addBinding(data, "loss", {
+      readonly: true,
+      view: "graph",
+      min: 0,
+      max: 1,
+      label: "",
+    }),
+  ]
 
   return {
     refresh() {
-      binding.refresh()
+      bindings.forEach((b) => b.refresh())
     },
     dispose() {
+      bindings.forEach((b) => b.dispose())
       sep.dispose()
-      binding.dispose()
     },
   }
 }
 
-// Internal render state.
-// TODO: Consider passing this in as an argument.
-let displayState: Map<k.Param, DisplayState> = new Map()
-let pane: Pane
-
-export function renderPanel(paramValues: Map<k.Param, number>) {
-  if (!pane) pane = new Pane()
-
-  const removed = Array.from(displayState.keys()).filter(
-    (p) => !paramValues.has(p),
-  )
-  const added = Array.from(paramValues.keys()).filter(
-    (p) => !displayState.has(p),
-  )
-
-  removed.forEach((p) => {
-    const { ui } = checkNotNull(displayState.get(p))
-    ui.dispose()
-    displayState.delete(p)
+function lossSubpanel(pane: Pane, data: { loss: number }) {
+  const binding = pane.addBinding(data, "loss", {
+    label: "total loss",
+    readonly: true,
+    view: "graph",
+    min: 0,
+    max: data.loss,
   })
+  return binding
+}
 
-  added.forEach((p) => {
-    const data = { value: checkNotNull(paramValues.get(p)) }
-    const ui = subpanel(pane, p.name, data)
-    displayState.set(p, {
-      ui,
-      data,
-    })
-  })
+export function createPanel() {
+  let displayState: Map<v.Variable, DisplayState> = new Map()
+  let pane = new Pane()
 
-  displayState.forEach(({ ui, data }, p) => {
-    data.value = checkNotNull(paramValues.get(p))
-    ui.refresh()
-  })
+  let lossp: ReturnType<Pane["addBinding"]>
+  const lossData = { loss: 0 }
 
-  // Avoid showing the final trailing separator.
-  pane.children.forEach((c) => {
-    c.hidden = false
-  })
-  const lastChild = pane.children.at(-1)
-  if (lastChild) lastChild.hidden = true
+  return {
+    render(totalLoss: k.Num, varList: v.Variable[], ev: k.Evaluator) {
+      // Lazily create the subpanel showing total loss.
+      lossData.loss = ev.evaluate(totalLoss)
+      if (lossp) {
+        lossp.refresh()
+      } else {
+        lossp = lossSubpanel(pane, lossData)
+      }
+
+      // Create or update subpanels for each variable.
+      const vars = new Set(varList)
+      const removed = Array.from(displayState.keys()).filter(
+        (v) => !vars.has(v),
+      )
+      const added = Array.from(vars.keys()).filter((v) => !displayState.has(v))
+
+      removed.forEach((v) => {
+        const { ui } = checkNotNull(displayState.get(v))
+        ui.dispose()
+        displayState.delete(v)
+      })
+
+      added.forEach((v) => {
+        const data = {
+          value: ev.evaluate(v.value),
+          loss: ev.evaluate(v.loss),
+        }
+        const ui = subpanel(pane, v.param.name, data)
+        displayState.set(v, {
+          ui,
+          data,
+        })
+      })
+
+      displayState.forEach(({ ui, data }, v) => {
+        data.value = ev.evaluate(v.value)
+        data.loss = ev.evaluate(v.loss)
+        ui.refresh()
+      })
+    },
+  }
 }

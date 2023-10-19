@@ -3,9 +3,10 @@ import { h, render as preactRender } from "preact"
 
 import "./style.css"
 
+import * as k from "../core/api"
 import { Canvas } from "./canvas"
 import { checkNotNull } from "../core/assert"
-import { renderPanel } from "./panel"
+import { createPanel } from "./panel"
 import { Rect, rectContains, rect } from "./rect"
 import { Turtle } from "./turtle"
 
@@ -59,10 +60,12 @@ function renderNode(id: string, x: number, y: number) {
   ctx.restore()
 }
 
+const panel = createPanel()
+
 function render() {
   t.optimize(10000)
 
-  renderPanel(new Map([...t.params.entries()]))
+  panel.render(t.computeLoss(), t.variables, k.evaluator(t.params))
 
   // Transient render state that is reset every frame.
   // This shouldn't be reactive.

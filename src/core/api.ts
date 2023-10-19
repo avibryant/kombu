@@ -1,3 +1,4 @@
+export type { Evaluator } from "./eval"
 export type { AnyNum } from "./num"
 export type { Optimizer } from "./optimize"
 export type { Num, Param } from "./types"
