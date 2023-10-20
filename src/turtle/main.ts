@@ -131,7 +131,7 @@ function addDist(id1: string, id2: string) {
   const r2 = checkNotNull(nodeRects.get(id2))
   const dx = r1.x - r2.x
   const dy = r1.y - r2.y
-  t.dist(v0, v1, Math.sqrt(dx*dx + dy*dy) + 100)
+  t.dist(v0, v1, Math.sqrt(dx * dx + dy * dy) + 100)
 }
 
 function handlePointerDown(e: PointerEvent) {
