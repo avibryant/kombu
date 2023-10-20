@@ -3,15 +3,17 @@ import { h, render as preactRender } from "preact"
 
 import "./style.css"
 
-import { checkNotNull } from "../core/assert"
+import * as k from "../core/api"
 import { Canvas } from "./canvas"
+import { checkNotNull } from "../core/assert"
+import { createPanel } from "./panel"
 import { Rect, rectContains, rect } from "./rect"
 import { Turtle } from "./turtle"
 
 const html = htm.bind(h)
 
 function App() {
-  return html` <${Canvas}
+  return html`<${Canvas}
     onPointerDown=${handlePointerDown}
     onPointerMove=${handlePointerMove}
     onPointerUp=${handlePointerUp}
@@ -56,8 +58,12 @@ function renderNode(id: string, x: number, y: number) {
   ctx.restore()
 }
 
+const panel = createPanel()
+
 function render() {
   t.optimize(10000)
+
+  panel.render(t.computeLoss(), t.variables, k.evaluator(t.params))
 
   // Transient render state that is reset every frame.
   // This shouldn't be reactive.

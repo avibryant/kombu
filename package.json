@@ -19,15 +19,17 @@
     "@thi.ng/leb128": "^3.0.37",
     "assemblyscript": "^0.27.11",
     "assemblyscript-prettier": "^3.0.1",
-    "htm": "^3.1.1",
     "husky": "^8.0.3",
-    "preact": "^10.18.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.2",
     "vite": "^4.4.5",
     "vitest": "^0.34.5"
   },
   "dependencies": {
-    "@wasmgroundup/emit": "^0.2.16"
+    "@tweakpane/core": "^2.0.1",
+    "@wasmgroundup/emit": "^0.2.16",
+    "htm": "^3.1.1",
+    "preact": "^10.18.1",
+    "tweakpane": "^4.0.1"
   }
 }
