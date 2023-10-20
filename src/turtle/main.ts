@@ -42,8 +42,9 @@ type DragHandler = (x: number, y: number) => any
 const dragHandlers: Map<string, DragHandler> = new Map()
 const nodeRects: Map<string, Rect> = new Map()
 
-let draggedNodeId = ""
+let dragOrigin: { x: number; y: number } | undefined
 let draggingPointerId: number | undefined
+let selectedNodeIds: string[] = []
 
 const config = {
   bgColor: "#000",
@@ -62,8 +63,18 @@ function renderNode(id: string, x: number, y: number) {
   nodeRects.set(id, r)
 
   ctx.save()
-  ctx.fillStyle = draggedNodeId === id ? "#7DEF4A" : config.fgColor
-  ctx.fillRect(r.x, r.y, r.w, r.h)
+
+  if (selectedNodeIds.includes(id)) {
+    ctx.lineWidth = 2
+    ctx.strokeStyle = config.fgColor
+    ctx.fillStyle = config.bgColor
+    ctx.fillRect(r.x, r.y, r.w, r.h)
+    ctx.strokeRect(r.x, r.y, r.w, r.h)
+  } else {
+    ctx.fillStyle = config.fgColor
+    ctx.fillRect(r.x, r.y, r.w, r.h)
+  }
+
   ctx.restore()
 }
 
@@ -90,12 +101,14 @@ function render() {
     const nodeId1 = `${s.id}.1`
     renderNode(nodeId1, s.x1, s.y1)
     dragHandlers.set(nodeId1, (x, y) => {
+      console.log("pin", nodeId1, "from")
       t.pin(s.id, "from", x, y)
     })
 
     const nodeId2 = `${s.id}.2`
     renderNode(nodeId2, s.x2, s.y2)
     dragHandlers.set(nodeId2, (x, y) => {
+      console.log("pin", nodeId2, "to")
       t.pin(s.id, "to", x, y)
     })
   })
@@ -103,29 +116,48 @@ function render() {
   requestAnimationFrame(render)
 }
 
-function handlePointerMove(e: PointerEvent) {
-  if (e.pointerId !== draggingPointerId) return
-
-  if (draggedNodeId) {
-    const onDrag = checkNotNull(dragHandlers.get(draggedNodeId))
-    onDrag(e.offsetX, e.offsetY)
-  }
+function notIncluding<T>(arr: T[], el: T): T[] {
+  const idx = arr.indexOf(el)
+  console.log("removing at ", idx)
+  return [...arr.slice(0, idx), ...arr.slice(idx + 1)]
 }
 
 function handlePointerDown(e: PointerEvent) {
-  nodeRects.forEach((r, id) => {
-    if (rectContains(r, e.offsetX, e.offsetY)) {
-      draggedNodeId = id
-      draggingPointerId = e.pointerId
-      canvas.setPointerCapture(e.pointerId)
+  // Look in reverse render order — we want to grab the top-most.
+  const rects = Array.from(nodeRects).reverse()
+  const hit = rects.find(([_, r]) => rectContains(r, e.offsetX, e.offsetY))
+  if (hit) {
+    const id = hit[0]
+    dragOrigin = { x: e.offsetX, y: e.offsetY }
+    draggingPointerId = e.pointerId
+    if (e.shiftKey && selectedNodeIds.includes(id)) {
+      selectedNodeIds = notIncluding(selectedNodeIds, id)
+    } else if (e.shiftKey) {
+      selectedNodeIds.push(id)
+    } else {
+      selectedNodeIds = [id]
     }
-  })
+    canvas.setPointerCapture(e.pointerId)
+  } else {
+    selectedNodeIds = []
+  }
+}
+
+function handlePointerMove(e: PointerEvent) {
+  if (e.pointerId !== draggingPointerId) return
+
+  if (dragOrigin) {
+    if (selectedNodeIds.length === 1) {
+      const onDrag = checkNotNull(dragHandlers.get(selectedNodeIds[0]))
+      onDrag(e.offsetX, e.offsetY)
+    }
+  }
 }
 
 function handlePointerUp(e: PointerEvent) {
   if (e.pointerId !== draggingPointerId) return
 
-  draggedNodeId = ""
+  dragOrigin = undefined
   draggingPointerId = undefined
   t.unpin()
 }
