@@ -14,12 +14,10 @@ const inputPath = "../build/release.wasm"
 const inputUrl = new URL(inputPath, import.meta.url)
 const outputUrl = new URL(inputPath + "_sections.ts", import.meta.url)
 
-console.log("before extractSections")
 const buf = fs.readFileSync(inputUrl)
 const sections = extractSections(buf, {
   destImportCount: builtins.length,
 })
-console.log("after extractSections")
 
 // Expect the last global to represent the following:
 //  (global $~lib/memory/__heap_base i32 (i32.const 364))
@@ -31,9 +29,7 @@ const expectedHeapBase = w.global(w.globaltype(w.valtype.i32, w.mut.const), [
   w.i32(364),
   w.instr.end,
 ])
-console.log("before lastGlobal")
 const lastGlobal = Array.from(sections.globalsec.contents.slice(-6))
-console.log("after lastGlobal")
 
 // If this assertion fails, check the globals defined in build/release.wat,
 // and if necessary, update the i32 constant to reflect the new value.
@@ -53,7 +49,7 @@ let output = `function decodeBase64(str: string) {
 }
 
 `
-console.log(Object.entries(sections))
+
 for (const [secName, { entryCount, contents }] of Object.entries(sections)) {
   const base64Contents = Buffer.from(contents).toString("base64")
   output += `export const ${secName} = {
