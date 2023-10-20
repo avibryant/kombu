@@ -6,9 +6,25 @@ import { callBuiltin, f64_const, f64_load, f64_store } from "./wasm/instr"
 import { instantiateModule } from "./wasm/mod"
 import * as t from "./types"
 
-const SIZEOF_F64 = 8
+export interface RMSPropOptions {
+  method: "RMSProp"
+  learningRate: number
+  epsilon: number
+  gamma: number
+}
+
+export const defaultOptions = {
+  method: "RMSProp",
+  learningRate: 0.001,
+  epsilon: 1e-6,
+  gamma: 0.99,
+}
+
+export type OptimizeOptions = RMSPropOptions
 
 type IdentifiableNum = t.Num & { id: number }
+
+const SIZEOF_F64 = 8
 
 // For each parameter, we reserve multiple f64 slots.
 // The first slot holds the parameter value itself. Currently the second
@@ -119,6 +135,7 @@ export function wasmOptimizer(
   function optimize(
     iterations: number,
     observations: Map<t.Param, number>,
+    opts?: RMSPropOptions,
   ): Map<t.Param, number> {
     fixedParams.forEach((p, i) => {
       assert(observations.has(p), `Missing observation '${p.name}'`)
@@ -126,14 +143,19 @@ export function wasmOptimizer(
       cache.setParam(idx, checkNotNull(observations.get(p)))
     })
 
+    const options = {
+      ...defaultOptions,
+      ...(opts ?? {}),
+    }
+
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
     ;(exports as any)["optimize"](
       freeParams.length,
       iterations,
-      0.001, // learning rate
-      1e-6, // epsilon
-      0.99, // decay
+      options.learningRate,
+      options.epsilon,
+      options.gamma,
     )
     return new Map(params.map((p, i) => [p, cache.getParam(i)]))
   }
