@@ -4,6 +4,7 @@ import { h, render as preactRender } from "preact"
 import "./style.css"
 
 import * as k from "../core/api"
+import { defaultOptions } from "../core/wasmopt"
 import { Canvas } from "./canvas"
 import { checkNotNull } from "../core/assert"
 import { createPanel } from "./panel"
@@ -21,9 +22,6 @@ function App() {
 }
 
 preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
-
-const bgColor = "black"
-const fgColor = "white"
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
 
@@ -47,21 +45,30 @@ const nodeRects: Map<string, Rect> = new Map()
 let draggedNodeId = ""
 let draggingPointerId: number | undefined
 
+const config = {
+  bgColor: "#000",
+  fgColor: "#fff",
+  optimization: {
+    ...defaultOptions,
+  },
+  iterations: 10000,
+}
+
+const panel = createPanel(config)
+
 function renderNode(id: string, x: number, y: number) {
   const size = 8
   const r = rect(x - size / 2, y - size / 2, size, size)
   nodeRects.set(id, r)
 
   ctx.save()
-  ctx.fillStyle = draggedNodeId === id ? "#7DEF4A" : fgColor
+  ctx.fillStyle = draggedNodeId === id ? "#7DEF4A" : config.fgColor
   ctx.fillRect(r.x, r.y, r.w, r.h)
   ctx.restore()
 }
 
-const panel = createPanel()
-
 function render() {
-  t.optimize(10000)
+  t.optimize(config.iterations, config.optimization)
 
   panel.render(t.computeLoss(), t.variables, k.evaluator(t.params))
 
@@ -70,10 +77,10 @@ function render() {
   dragHandlers.clear()
   nodeRects.clear()
 
-  ctx.fillStyle = bgColor
+  ctx.fillStyle = config.bgColor
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   ctx.lineWidth = 1
-  ctx.strokeStyle = fgColor
+  ctx.strokeStyle = config.fgColor
   t.segments().forEach((s) => {
     ctx.beginPath()
     ctx.moveTo(s.x1, s.y1)

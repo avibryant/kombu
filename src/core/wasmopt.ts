@@ -13,7 +13,7 @@ export interface RMSPropOptions {
   gamma: number
 }
 
-export const defaultOptions = {
+export const defaultOptions: RMSPropOptions = {
   method: "RMSProp",
   learningRate: 0.001,
   epsilon: 1e-6,
