@@ -3,10 +3,16 @@ import * as e from "./eval"
 import * as g from "./grad"
 import { collectParams } from "./params"
 import * as t from "./types"
-import { wasmOptimizer } from "./wasmopt"
+import { wasmOptimizer, OptimizeOptions } from "./wasmopt"
+
+export type { OptimizeOptions, RMSPropOptions } from "./wasmopt"
 
 export interface Optimizer {
-  optimize(iterations: number, observations?: Map<t.Param, number>): e.Evaluator
+  optimize(
+    iterations: number,
+    observations?: Map<t.Param, number>,
+    opts?: OptimizeOptions,
+  ): e.Evaluator
 }
 
 function standardNormalRandom() {
@@ -30,7 +36,11 @@ export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
   let optimizeImpl = wasmOptimizer(loss, gradient, freeParams)
 
   return {
-    optimize(iterations: number, observations = new Map<t.Param, number>()) {
+    optimize(
+      iterations: number,
+      observations = new Map<t.Param, number>(),
+      opts?: OptimizeOptions,
+    ) {
       // Ensure that we have a value for all fixed parameters.
       collectParams(loss)
         .filter((p) => p.fixed)
@@ -41,7 +51,7 @@ export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
           )
         })
 
-      const newParams = optimizeImpl(iterations, observations)
+      const newParams = optimizeImpl(iterations, observations, opts)
       newParams.forEach((v, p) => {
         freeParams.set(p, v)
       })
@@ -55,6 +65,7 @@ export function optimize(
   init: Map<t.Param, number>,
   iterations: number,
   observations?: Map<t.Param, number>,
+  opts?: OptimizeOptions,
 ): e.Evaluator {
-  return optimizer(loss, init).optimize(iterations, observations)
+  return optimizer(loss, init).optimize(iterations, observations, opts)
 }

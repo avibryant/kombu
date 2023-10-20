@@ -98,7 +98,7 @@ export class Turtle {
     this.ats.push({ from: this.position, to: pt })
   }
 
-  optimize(iterations: number): void {
+  optimize(iterations: number, opts?: k.OptimizeOptions): void {
     // Reuse the optimizer as long as the loss function is unchanged.
     const loss = this.computeLoss()
     if (!this.optimizer || loss !== this.prevLoss) {
@@ -110,7 +110,7 @@ export class Turtle {
       observations.set(this.pinState.pin.x, this.pinState.observation.x)
       observations.set(this.pinState.pin.y, this.pinState.observation.y)
     }
-    const ev = this.optimizer.optimize(iterations, observations)
+    const ev = this.optimizer.optimize(iterations, observations, opts)
     this.params = ev.params
   }
 
