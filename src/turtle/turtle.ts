@@ -7,6 +7,12 @@ export interface VecSegment {
   to: v.Vec2
 }
 
+interface Distance {
+  from: v.Vec2
+  to: v.Vec2
+  len: u.Variable
+}
+
 export function reverse(seg: VecSegment): VecSegment {
   return {
     from: seg.to,
@@ -28,9 +34,18 @@ function atLoss(from: v.Vec2, to: v.Vec2): k.Num {
   return k.div(k.add(k.mul(dx, dx), k.mul(dy, dy)), 2)
 }
 
+function distLoss(from: v.Vec2, to: v.Vec2, len: u.Variable): k.Num {
+  const dx = k.sub(from.x, to.x)
+  const dy = k.sub(from.y, to.y)
+  const dist = k.sqrt(k.add(k.mul(dx, dx), k.mul(dy, dy)))
+  const delta = k.sub(dist, len.value)
+  return k.mul(delta, delta)
+}
+
 export class Turtle {
   vecSegments: VecSegment[]
   ats: VecSegment[]
+  dists: Distance[]
   variables: u.Variable[]
   position: v.Vec2
   direction: v.Vec2
@@ -52,6 +67,7 @@ export class Turtle {
     this.params = new Map()
     this.variables = []
     this.ats = []
+    this.dists = []
   }
 
   pin(segmentIdx: number, which: "from" | "to", x: number, y: number) {
@@ -121,7 +137,8 @@ export class Turtle {
     if (this.pinState) {
       pinLosses.push(atLoss(this.pinState.pin, this.pinState.point))
     }
-    const allLosses = varLosses.concat(atLosses).concat(pinLosses)
+    const distLosses = this.dists.map((d) => distLoss(d.from, d.to, d.len))
+    const allLosses = [...varLosses, ...atLosses, ...pinLosses, ...distLosses]
     return allLosses.reduce(k.add)
   }
 
@@ -150,6 +167,14 @@ export class Turtle {
     const sin = av.value
     const cos = k.neg(k.sqrt(k.sub(k.one, k.mul(sin, sin))))
     return { x: cos, y: sin }
+  }
+
+  dCounter = 0
+
+  dist(v1: v.Vec2, v2: v.Vec2, len: number) {
+    const lv = u.lengthVariable(`d${this.dCounter++}`, k.num(len))
+    this.variables.push(lv)
+    this.dists.push({ from: v1, to: v2, len: lv })
   }
 
   /*
