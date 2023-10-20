@@ -1,4 +1,4 @@
-import { Pane } from "tweakpane"
+import { Pane, TabPageApi } from "tweakpane"
 
 import * as k from "../core/api"
 import { checkNotNull } from "../core/assert"
@@ -19,12 +19,12 @@ interface DisplayState {
   data: VarInfo
 }
 
-function subpanel(pane: Pane, label: string, data: VarInfo) {
-  const sep = pane.addBlade({ view: "separator" })
+function subpanel(parent: Pane | TabPageApi, label: string, data: VarInfo) {
+  const sep = parent.addBlade({ view: "separator" })
   const bindings = [
-    pane.addBinding(data, "value", { label }),
-    pane.addBinding(data, "loss"),
-    pane.addBinding(data, "loss", {
+    parent.addBinding(data, "value", { label }),
+    parent.addBinding(data, "loss"),
+    parent.addBinding(data, "loss", {
       readonly: true,
       view: "graph",
       min: 0,
@@ -44,20 +44,23 @@ function subpanel(pane: Pane, label: string, data: VarInfo) {
   }
 }
 
-function lossSubpanel(pane: Pane, data: { loss: number }) {
-  const binding = pane.addBinding(data, "loss", {
+function lossSubpanel(parent: Pane | TabPageApi, data: { loss: number }) {
+  return parent.addBinding(data, "loss", {
     label: "total loss",
     readonly: true,
     view: "graph",
     min: 0,
     max: data.loss,
   })
-  return binding
 }
 
 export function createPanel() {
   let displayState: Map<v.Variable, DisplayState> = new Map()
   let pane = new Pane()
+  const tab = pane.addTab({
+    pages: [{ title: "Parameters" }, { title: "Config" }],
+  })
+  const paramsPage = tab.pages[0]
 
   let lossp: ReturnType<Pane["addBinding"]>
   const lossData = { loss: 0 }
@@ -69,7 +72,7 @@ export function createPanel() {
       if (lossp) {
         lossp.refresh()
       } else {
-        lossp = lossSubpanel(pane, lossData)
+        lossp = lossSubpanel(paramsPage, lossData)
       }
 
       // Create or update subpanels for each variable.
@@ -90,7 +93,7 @@ export function createPanel() {
           value: ev.evaluate(v.value),
           loss: ev.evaluate(v.loss),
         }
-        const ui = subpanel(pane, v.param.name, data)
+        const ui = subpanel(paramsPage, v.param.name, data)
         displayState.set(v, {
           ui,
           data,
