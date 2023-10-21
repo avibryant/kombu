@@ -1,7 +1,17 @@
-#!/usr/bin/env sh
+#!/bin/sh
 . "$(dirname -- "$0")/_/husky.sh"
+
+
+set -e
+
+err_handler () {
+    [ $? -eq 0 ] && exit
+    npm run format:fix
+    echo "👉 Fixed formatting — push again!"
+    exit 1
+}
 
 echo Running pre-push checks...
 npm run check
-trap 'npm run format:fix; echo "👉 Fixed formatting — push again!"; exit 1' ERR
+trap err_handler EXIT
 npm run format:check
