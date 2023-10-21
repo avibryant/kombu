@@ -106,7 +106,7 @@ function saveConfig(config: Config) {
 }
 
 function maybeRestoreConfig(mutableConfig: Config) {
-  const saved = JSON.parse(localStorage.getItem("optimization") ?? "")
+  const saved = JSON.parse(localStorage.getItem("optimization") ?? "{}")
   if (saved) {
     safelyAssign(mutableConfig.optimization, "method", saved.method)
     safelyAssign(mutableConfig.optimization, "learningRate", saved.learningRate)
