@@ -31,17 +31,14 @@ function constraintLoss(c: Constraint): k.Num {
   const dy = k.sub(c.from.y, c.to.y)
   const dist = k.sqrt(k.add(k.mul(dx, dx), k.mul(dy, dy)))
   const diff = k.sub(dist, c.length)
-  return k.div(k.mul(diff, diff), 2)
-}
-
-function mouseLoss(a: v.Vec2, b: v.Vec2): k.Num {
-  return constraintLoss({from: a, to: b, length: k.zero})
+  return k.div(k.mul(diff, diff), k.mul(2, k.mul(c.sd, c.sd)))
 }
 
 interface Constraint {
   from: v.Vec2
   to: v.Vec2
   length: k.Num
+  sd: number
 }
 
 export class Turtle {
@@ -52,7 +49,6 @@ export class Turtle {
   direction: v.Vec2
   mouse: {x: k.Param, y: k.Param}
   mousePos: {x: number, y: number}
-  mousePt?: v.Vec2
   params: Map<k.Param, number>
   penDown: boolean
 
@@ -74,8 +70,8 @@ export class Turtle {
     this.penDown = true
   }
 
-  constrain(from: v.Vec2, to: v.Vec2, length: k.AnyNum) {
-    this.constraints.push({ from, to, length: k.num(length) })
+  constrain(from: v.Vec2, to: v.Vec2, length: k.AnyNum, sd: number = 1) {
+    this.constraints.push({ from, to, length: k.num(length), sd })
   }
 
   mouseMove(x: number, y: number) {
@@ -128,12 +124,7 @@ export class Turtle {
   computeLoss(): k.Num {
     const varLosses = this.variables.map((vr) => vr.loss)
     const conLosses = this.constraints.map((c) => constraintLoss(c))
-    const mouseLosses: k.Num[] = []
-    if(this.mousePt) {
-      mouseLosses.push(mouseLoss(this.mouse, this.mousePt))
-    }
-
-    const allLosses = varLosses.concat(conLosses).concat(mouseLosses)
+    const allLosses = varLosses.concat(conLosses)
     return allLosses.reduce(k.add)
   }
 
@@ -164,8 +155,8 @@ export class Turtle {
     return { x: cos, y: sin }
   }
 
-  atMouse() {
-    this.mousePt = this.position
+  atMouse(sd: number = 100) {
+    this.constrain(this.mouse, this.position, 0, sd)
   }
 
   /*

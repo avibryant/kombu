@@ -17,5 +17,5 @@ export function draw(t: Turtle) {
   t.right(degrees(90))
   t.forward(side)
 
-  t.constrain(o, d, 100)
+  //t.constrain(o, d, 100)
 }
