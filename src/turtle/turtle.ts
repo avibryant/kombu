@@ -22,15 +22,29 @@ export interface Segment {
   y2: number
 }
 
-function atLoss(from: v.Vec2, to: v.Vec2): k.Num {
+function pinLoss(from: v.Vec2, to: v.Vec2): k.Num {
   const dx = k.sub(from.x, to.x)
   const dy = k.sub(from.y, to.y)
   return k.div(k.add(k.mul(dx, dx), k.mul(dy, dy)), 2)
 }
 
+function constraintLoss(c: Constraint): k.Num {
+  const dx = k.sub(c.from.x, c.to.x)
+  const dy = k.sub(c.from.y, c.to.y)
+  const dist = k.sqrt(k.add(k.mul(dx, dx), k.mul(dy, dy)))
+  const diff = k.sub(dist, c.length)
+  return k.div(k.mul(diff, diff), 2)
+}
+
+interface Constraint {
+  from: v.Vec2
+  to: v.Vec2
+  length: k.Num
+}
+
 export class Turtle {
   vecSegments: VecSegment[]
-  ats: VecSegment[]
+  constraints: Constraint[]
   variables: u.Variable[]
   position: v.Vec2
   direction: v.Vec2
@@ -51,9 +65,13 @@ export class Turtle {
     this.direction = v.degrees(k.zero)
     this.params = new Map()
     this.variables = []
-    this.ats = []
+    this.constraints = []
   }
 
+  constrain(from: v.Vec2, to: v.Vec2, length: k.AnyNum) {
+    this.constraints.push({from, to, length: k.num(length)})
+  }
+  
   pin(segmentIdx: number, which: "from" | "to", x: number, y: number) {
     if (!this.pinState) {
       const pinX = k.observation("pinX")
@@ -95,7 +113,7 @@ export class Turtle {
   }
 
   at(pt: v.Vec2) {
-    this.ats.push({ from: this.position, to: pt })
+    this.constrain(this.position, pt, 0)
   }
 
   optimize(iterations: number, opts?: k.OptimizeOptions): void {
@@ -116,10 +134,10 @@ export class Turtle {
 
   computeLoss(): k.Num {
     const varLosses = this.variables.map((vr) => vr.loss)
-    const atLosses = this.ats.map((vs) => atLoss(vs.from, vs.to))
+    const atLosses = this.constraints.map((c) => constraintLoss(c))
     let pinLosses: k.Num[] = []
     if (this.pinState) {
-      pinLosses.push(atLoss(this.pinState.pin, this.pinState.point))
+      pinLosses.push(pinLoss(this.pinState.pin, this.pinState.point))
     }
     const allLosses = varLosses.concat(atLosses).concat(pinLosses)
     return allLosses.reduce(k.add)
