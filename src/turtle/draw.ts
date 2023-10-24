@@ -11,6 +11,7 @@ export function draw(t: Turtle) {
 
   const d = t.position
 
+  t.atMouse()
   t.right(degrees(90))
   t.forward(side)
   t.right(degrees(90))

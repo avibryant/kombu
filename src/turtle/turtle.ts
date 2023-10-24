@@ -5,12 +5,16 @@ import * as u from "./variable"
 export interface VecSegment {
   from: v.Vec2
   to: v.Vec2
+  length: k.Num
+  visible: boolean
 }
 
 export function reverse(seg: VecSegment): VecSegment {
   return {
     from: seg.to,
     to: seg.from,
+    length: seg.length,
+    visible: seg.visible
   }
 }
 
@@ -22,18 +26,16 @@ export interface Segment {
   y2: number
 }
 
-function pinLoss(from: v.Vec2, to: v.Vec2): k.Num {
-  const dx = k.sub(from.x, to.x)
-  const dy = k.sub(from.y, to.y)
-  return k.div(k.add(k.mul(dx, dx), k.mul(dy, dy)), 2)
-}
-
 function constraintLoss(c: Constraint): k.Num {
   const dx = k.sub(c.from.x, c.to.x)
   const dy = k.sub(c.from.y, c.to.y)
   const dist = k.sqrt(k.add(k.mul(dx, dx), k.mul(dy, dy)))
   const diff = k.sub(dist, c.length)
   return k.div(k.mul(diff, diff), 2)
+}
+
+function mouseLoss(a: v.Vec2, b: v.Vec2): k.Num {
+  return constraintLoss({from: a, to: b, length: k.zero})
 }
 
 interface Constraint {
@@ -48,13 +50,11 @@ export class Turtle {
   variables: u.Variable[]
   position: v.Vec2
   direction: v.Vec2
+  mouse: {x: k.Param, y: k.Param}
+  mousePos: {x: number, y: number}
+  mousePt?: v.Vec2
   params: Map<k.Param, number>
-
-  pinState?: {
-    pin: { x: k.Param; y: k.Param }
-    point: v.Vec2
-    observation: { x: number; y: number }
-  }
+  penDown: boolean
 
   private prevLoss?: k.Num
   private optimizer?: k.Optimizer
@@ -66,38 +66,32 @@ export class Turtle {
     this.params = new Map()
     this.variables = []
     this.constraints = []
+    this.mouse = {
+      x: k.observation("mouseX"),
+      y: k.observation("mouseY")
+    }
+    this.mousePos = {x: 1, y: 1}
+    this.penDown = true
   }
 
   constrain(from: v.Vec2, to: v.Vec2, length: k.AnyNum) {
     this.constraints.push({ from, to, length: k.num(length) })
   }
 
-  pin(segmentIdx: number, which: "from" | "to", x: number, y: number) {
-    if (!this.pinState) {
-      const pinX = k.observation("pinX")
-      const pinY = k.observation("pinY")
-
-      const point = this.vecSegments[segmentIdx][which]
-
-      this.pinState = {
-        pin: { x: pinX, y: pinY },
-        point,
-        observation: { x, y },
-      }
-    }
-    this.pinState.observation = { x, y }
-  }
-
-  unpin() {
-    if (this.pinState) {
-      this.pinState = undefined
-    }
+  mouseMove(x: number, y: number) {
+    this.mousePos.x = x
+    this.mousePos.y = y
   }
 
   forward(s: k.AnyNum): VecSegment {
     const d = v.scale(this.direction, s)
     const to = v.add(this.position, d)
-    const seg = { from: this.position, to }
+    const seg = { 
+      from: this.position,
+      to,
+      length: k.num(s),
+      visible: this.penDown
+    }
     this.vecSegments.push(seg)
     this.position = to
 
@@ -124,22 +118,22 @@ export class Turtle {
       this.prevLoss = loss
     }
     const observations: Map<k.Param, number> = new Map()
-    if (this.pinState) {
-      observations.set(this.pinState.pin.x, this.pinState.observation.x)
-      observations.set(this.pinState.pin.y, this.pinState.observation.y)
-    }
+    observations.set(this.mouse.x, this.mousePos.x)
+    observations.set(this.mouse.y, this.mousePos.y)
+
     const ev = this.optimizer.optimize(iterations, observations, opts)
     this.params = ev.params
   }
 
   computeLoss(): k.Num {
     const varLosses = this.variables.map((vr) => vr.loss)
-    const atLosses = this.constraints.map((c) => constraintLoss(c))
-    let pinLosses: k.Num[] = []
-    if (this.pinState) {
-      pinLosses.push(pinLoss(this.pinState.pin, this.pinState.point))
+    const conLosses = this.constraints.map((c) => constraintLoss(c))
+    const mouseLosses: k.Num[] = []
+    if(this.mousePt) {
+      mouseLosses.push(mouseLoss(this.mouse, this.mousePt))
     }
-    const allLosses = varLosses.concat(atLosses).concat(pinLosses)
+
+    const allLosses = varLosses.concat(conLosses).concat(mouseLosses)
     return allLosses.reduce(k.add)
   }
 
@@ -168,6 +162,10 @@ export class Turtle {
     const sin = av.value
     const cos = k.neg(k.sqrt(k.sub(k.one, k.mul(sin, sin))))
     return { x: cos, y: sin }
+  }
+
+  atMouse() {
+    this.mousePt = this.position
   }
 
   /*
