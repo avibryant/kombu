@@ -14,7 +14,7 @@ export function reverse(seg: VecSegment): VecSegment {
     from: seg.to,
     to: seg.from,
     length: seg.length,
-    visible: seg.visible
+    visible: seg.visible,
   }
 }
 
@@ -47,8 +47,8 @@ export class Turtle {
   variables: u.Variable[]
   position: v.Vec2
   direction: v.Vec2
-  mouse: {x: k.Param, y: k.Param}
-  mousePos: {x: number, y: number}
+  mouse: { x: k.Param; y: k.Param }
+  mousePos: { x: number; y: number }
   params: Map<k.Param, number>
   penDown: boolean
 
@@ -64,9 +64,9 @@ export class Turtle {
     this.constraints = []
     this.mouse = {
       x: k.observation("mouseX"),
-      y: k.observation("mouseY")
+      y: k.observation("mouseY"),
     }
-    this.mousePos = {x: 1, y: 1}
+    this.mousePos = { x: 1, y: 1 }
     this.penDown = true
   }
 
@@ -82,11 +82,11 @@ export class Turtle {
   forward(s: k.AnyNum): VecSegment {
     const d = v.scale(this.direction, s)
     const to = v.add(this.position, d)
-    const seg = { 
+    const seg = {
       from: this.position,
       to,
       length: k.num(s),
-      visible: this.penDown
+      visible: this.penDown,
     }
     this.vecSegments.push(seg)
     this.position = to

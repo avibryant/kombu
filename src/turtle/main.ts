@@ -14,9 +14,7 @@ import { draw } from "./draw"
 const html = htm.bind(h)
 
 function App() {
-  return html`<${Canvas}
-    onPointerMove=${handlePointerMove}
-  />`
+  return html`<${Canvas} onPointerMove=${handlePointerMove} />`
 }
 
 preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
