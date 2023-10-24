@@ -10,6 +10,7 @@ import { checkNotNull } from "../core/assert"
 import { createPanel } from "./panel"
 import { Rect, rectContains, rect } from "./rect"
 import { Turtle } from "./turtle"
+import {draw} from './draw'
 
 const html = htm.bind(h)
 
@@ -26,14 +27,8 @@ preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
 
 const t = new Turtle()
-const o = t.position
+draw(t)
 
-t.forward(t.approxLength("A", 100))
-t.right(t.anyAngle("q"))
-t.forward(t.approxLength("B", 200))
-t.right(t.anyAngle("r"))
-t.forward(t.approxLength("C", 300))
-t.at(o)
 
 const ctx = canvas.getContext("2d")!
 
