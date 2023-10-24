@@ -69,9 +69,9 @@ export class Turtle {
   }
 
   constrain(from: v.Vec2, to: v.Vec2, length: k.AnyNum) {
-    this.constraints.push({from, to, length: k.num(length)})
+    this.constraints.push({ from, to, length: k.num(length) })
   }
-  
+
   pin(segmentIdx: number, which: "from" | "to", x: number, y: number) {
     if (!this.pinState) {
       const pinX = k.observation("pinX")

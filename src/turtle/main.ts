@@ -10,7 +10,7 @@ import { checkNotNull } from "../core/assert"
 import { createPanel } from "./panel"
 import { Rect, rectContains, rect } from "./rect"
 import { Turtle } from "./turtle"
-import {draw} from './draw'
+import { draw } from "./draw"
 
 const html = htm.bind(h)
 
@@ -28,7 +28,6 @@ const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
 
 const t = new Turtle()
 draw(t)
-
 
 const ctx = canvas.getContext("2d")!
 

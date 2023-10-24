@@ -1,21 +1,20 @@
-import {Turtle} from './turtle'
-import {degrees} from './vec2'
+import { Turtle } from "./turtle"
+import { degrees } from "./vec2"
 
 export function draw(t: Turtle) {
+  const side = t.approxLength("A", 100)
 
-    const side = t.approxLength("A", 100)
-    
-    const o = t.position
-    t.forward(side)
-    t.right(degrees(90))    
-    t.forward(side)
+  const o = t.position
+  t.forward(side)
+  t.right(degrees(90))
+  t.forward(side)
 
-    const d = t.position
+  const d = t.position
 
-    t.right(degrees(90))    
-    t.forward(side)
-    t.right(degrees(90))    
-    t.forward(side)
+  t.right(degrees(90))
+  t.forward(side)
+  t.right(degrees(90))
+  t.forward(side)
 
-    t.constrain(o, d, 100)
+  t.constrain(o, d, 100)
 }
