@@ -12,8 +12,8 @@ export function draw(t: Turtle) {
   t.penUp()
   t.forward(side)
   t.penDown()
-  
-   const d = t.position
+
+  const d = t.position
 
   t.atMouse(10)
   t.label(side)

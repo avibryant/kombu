@@ -160,28 +160,28 @@ export class Turtle {
 
   displaySegments(): Array<DisplaySegment> {
     const ev = k.evaluator(this.params)
-    return this.segments.filter((s) => s.visible).map((vs, i) => {
-      return {
-        id: i,
-        x1: ev.evaluate(vs.from.x),
-        y1: ev.evaluate(vs.from.y),
-        x2: ev.evaluate(vs.to.x),
-        y2: ev.evaluate(vs.to.y),
-      }
-    })
+    return this.segments
+      .filter((s) => s.visible)
+      .map((vs, i) => {
+        return {
+          id: i,
+          x1: ev.evaluate(vs.from.x),
+          y1: ev.evaluate(vs.from.y),
+          x2: ev.evaluate(vs.to.x),
+          y2: ev.evaluate(vs.to.y),
+        }
+      })
   }
-  
+
   displayLabels(): Array<DisplayLabel> {
     const ev = k.evaluator(this.params)
     return this.labels.map((l) => {
       const x = ev.evaluate(l.point.x)
       const y = ev.evaluate(l.point.y)
       let text = ""
-      if(l.type == "text")
-        text = l.value
-      else
-        text = Math.round(ev.evaluate(l.value)).toString()
-      return {x,y,text}
+      if (l.type == "text") text = l.value
+      else text = Math.round(ev.evaluate(l.value)).toString()
+      return { x, y, text }
     })
   }
 
@@ -204,17 +204,17 @@ export class Turtle {
   }
 
   label(value: k.Num | string) {
-    if(typeof(value) == "string") {
+    if (typeof value == "string") {
       this.labels.push({
         type: "text",
         point: this.position,
-        value
+        value,
       })
     } else {
       this.labels.push({
         type: "num",
         point: this.position,
-        value
+        value,
       })
     }
   }
