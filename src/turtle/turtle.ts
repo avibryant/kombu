@@ -2,14 +2,28 @@ import * as k from "../core/api"
 import * as v from "./vec2"
 import * as u from "./variable"
 
-export interface VecSegment {
+export interface TurtleSegment {
   from: v.Vec2
   to: v.Vec2
   length: k.Num
   visible: boolean
 }
 
-export function reverse(seg: VecSegment): VecSegment {
+type Label = NumLabel | TextLabel
+
+interface NumLabel {
+  type: "num"
+  point: v.Vec2
+  value: k.Num
+}
+
+interface TextLabel {
+  type: "text"
+  point: v.Vec2
+  value: string
+}
+
+export function reverse(seg: TurtleSegment): TurtleSegment {
   return {
     from: seg.to,
     to: seg.from,
@@ -18,12 +32,18 @@ export function reverse(seg: VecSegment): VecSegment {
   }
 }
 
-export interface Segment {
+export interface DisplaySegment {
   id: number
   x1: number
   y1: number
   x2: number
   y2: number
+}
+
+export interface DisplayLabel {
+  x: number
+  y: number
+  text: string
 }
 
 function constraintLoss(c: Constraint): k.Num {
@@ -42,21 +62,22 @@ interface Constraint {
 }
 
 export class Turtle {
-  vecSegments: VecSegment[]
+  segments: TurtleSegment[]
   constraints: Constraint[]
   variables: u.Variable[]
+  labels: Label[]
   position: v.Vec2
   direction: v.Vec2
   mouse: { x: k.Param; y: k.Param }
   mousePos: { x: number; y: number }
   params: Map<k.Param, number>
-  penDown: boolean
+  isPenDown: boolean
 
   private prevLoss?: k.Num
   private optimizer?: k.Optimizer
 
   constructor() {
-    this.vecSegments = []
+    this.segments = []
     this.position = v.origin
     this.direction = v.degrees(k.zero)
     this.params = new Map()
@@ -67,7 +88,16 @@ export class Turtle {
       y: k.observation("mouseY"),
     }
     this.mousePos = { x: 1, y: 1 }
-    this.penDown = true
+    this.isPenDown = true
+    this.labels = []
+  }
+
+  penDown() {
+    this.isPenDown = true
+  }
+
+  penUp() {
+    this.isPenDown = false
   }
 
   constrain(from: v.Vec2, to: v.Vec2, length: k.AnyNum, sd: number = 1) {
@@ -79,16 +109,16 @@ export class Turtle {
     this.mousePos.y = y
   }
 
-  forward(s: k.AnyNum): VecSegment {
+  forward(s: k.AnyNum): TurtleSegment {
     const d = v.scale(this.direction, s)
     const to = v.add(this.position, d)
     const seg = {
       from: this.position,
       to,
       length: k.num(s),
-      visible: this.penDown,
+      visible: this.isPenDown,
     }
-    this.vecSegments.push(seg)
+    this.segments.push(seg)
     this.position = to
 
     return seg
@@ -128,9 +158,9 @@ export class Turtle {
     return allLosses.reduce(k.add)
   }
 
-  segments(): Array<Segment> {
+  displaySegments(): Array<DisplaySegment> {
     const ev = k.evaluator(this.params)
-    return this.vecSegments.map((vs, i) => {
+    return this.segments.map((vs, i) => {
       return {
         id: i,
         x1: ev.evaluate(vs.from.x),
@@ -138,6 +168,20 @@ export class Turtle {
         x2: ev.evaluate(vs.to.x),
         y2: ev.evaluate(vs.to.y),
       }
+    })
+  }
+  
+  displayLabels(): Array<DisplayLabel> {
+    const ev = k.evaluator(this.params)
+    return this.labels.map((l) => {
+      const x = ev.evaluate(l.point.x)
+      const y = ev.evaluate(l.point.y)
+      let text = ""
+      if(l.type == "text")
+        text = l.value
+      else
+        text = Math.round(ev.evaluate(l.value)).toString()
+      return {x,y,text}
     })
   }
 
@@ -157,6 +201,22 @@ export class Turtle {
 
   atMouse(sd: number = 100) {
     this.constrain(this.mouse, this.position, 0, sd)
+  }
+
+  label(value: k.Num | string) {
+    if(typeof(value) == "string") {
+      this.labels.push({
+        type: "text",
+        point: this.position,
+        value
+      })
+    } else {
+      this.labels.push({
+        type: "num",
+        point: this.position,
+        value
+      })
+    }
   }
 
   /*

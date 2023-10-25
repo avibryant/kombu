@@ -46,11 +46,15 @@ function render() {
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   ctx.lineWidth = 1
   ctx.strokeStyle = config.fgColor
-  t.segments().forEach((s) => {
+  t.displaySegments().forEach((s) => {
     ctx.beginPath()
     ctx.moveTo(s.x1, s.y1)
     ctx.lineTo(s.x2, s.y2)
     ctx.stroke()
+  })
+
+  t.displayLabels().forEach((l) => {
+    ctx.strokeText(l.text, l.x + 5, l.y + 10)
   })
 
   requestAnimationFrame(render)
