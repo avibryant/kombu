@@ -9,8 +9,10 @@ export function draw(t: Turtle) {
   t.right(angle)
   t.forward(side)
   t.right(degrees(90))
+  t.penUp()
   t.forward(side)
-
+  t.penDown()
+  
    const d = t.position
 
   t.atMouse(10)

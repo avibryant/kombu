@@ -160,7 +160,7 @@ export class Turtle {
 
   displaySegments(): Array<DisplaySegment> {
     const ev = k.evaluator(this.params)
-    return this.segments.map((vs, i) => {
+    return this.segments.filter((s) => s.visible).map((vs, i) => {
       return {
         id: i,
         x1: ev.evaluate(vs.from.x),
