@@ -1,10 +1,10 @@
 import { Pane, TabPageApi } from "tweakpane"
 
 import * as k from "../core/api"
-import { checkNotNull } from "../core/assert"
+//import { checkNotNull } from "../core/assert"
 import { defaultOptions } from "../core/wasmopt"
 import {Model} from '../model/model'
-import * as v from "../model/variable"
+//import * as v from "../model/variable"
 
 interface Config {
   bgColor: string
@@ -13,6 +13,7 @@ interface Config {
   iterations: number
 }
 
+/*
 interface Subpanel {
   dispose: () => void
   refresh: () => void
@@ -27,6 +28,7 @@ interface DisplayState {
   ui: Subpanel
   data: VarInfo
 }
+*/
 
 function safelyAssign<T, K extends keyof T>(obj: T, key: K, val: any): void {
   // Only overwrite the field if the runtime types match.
@@ -34,7 +36,7 @@ function safelyAssign<T, K extends keyof T>(obj: T, key: K, val: any): void {
     obj[key] = val as T[K]
   }
 }
-
+/*
 function subpanel(parent: Pane | TabPageApi, label: string, data: VarInfo) {
   const sep = parent.addBlade({ view: "separator" })
   const bindings = [
@@ -69,7 +71,7 @@ function lossSubpanel(parent: Pane | TabPageApi, data: { loss: number }) {
     max: data.loss,
   })
 }
-
+*/
 function configSubpanel(parent: Pane | TabPageApi, mutableConfig: Config) {
   parent.addBinding(mutableConfig, "iterations", {
     format: (v) => v.toFixed(0),
@@ -118,12 +120,12 @@ function maybeRestoreConfig(mutableConfig: Config) {
 }
 
 export function createPanel(mutableConfig: Config) {
-  let displayState: Map<v.Variable, DisplayState> = new Map()
+//  let displayState: Map<v.Variable, DisplayState> = new Map()
   let pane = new Pane()
   const tab = pane.addTab({
     pages: [{ title: "Parameters" }, { title: "Config" }],
   })
-  const paramsPage = tab.pages[0]
+//  const paramsPage = tab.pages[0]
   const configPage = tab.pages[1]
 
   if (maybeRestoreConfig(mutableConfig)) {
@@ -133,11 +135,12 @@ export function createPanel(mutableConfig: Config) {
   tab.pages[1].addBlade({ view: "separator" })
   colorsSubpanel(tab.pages[1], mutableConfig)
 
-  let lossp: ReturnType<Pane["addBinding"]>
-  const lossData = { loss: 0 }
+//  let lossp: ReturnType<Pane["addBinding"]>
+//  const lossData = { loss: 0 }
 
   return {
-    render(model: Model) {
+    render(_: Model) {
+      /*
       // Lazily create the subpanel showing total loss.
       lossData.loss = ev.evaluate(totalLoss)
       if (lossp) {
@@ -176,6 +179,7 @@ export function createPanel(mutableConfig: Config) {
         data.loss = ev.evaluate(v.loss)
         ui.refresh()
       })
+      */
     },
   }
 }
