@@ -1,10 +1,21 @@
-import { turtle, forward } from "./turtle"
-import { Model } from "../model/model"
+import { turtle, forward, right } from "./turtle"
+import { Model, someLength, someAngle, constrain } from "../model/model"
+import {degrees} from "../model/angle"
 
-export function draw(model: Model) {
-  const t = turtle(model)
+export function draw(m: Model) {
+  const t = turtle(m)
 
-  forward(t, 100)
+  const side = someLength(m, "A")
+  const a = someAngle(m, "a")
+
+  const o = t.position
+  forward(t, side)
+  right(t, a)
+  forward(t, side)
+  right(t, a)
+  forward(t, side)
+  
+  constrain(m, o, t.position, 0, 1)
 }
 
 /*

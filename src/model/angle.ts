@@ -34,3 +34,8 @@ export function sub(a: Angle, b: Angle): Angle {
 export function vec(a: Angle): Point {
   return point(a.cos, a.sin)
 }
+
+export function fromSin(sin: k.Num): Angle {
+  const cos = k.neg(k.sqrt(k.sub(k.one, k.mul(sin, sin))))
+  return {cos, sin}
+}

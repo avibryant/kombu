@@ -11,7 +11,7 @@ export interface Constraint {
   loss: k.Num
 }
 
-export function constrain(
+export function constraint(
   a: Node,
   b: Node,
   dist: number,

@@ -1,10 +1,11 @@
 import * as k from "../core/api"
 
-import { Variable } from "./variable"
+import { Variable, lengthVariable, angleVariable } from "./variable"
 import { Node } from "./node"
-import { Constraint } from "./constraint"
+import { Constraint, constraint } from "./constraint"
 import { View } from "./view"
 import { Point } from "./point"
+import {Angle, fromSin} from './angle'
 
 export interface Model {
   variables: Variable[]
@@ -42,6 +43,23 @@ export function node(m: Model, pt: Point): Node {
   return n
 }
 
+export function someLength(m: Model, name: string, hint?: k.AnyNum): k.Num {
+  const variable = lengthVariable(name, hint ? k.num(hint) : undefined)
+  m.variables.push(variable)
+  return variable.value
+}
+
+export function someAngle(m: Model, name: string): Angle {
+  const variable = angleVariable(name)
+  m.variables.push(variable)
+  return fromSin(variable.value)
+}
+
+export function constrain(m: Model, a: Node, b: Node, distance: number, sd: number) {
+  const c = constraint(a, b, distance, sd)
+  m.constraints.push(c)
+}
+
 let oldLoss: k.Num = k.zero
 let optimizer: k.Optimizer | undefined = undefined
 
@@ -50,7 +68,7 @@ export function optimize(
   iterations: number,
   opts: k.OptimizeOptions,
 ): Model {
-  const loss = computeLoss(m)
+  const loss = totalLoss(m)
   if (!optimizer || loss !== oldLoss) {
     optimizer = k.optimizer(loss, m.ev.params)
     oldLoss = loss
@@ -61,6 +79,9 @@ export function optimize(
   newModel.ev = ev
   return newModel
 }
-function computeLoss(_: Model): k.Num {
-  return k.zero
+
+function totalLoss(m: Model): k.Num {
+  const varLoss = m.variables.map(v => v.loss)
+  const conLoss = m.constraints.map(v => v.loss)
+  return varLoss.concat(conLoss).reduce(k.add)
 }

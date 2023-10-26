@@ -4,9 +4,10 @@ import * as pt from "../model/point"
 import * as a from "../model/angle"
 import { Model, node } from "../model/model"
 import { segment } from "../model/view"
+import {Node} from '../model/node'
 
 export interface Turtle {
-  position: pt.Point
+  position: Node
   direction: a.Angle
   penDown: boolean
   model: Model
@@ -14,7 +15,7 @@ export interface Turtle {
 
 export function turtle(model: Model): Turtle {
   return {
-    position: pt.origin,
+    position: node(model, pt.origin),
     direction: a.degrees(0),
     penDown: true,
     model,
@@ -23,8 +24,8 @@ export function turtle(model: Model): Turtle {
 
 export function forward(t: Turtle, dist: k.AnyNum) {
   const v = pt.scale(a.vec(t.direction), dist)
-  const to = pt.add(t.position, v)
-  const view = segment(node(t.model, t.position), node(t.model, to), t.penDown)
+  const to = node(t.model, pt.add(t.position.point, v))
+  const view = segment(t.position, to, t.penDown)
   t.model.views.push(view)
   t.position = to
 }
