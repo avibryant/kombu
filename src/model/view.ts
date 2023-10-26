@@ -10,6 +10,13 @@ export interface SegmentView {
     isVisible: boolean
 }
 
+export function segment(from: Node, to: Node, isVisible: boolean): SegmentView {
+    return {
+        type: "segment",
+        from, to, isVisible
+    }
+}
+
 export function renderView(view: View, ev: Evaluator, ctx: CanvasRenderingContext2D, strokeColor: string) {
     switch(view.type) {
         case "segment":

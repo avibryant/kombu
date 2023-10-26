@@ -4,6 +4,7 @@ import {Variable} from './variable'
 import {Node} from './node'
 import {Constraint} from './constraint'
 import {View} from './view'
+import {Point} from './point'
 
 export interface Model {
     variables: Variable[]
@@ -31,6 +32,14 @@ export function cloneModel(m: Model): Model {
         views: m.views.slice(),
         ev: k.evaluator(m.ev.params)
     }
+}
+
+export function node(m: Model, pt: Point): Node {
+    const n: Node = {
+        point: pt
+    }
+    m.nodes.push(n)
+    return n
 }
 
 let oldLoss: k.Num = k.zero
