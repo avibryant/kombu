@@ -1,5 +1,5 @@
-import {Point} from './point'
+import { Point } from "./point"
 
 export interface Node {
-    point: Point    
+  point: Point
 }

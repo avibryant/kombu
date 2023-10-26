@@ -8,8 +8,8 @@ import { Canvas } from "./canvas"
 import { checkNotNull } from "../core/assert"
 import { createPanel } from "./panel"
 import { draw } from "../turtle/draw"
-import {Model, emptyModel, optimize} from '../model/model'
-import {renderView} from '../model/view'
+import { Model, emptyModel, optimize } from "../model/model"
+import { renderView } from "../model/view"
 
 const html = htm.bind(h)
 
@@ -52,7 +52,6 @@ function render() {
   requestAnimationFrame(render)
 }
 
-function handlePointerMove(_: PointerEvent) {
-}
+function handlePointerMove(_: PointerEvent) {}
 
 render()

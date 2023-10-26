@@ -46,10 +46,7 @@ export function normalize(v: Point): Point {
 export function distance(a: Point, b: Point) {
   const dx = k.sub(a.x, b.x)
   const dy = k.sub(a.y, b.y)
-  return k.sqrt(
-    k.add(
-      k.mul(dx, dx),
-      k.mul(dy, dy)))
+  return k.sqrt(k.add(k.mul(dx, dx), k.mul(dy, dy)))
 }
 
 export const origin = point(200, 200)

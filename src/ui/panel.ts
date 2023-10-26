@@ -3,7 +3,7 @@ import { Pane, TabPageApi } from "tweakpane"
 import * as k from "../core/api"
 //import { checkNotNull } from "../core/assert"
 import { defaultOptions } from "../core/wasmopt"
-import {Model} from '../model/model'
+import { Model } from "../model/model"
 //import * as v from "../model/variable"
 
 interface Config {
@@ -120,12 +120,12 @@ function maybeRestoreConfig(mutableConfig: Config) {
 }
 
 export function createPanel(mutableConfig: Config) {
-//  let displayState: Map<v.Variable, DisplayState> = new Map()
+  //  let displayState: Map<v.Variable, DisplayState> = new Map()
   let pane = new Pane()
   const tab = pane.addTab({
     pages: [{ title: "Parameters" }, { title: "Config" }],
   })
-//  const paramsPage = tab.pages[0]
+  //  const paramsPage = tab.pages[0]
   const configPage = tab.pages[1]
 
   if (maybeRestoreConfig(mutableConfig)) {
@@ -135,8 +135,8 @@ export function createPanel(mutableConfig: Config) {
   tab.pages[1].addBlade({ view: "separator" })
   colorsSubpanel(tab.pages[1], mutableConfig)
 
-//  let lossp: ReturnType<Pane["addBinding"]>
-//  const lossData = { loss: 0 }
+  //  let lossp: ReturnType<Pane["addBinding"]>
+  //  const lossData = { loss: 0 }
 
   return {
     render(_: Model) {

@@ -1,11 +1,10 @@
-
 import * as k from "../core/api"
 
-import {Point, point} from './point'
+import { Point, point } from "./point"
 
 export interface Angle {
-    cos: k.Num
-    sin: k.Num
+  cos: k.Num
+  sin: k.Num
 }
 
 const deg2rad = Math.PI / 180
@@ -30,7 +29,7 @@ export function sub(a: Angle, b: Angle): Angle {
   const cos = k.add(k.mul(a.cos, b.cos), k.mul(a.sin, b.sin))
   const sin = k.sub(k.mul(a.sin, b.cos), k.mul(a.cos, b.sin))
   return { cos, sin }
-} 
+}
 
 export function vec(a: Angle): Point {
   return point(a.cos, a.sin)

@@ -1,13 +1,13 @@
 import { turtle, forward } from "./turtle"
-import {Model} from '../model/model'
+import { Model } from "../model/model"
 
 export function draw(model: Model) {
   const t = turtle(model)
-  
+
   forward(t, 100)
 }
 
-  /*
+/*
   const side = t.approxLength("A", 100)
   const angle = t.anyAngle("spin")
   const o = t.position
