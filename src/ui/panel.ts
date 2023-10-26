@@ -3,7 +3,8 @@ import { Pane, TabPageApi } from "tweakpane"
 import * as k from "../core/api"
 import { checkNotNull } from "../core/assert"
 import { defaultOptions } from "../core/wasmopt"
-import * as v from "./variable"
+import {Model} from '../model/model'
+import * as v from "../model/variable"
 
 interface Config {
   bgColor: string
@@ -136,7 +137,7 @@ export function createPanel(mutableConfig: Config) {
   const lossData = { loss: 0 }
 
   return {
-    render(totalLoss: k.Num, varList: v.Variable[], ev: k.Evaluator) {
+    render(model: Model) {
       // Lazily create the subpanel showing total loss.
       lossData.loss = ev.evaluate(totalLoss)
       if (lossp) {
