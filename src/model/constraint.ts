@@ -1,7 +1,7 @@
 import * as k from "../core/api"
 
 import {distance} from './point'
-import {Node} from './model'
+import {Node} from './node'
 
 export interface Constraint {
     a: Node

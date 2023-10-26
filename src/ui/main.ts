@@ -40,19 +40,19 @@ const panel = createPanel(config)
 function render() {
   model = optimize(model, config.iterations, config.optimization)
 
-  //panel.render(model)
+  panel.render(model)
 
   ctx.fillStyle = config.bgColor
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 
   model.views.forEach((v) => {
-    renderView(v, ctx, config.fgColor)
+    renderView(v, model.ev, ctx, config.fgColor)
   })
 
   requestAnimationFrame(render)
 }
 
-function handlePointerMove(e: PointerEvent) {
+function handlePointerMove(_: PointerEvent) {
 }
 
 render()

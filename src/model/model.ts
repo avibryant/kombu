@@ -48,7 +48,7 @@ export function optimize(m: Model, iterations: number, opts: k.OptimizeOptions):
     newModel.ev = ev
     return newModel
 }
-
-function computeLoss(m: Model): k.Num {
+;
+function computeLoss(_: Model): k.Num {
     return k.zero
 }
