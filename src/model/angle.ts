@@ -37,5 +37,5 @@ export function vec(a: Angle): Point {
 
 export function fromSin(sin: k.Num): Angle {
   const cos = k.neg(k.sqrt(k.sub(k.one, k.mul(sin, sin))))
-  return {cos, sin}
+  return { cos, sin }
 }

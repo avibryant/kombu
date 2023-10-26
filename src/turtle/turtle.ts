@@ -4,7 +4,7 @@ import * as pt from "../model/point"
 import * as a from "../model/angle"
 import { Model, node } from "../model/model"
 import { segment } from "../model/view"
-import {Node} from '../model/node'
+import { Node } from "../model/node"
 
 export interface Turtle {
   position: Node

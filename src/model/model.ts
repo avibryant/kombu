@@ -5,7 +5,7 @@ import { Node } from "./node"
 import { Constraint, constraint } from "./constraint"
 import { View } from "./view"
 import { Point } from "./point"
-import {Angle, fromSin} from './angle'
+import { Angle, fromSin } from "./angle"
 
 export interface Model {
   variables: Variable[]
@@ -55,7 +55,13 @@ export function someAngle(m: Model, name: string): Angle {
   return fromSin(variable.value)
 }
 
-export function constrain(m: Model, a: Node, b: Node, distance: number, sd: number) {
+export function constrain(
+  m: Model,
+  a: Node,
+  b: Node,
+  distance: number,
+  sd: number,
+) {
   const c = constraint(a, b, distance, sd)
   m.constraints.push(c)
 }
@@ -81,7 +87,7 @@ export function optimize(
 }
 
 function totalLoss(m: Model): k.Num {
-  const varLoss = m.variables.map(v => v.loss)
-  const conLoss = m.constraints.map(v => v.loss)
+  const varLoss = m.variables.map((v) => v.loss)
+  const conLoss = m.constraints.map((v) => v.loss)
   return varLoss.concat(conLoss).reduce(k.add)
 }
