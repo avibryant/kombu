@@ -1,7 +1,7 @@
 import * as k from "../core/api"
 
 import {Variable} from './variable'
-import {Point} from './point'
+import {Node} from './node'
 import {Constraint} from './constraint'
 import {View} from './view'
 
@@ -10,11 +10,7 @@ export interface Model {
     constraints: Constraint[]
     nodes: Node[]
     views: View[]
-    params: Map<k.Param, number>
-}
-
-export interface Node {
-    point: Point    
+    ev: k.Evaluator
 }
 
 export function emptyModel() {
@@ -23,10 +19,36 @@ export function emptyModel() {
         constraints: [],
         nodes: [],
         views: [],
-        params: new Map()
+        ev: k.evaluator(new Map())
     }
 }
 
-export function optimize(m: Model, iterations: number, opt: k.OptimizeOptions): Model {
+export function cloneModel(m: Model): Model {
+    return {
+        variables: m.variables.slice(),
+        constraints: m.constraints.slice(),
+        nodes: m.nodes.slice(),
+        views: m.views.slice(),
+        ev: k.evaluator(m.ev.params)
+    }
+}
 
+let oldLoss: k.Num = k.zero
+let optimizer: k.Optimizer | undefined = undefined
+
+export function optimize(m: Model, iterations: number, opts: k.OptimizeOptions): Model {
+    const loss = computeLoss(m)
+    if(!optimizer || loss !== oldLoss) {
+        optimizer = k.optimizer(loss, m.ev.params)
+        oldLoss = loss
+    }
+
+    const ev = optimizer.optimize(iterations, new Map(), opts)
+    const newModel = cloneModel(m)
+    newModel.ev = ev
+    return newModel
+}
+
+function computeLoss(m: Model): k.Num {
+    return k.zero
 }
