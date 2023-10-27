@@ -86,7 +86,7 @@ export function optimize(
   return newModel
 }
 
-function totalLoss(m: Model): k.Num {
+export function totalLoss(m: Model): k.Num {
   const varLoss = m.variables.map((v) => v.loss)
   const conLoss = m.constraints.map((v) => v.loss)
   return varLoss.concat(conLoss).reduce(k.add)
