@@ -2,7 +2,7 @@ import * as k from "../core/api"
 
 import * as pt from "../model/point"
 import * as a from "../model/angle"
-import { Model, node } from "../model/model"
+import { Model, node, constrain } from "../model/model"
 import { segment } from "../model/view"
 import { Node } from "../model/node"
 
@@ -36,4 +36,16 @@ export function left(t: Turtle, angle: a.Angle) {
 
 export function right(t: Turtle, angle: a.Angle) {
   t.direction = a.add(t.direction, angle)
+}
+
+export function penUp(t: Turtle) {
+  t.penDown = false
+}
+
+export function penDown(t: Turtle) {
+  t.penDown = true
+}
+
+export function at(t: Turtle, node: Node) {
+  constrain(t.model, t.position, node, 0, 1)
 }

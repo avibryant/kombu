@@ -1,4 +1,4 @@
-import { turtle, forward, right } from "./turtle"
+import { turtle, forward, right, at} from "./turtle"
 import { Model, someLength, someAngle, constrain } from "../model/model"
 
 export function draw(m: Model) {
@@ -8,35 +8,17 @@ export function draw(m: Model) {
   const a = someAngle(m, "a")
 
   const o = t.position
+
   forward(t, side)
+
+  const q = t.position
+
   right(t, a)
   forward(t, side)
   right(t, a)
   forward(t, side)
 
-  constrain(m, o, t.position, 0, 1)
+  at(t, o)
+
+  constrain(m, o, q, 100, 10, {up: "s", down: "a"})
 }
-
-/*
-  const side = t.approxLength("A", 100)
-  const angle = t.anyAngle("spin")
-  const o = t.position
-  t.right(angle)
-//  t.right(angle)
-  t.forward(side)
-  t.right(degrees(90))
-  t.penUp()
-  t.forward(side)
-  t.penDown()
-
-  const d = t.position
-
-  t.atMouse(0.1)
-  t.label(side)
-  t.right(degrees(90))
-  t.forward(side)
-  t.right(degrees(90))
-  t.forward(side)
-
-  t.constrain(o, d, 100)
-  */

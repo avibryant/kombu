@@ -2,7 +2,7 @@ import * as k from "../core/api"
 
 import { Variable, lengthVariable, angleVariable } from "./variable"
 import { Node } from "./node"
-import { Constraint, constraint } from "./constraint"
+import { Constraint, constraint, increase, decrease } from "./constraint"
 import { View } from "./view"
 import { Point } from "./point"
 import { Angle, fromSin } from "./angle"
@@ -61,8 +61,9 @@ export function constrain(
   b: Node,
   distance: number,
   sd: number,
+  keys?: {up: string, down: string}
 ) {
-  const c = constraint(a, b, distance, sd)
+  const c = constraint(a, b, distance, sd, keys)
   m.constraints.push(c)
 }
 
@@ -90,4 +91,13 @@ export function totalLoss(m: Model): k.Num {
   const varLoss = m.variables.map((v) => v.loss)
   const conLoss = m.constraints.map((v) => v.loss)
   return varLoss.concat(conLoss).reduce(k.add)
+}
+
+export function keyDown(m: Model, key: string) {
+  m.constraints.forEach(c => {
+    if(c.keys && c.keys.up == key)
+      increase(c)
+    else if(c.keys && c.keys.down == key)
+      decrease(c)
+  })
 }

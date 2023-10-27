@@ -9,8 +9,9 @@ import { checkNotNull } from "../core/assert"
 import { defaultOptions } from "../core/wasmopt"
 import { createPanel } from "./panel"
 import { draw } from "../turtle/draw"
-import { Model, emptyModel, optimize } from "../model/model"
+import { Model, emptyModel, optimize, keyDown } from "../model/model"
 import { renderView } from "../model/view"
+
 
 const html = htm.bind(h)
 
@@ -59,5 +60,11 @@ function render() {
 
   requestAnimationFrame(render)
 }
+
+function handleKeyDown(e: KeyboardEvent) {
+  keyDown(model, e.key)
+}
+
+addEventListener("keydown",  handleKeyDown);
 
 render()
