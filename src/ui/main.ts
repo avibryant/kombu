@@ -3,9 +3,10 @@ import { h, render as preactRender } from "preact"
 
 import "./style.css"
 
-import { defaultOptions } from "../core/wasmopt"
 import { Canvas } from "./canvas"
+import * as r from "./render"
 import { checkNotNull } from "../core/assert"
+import { defaultOptions } from "../core/wasmopt"
 import { createPanel } from "./panel"
 import { draw } from "../turtle/draw"
 import { Model, emptyModel, optimize } from "../model/model"
@@ -14,7 +15,11 @@ import { renderView } from "../model/view"
 const html = htm.bind(h)
 
 function App() {
-  return html`<${Canvas} onPointerMove=${handlePointerMove} />`
+  return html`<${Canvas}
+    onPointerDown=${r.handlePointerDown}
+    onPointerMove=${r.handlePointerMove}
+    onPointerUp=${r.handlePointerUp}
+  />`
 }
 
 preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
@@ -48,10 +53,11 @@ function render() {
   model.views.forEach((v) => {
     renderView(v, model.ev, ctx, config.fgColor)
   })
+  model.nodes.forEach((n) => {
+    r.renderNode(n, model.ev, ctx, config)
+  })
 
   requestAnimationFrame(render)
 }
-
-function handlePointerMove(_: PointerEvent) {}
 
 render()
