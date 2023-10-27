@@ -23,5 +23,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/core", "src/ui/main.ts", "src/model/variable.ts"]
+  "include": ["src/**/*.ts"]
 }
