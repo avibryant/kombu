@@ -20,7 +20,6 @@ interface Subpanel {
 
 interface VarInfo {
   value: number
-  loss: number
 }
 
 interface DisplayState {
@@ -38,15 +37,7 @@ function safelyAssign<T, K extends keyof T>(obj: T, key: K, val: any): void {
 function subpanel(parent: Pane | TabPageApi, label: string, data: VarInfo) {
   const sep = parent.addBlade({ view: "separator" })
   const bindings = [
-    parent.addBinding(data, "value", { label }),
-    parent.addBinding(data, "loss"),
-    parent.addBinding(data, "loss", {
-      readonly: true,
-      view: "graph",
-      min: 0,
-      max: 1,
-      label: "",
-    }),
+    parent.addBinding(data, "value", { label })
   ]
 
   return {
@@ -163,7 +154,6 @@ export function createPanel(mutableConfig: Config) {
       added.forEach((v) => {
         const data = {
           value: ev.evaluate(v.value),
-          loss: ev.evaluate(v.loss),
         }
         const ui = subpanel(paramsPage, v.param.name, data)
         displayState.set(v, {
@@ -174,7 +164,6 @@ export function createPanel(mutableConfig: Config) {
 
       displayState.forEach(({ ui, data }, v) => {
         data.value = ev.evaluate(v.value)
-        data.loss = ev.evaluate(v.loss)
         ui.refresh()
       })
     },
