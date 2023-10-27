@@ -12,7 +12,6 @@ import { draw } from "../turtle/draw"
 import { Model, emptyModel, optimize, keyDown } from "../model/model"
 import { renderView } from "../model/view"
 
-
 const html = htm.bind(h)
 
 function App() {
@@ -65,6 +64,6 @@ function handleKeyDown(e: KeyboardEvent) {
   keyDown(model, e.key)
 }
 
-addEventListener("keydown",  handleKeyDown);
+addEventListener("keydown", handleKeyDown)
 
 render()

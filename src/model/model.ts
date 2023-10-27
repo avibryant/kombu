@@ -61,7 +61,7 @@ export function constrain(
   b: Node,
   distance: number,
   sd: number,
-  keys?: {up: string, down: string}
+  keys?: { up: string; down: string },
 ) {
   const c = constraint(a, b, distance, sd, keys)
   m.constraints.push(c)
@@ -94,10 +94,8 @@ export function totalLoss(m: Model): k.Num {
 }
 
 export function keyDown(m: Model, key: string) {
-  m.constraints.forEach(c => {
-    if(c.keys && c.keys.up == key)
-      increase(c)
-    else if(c.keys && c.keys.down == key)
-      decrease(c)
+  m.constraints.forEach((c) => {
+    if (c.keys && c.keys.up == key) increase(c)
+    else if (c.keys && c.keys.down == key) decrease(c)
   })
 }

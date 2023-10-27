@@ -9,7 +9,7 @@ export interface Constraint {
   distance: number
   sd: number
   loss: k.Num
-  keys?: {up: string, down: string}
+  keys?: { up: string; down: string }
 }
 
 export function constraint(
@@ -17,7 +17,7 @@ export function constraint(
   b: Node,
   dist: number,
   sd: number,
-  keys?: {up: string, down: string}
+  keys?: { up: string; down: string },
 ): Constraint {
   const loss = computeLoss(a, b, dist, sd)
   return { a, b, distance: dist, sd, loss, keys }

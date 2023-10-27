@@ -1,4 +1,4 @@
-import { turtle, forward, right, at} from "./turtle"
+import { turtle, forward, right, at } from "./turtle"
 import { Model, someLength, someAngle, constrain } from "../model/model"
 
 export function draw(m: Model) {
@@ -20,5 +20,5 @@ export function draw(m: Model) {
 
   at(t, o)
 
-  constrain(m, o, q, 100, 10, {up: "s", down: "a"})
+  constrain(m, o, q, 100, 10, { up: "s", down: "a" })
 }
