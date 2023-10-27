@@ -36,9 +36,7 @@ function safelyAssign<T, K extends keyof T>(obj: T, key: K, val: any): void {
 
 function subpanel(parent: Pane | TabPageApi, label: string, data: VarInfo) {
   const sep = parent.addBlade({ view: "separator" })
-  const bindings = [
-    parent.addBinding(data, "value", { label })
-  ]
+  const bindings = [parent.addBinding(data, "value", { label })]
 
   return {
     refresh() {

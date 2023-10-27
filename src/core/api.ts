@@ -25,7 +25,4 @@ export {
   exp,
   log,
 } from "./num"
-export {
-  logistic,
-  softplus,
-} from "./stats"
+export { logistic, softplus } from "./stats"

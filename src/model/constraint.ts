@@ -1,6 +1,6 @@
 import * as k from "../core/api"
 
-import {Distribution, logP, normal} from './distribution'
+import { Distribution, logP, normal } from "./distribution"
 import { distance } from "./point"
 import { Node } from "./node"
 

@@ -11,7 +11,7 @@ export function draw(m: Model) {
   forward(t, side)
 
   constrain(m, o, t.position, 100, 10)
-  
+
   right(t, a)
   forward(t, side)
   right(t, a)

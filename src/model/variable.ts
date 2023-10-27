@@ -24,7 +24,7 @@ export function lengthVariable(name: string, hint?: k.Num): LengthVariable {
     type: "length",
     param,
     value,
-    hint
+    hint,
   }
 }
 
@@ -36,6 +36,6 @@ export function angleVariable(name: string): AngleVariable {
   return {
     type: "angle",
     param,
-    value
+    value,
   }
 }
