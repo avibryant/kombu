@@ -3,9 +3,10 @@ import { h, render as preactRender } from "preact"
 
 import "./style.css"
 
-import { defaultOptions } from "../core/wasmopt"
 import { Canvas } from "./canvas"
+import { renderNode } from "./render"
 import { checkNotNull } from "../core/assert"
+import { defaultOptions } from "../core/wasmopt"
 import { createPanel } from "./panel"
 import { draw } from "../turtle/draw"
 import { Model, emptyModel, optimize } from "../model/model"
@@ -47,6 +48,9 @@ function render() {
 
   model.views.forEach((v) => {
     renderView(v, model.ev, ctx, config.fgColor)
+  })
+  model.nodes.forEach((n) => {
+    renderNode(n, model.ev, ctx, config)
   })
 
   requestAnimationFrame(render)
