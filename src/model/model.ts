@@ -47,7 +47,7 @@ export function node(m: Model, pt: Point): Node {
 export function someLength(m: Model, name: string, hint: k.AnyNum = 100): k.Num {
   const variable = lengthVariable(name)
   m.variables.push(variable)
-  m.constraints.push(constraint(logNormal(hint, 10), variable.value))
+  m.constraints.push(constraint(logNormal(k.log(hint), 10), variable.value))
   return variable.value
 }
 
