@@ -3,8 +3,8 @@ import * as k from "../core/api"
 export interface Variable {
   type: "length" | "angle"
   param: k.Param
-  value: k.Num
-  hint?: k.Num
+  value: k.Num,
+  logJ: k.Num
 }
 
 interface AngleVariable extends Variable {
@@ -15,27 +15,28 @@ interface LengthVariable extends Variable {
   type: "length"
 }
 
-const sigma = 1
-export function lengthVariable(name: string, hint?: k.Num): LengthVariable {
-  let h = hint ? hint : k.num(100)
+export function lengthVariable(name: string): LengthVariable {
   const param = k.param(name)
-  const value = k.exp(k.add(k.mul(param, sigma), k.log(h)))
+  const value = k.exp(param)
   return {
     type: "length",
     param,
     value,
-    hint,
+    logJ: param
   }
 }
 
 export function angleVariable(name: string): AngleVariable {
   const param = k.param(name)
   //range: (-1,1)
-  const value = k.sub(k.mul(2, k.logistic(param)), 1)
+
+  const logisticParam = k.logistic(param)
+  const value = k.sub(k.mul(2, logisticParam), 1)
 
   return {
     type: "angle",
     param,
     value,
+    logJ: k.add(k.log(2), k.add(k.log(logisticParam), k.sub(1, logisticParam)))
   }
 }

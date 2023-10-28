@@ -1,5 +1,5 @@
-import { turtle, forward, right } from "./turtle"
-import { Model, someLength, someAngle, constrain } from "../model/model"
+import { turtle, forward, right, at } from "./turtle"
+import { Model, someLength, someAngle } from "../model/model"
 
 export function draw(m: Model) {
   const t = turtle(m)
@@ -10,12 +10,10 @@ export function draw(m: Model) {
   const o = t.position
   forward(t, side)
 
-  constrain(m, o, t.position, 100, 10)
-
   right(t, a)
   forward(t, side)
   right(t, a)
   forward(t, side)
 
-  constrain(m, o, t.position, 0, 1)
+  at(t, o)
 }

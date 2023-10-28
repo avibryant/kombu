@@ -1,23 +1,17 @@
 import * as k from "../core/api"
 
-import { Distribution, logP, normal } from "./distribution"
-import { distance } from "./point"
-import { Node } from "./node"
+import { Distribution, logP } from "./distribution"
 
 export interface Constraint {
   dist: Distribution
   value: k.Num
-  loss: k.Num
+  logP: k.Num
 }
 
 export function constraint(
-  a: Node,
-  b: Node,
-  d: number,
-  sd: number,
+  dist: Distribution, 
+  value: k.Num
 ): Constraint {
-  const value = distance(a.point, b.point)
-  const norm = normal(d, sd)
-  const loss = logP(norm, value)
-  return { dist: norm, value, loss }
+  const lp = logP(dist, value)
+  return {dist, value, logP: lp}
 }
