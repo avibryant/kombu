@@ -5,8 +5,8 @@ import { Node } from "./node"
 import { Constraint, constraint } from "./constraint"
 import { View } from "./view"
 import { Point } from "./point"
-import { Angle, fromSin } from "./angle"
-import {Distribution, logNormal} from './distribution'
+import { Angle, fromCos } from "./angle"
+import {Distribution, logNormal, normal} from './distribution'
 
 export interface Model {
   variables: Variable[]
@@ -54,7 +54,8 @@ export function someLength(m: Model, name: string, hint: k.AnyNum = 100): k.Num 
 export function someAngle(m: Model, name: string): Angle {
   const variable = angleVariable(name)
   m.variables.push(variable)
-  return fromSin(variable.value)
+  m.constraints.push(constraint(normal(0, 2), variable.value))
+  return fromCos(variable.value)
 }
 
 export function constrain(

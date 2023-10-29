@@ -37,6 +37,10 @@ export function angleVariable(name: string): AngleVariable {
     type: "angle",
     param,
     value,
-    logJ: k.add(k.log(2), k.add(k.log(logisticParam), k.sub(1, logisticParam)))
+    logJ: k.mul(k.add(
+      k.log(2),
+      k.add(
+        k.log(logisticParam), 
+        k.log(k.sub(1, logisticParam)))), -1)
   }
 }
