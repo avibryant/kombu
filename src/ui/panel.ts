@@ -150,9 +150,10 @@ export function createPanel(mutableConfig: Config) {
       })
 
       added.forEach((v) => {
-        const data = {
-          value: ev.evaluate(v.value),
-        }
+        let value = ev.evaluate(v.value)
+        if(v.type == "angle")
+          value = Math.acos(value) * 180 / Math.PI 
+        const data = {value}
         const ui = subpanel(paramsPage, v.param.name, data)
         displayState.set(v, {
           ui,
@@ -161,7 +162,10 @@ export function createPanel(mutableConfig: Config) {
       })
 
       displayState.forEach(({ ui, data }, v) => {
-        data.value = ev.evaluate(v.value)
+        let value = ev.evaluate(v.value)
+        if(v.type == "angle")
+          value = Math.acos(value) * 180 / Math.PI 
+        data.value = value
         ui.refresh()
       })
     },
