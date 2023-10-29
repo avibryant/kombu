@@ -1,4 +1,4 @@
-import { turtle, forward, right, slightRight, slightLeft, sharpRight, sharpLeft, at, midpoint, jump, parallel } from "./turtle"
+import { turtle, forward, right, turn, slightRight, slightLeft, sharpRight, sharpLeft, at, midpoint, jump, parallel } from "./turtle"
 import { Model} from "../model/model"
 
 export function draw(m: Model) {
@@ -6,11 +6,13 @@ export function draw(m: Model) {
 
   const o = t.position
 
-  forward(t)
-  sharpRight(t)
-  forward(t, 100)
-  slightRight(t)
-  forward(t)
+  const l = forward(t)
+  const a = slightRight(t)
+
+  for(let i = 0; i < 4; i++) {
+    forward(t, l.length)
+    turn(t, a.by)
+  }
   
   at(t, o)
 }

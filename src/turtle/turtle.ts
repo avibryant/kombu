@@ -40,7 +40,7 @@ export function turtle(model: Model): Turtle {
   }
 }
 
-export function forward(t: Turtle, length: k.AnyNum = someLength(t.model)): Side {
+export function forward(t: Turtle, length: k.AnyNum = someLength(t.model, 1000)): Side {
   const v = pt.scale(a.vec(t.direction), length)
   const from = t.position
   const to = node(t.model, pt.add(t.position.point, v))
@@ -89,7 +89,7 @@ export function sharpLeft(t: Turtle): Turn {
   return left(t, someAngle(t.model, "sharp"))
 }
 
-function turn(t: Turtle, angle: a.Angle): Turn {
+export function turn(t: Turtle, angle: a.Angle): Turn {
   const from = t.direction
   let to = a.add(from, angle)
   t.direction = to
