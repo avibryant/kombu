@@ -92,3 +92,23 @@ export function midpoint(side: Side): Node {
   const v = pt.scale(a.vec(side.direction), k.div(side.length, 2))
   return node(side.model, pt.add(side.from.point, v))
 }
+
+export function parallel(t: Turtle, side: Side) {
+  t.direction = side.direction
+}
+
+export function turnAround(t: Turtle) {
+  left(t, a.degrees(180))
+}
+
+export function left90(t: Turtle) {
+  return left(t, a.degrees(90))
+}
+
+export function right90(t: Turtle) {
+  return right(t, a.degrees(90))
+}
+
+export function jump(t: Turtle, n: Node) {
+  t.position = n
+}
