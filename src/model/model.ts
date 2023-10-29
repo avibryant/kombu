@@ -44,15 +44,27 @@ export function node(m: Model, pt: Point): Node {
   return n
 }
 
-export function someLength(m: Model, name: string, hint: k.AnyNum = 100): k.Num {
-  const variable = lengthVariable(name)
+export function someLength(m: Model, hint: k.AnyNum = 100): k.Num {
+  const variable = lengthVariable()
   m.variables.push(variable)
   m.constraints.push(constraint(logNormal(k.log(hint), 10), variable.value))
   return variable.value
 }
 
-export function someAngle(m: Model, name: string): Angle {
-  const variable = angleVariable(name)
+export type AngleType = "slight" | "sharp" | "any"
+
+export function someAngle(m: Model, type: AngleType = "any"): Angle {
+  let min = -1
+  let max = 1
+  switch(type) {
+    case "slight":
+      min = 0
+      break
+    case "sharp":
+      max = 0
+      break
+  }
+  const variable = angleVariable(min, max)
   m.variables.push(variable)
   m.constraints.push(constraint(normal(0, 2), variable.value))
   return fromCos(variable.value)

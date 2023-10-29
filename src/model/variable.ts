@@ -15,8 +15,8 @@ interface LengthVariable extends Variable {
   type: "length"
 }
 
-export function lengthVariable(name: string): LengthVariable {
-  const param = k.param(name)
+export function lengthVariable(): LengthVariable {
+  const param = k.param("p")
   const value = k.exp(param)
   return {
     type: "length",
@@ -26,19 +26,17 @@ export function lengthVariable(name: string): LengthVariable {
   }
 }
 
-export function angleVariable(name: string): AngleVariable {
-  const param = k.param(name)
-  //range: (-1,1)
-
+export function angleVariable(min: number = -1, max: number = 1): AngleVariable {
+  const param = k.param("p")
   const logisticParam = k.logistic(param)
-  const value = k.sub(k.mul(2, logisticParam), 1)
+  const value = k.add(k.mul(max - min, logisticParam), min)
 
   return {
     type: "angle",
     param,
     value,
     logJ: k.mul(k.add(
-      k.log(2),
+      k.log(max - min),
       k.add(
         k.log(logisticParam), 
         k.log(k.sub(1, logisticParam)))), -1)

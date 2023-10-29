@@ -2,7 +2,7 @@ import * as k from "../core/api"
 
 import * as pt from "../model/point"
 import * as a from "../model/angle"
-import { Model, node, constrain} from "../model/model"
+import { Model, node, constrain, someAngle, someLength} from "../model/model"
 import { segment } from "../model/view"
 import { Node } from "../model/node"
 import {normal} from "../model/distribution"
@@ -24,7 +24,6 @@ export interface Side {
 }
 
 export interface Turn {
-  direction: "left" | "right"
   from: a.Angle
   to: a.Angle
   by: a.Angle
@@ -41,7 +40,7 @@ export function turtle(model: Model): Turtle {
   }
 }
 
-export function forward(t: Turtle, length: k.AnyNum): Side {
+export function forward(t: Turtle, length: k.AnyNum = someLength(t.model)): Side {
   const v = pt.scale(a.vec(t.direction), length)
   const from = t.position
   const to = node(t.model, pt.add(t.position.point, v))
@@ -58,23 +57,43 @@ export function forward(t: Turtle, length: k.AnyNum): Side {
 }
 
 
-export function left(t: Turtle, angle: a.Angle): Turn {
-  return turn(t, angle, "left")
+export function right(t: Turtle, angle: a.Angle = someAngle(t.model)): Turn {
+  return turn(t, a.sub(a.degrees(0), angle))
 }
 
-export function right(t: Turtle, angle: a.Angle): Turn {
-  return turn(t, angle, "right")
+export function left(t: Turtle, angle: a.Angle = someAngle(t.model)): Turn {
+  return turn(t, angle)
 }
 
-function turn(t: Turtle, angle: a.Angle, direction: "left" | "right"): Turn {
+export function hardRight(t: Turtle): Turn {
+  return right(t, a.degrees(90))
+}
+
+export function hardLeft(t: Turtle): Turn {
+  return left(t, a.degrees(90))
+}
+
+export function slightRight(t: Turtle): Turn {
+  return right(t, someAngle(t.model, "slight"))
+}
+
+export function sharpRight(t: Turtle): Turn {
+  return right(t, someAngle(t.model, "sharp"))
+}
+
+export function slightLeft(t: Turtle): Turn {
+  return left(t, someAngle(t.model, "slight"))
+}
+
+export function sharpLeft(t: Turtle): Turn {
+  return left(t, someAngle(t.model, "sharp"))
+}
+
+function turn(t: Turtle, angle: a.Angle): Turn {
   const from = t.direction
-  let to = a.sub(from, angle)
-  if(direction == "right")
-    to = a.add(from, angle)
-
+  let to = a.add(from, angle)
   t.direction = to
   return {
-    direction,
     from,
     to,
     by: angle,
@@ -99,14 +118,6 @@ export function parallel(t: Turtle, side: Side) {
 
 export function turnAround(t: Turtle) {
   left(t, a.degrees(180))
-}
-
-export function left90(t: Turtle) {
-  return left(t, a.degrees(90))
-}
-
-export function right90(t: Turtle) {
-  return right(t, a.degrees(90))
 }
 
 export function jump(t: Turtle, n: Node) {
