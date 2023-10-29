@@ -28,6 +28,7 @@ preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
 
 let model: Model = emptyModel()
+//window.model = model
 draw(model)
 console.log(tex(totalLoss(model)))
 
