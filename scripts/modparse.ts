@@ -190,11 +190,15 @@ function rewriteCodeEntry(
     // The cases here are ordered by ascending opcode.
     // See https://pengowray.github.io/wasm-ops/ for an overview.
     switch (bc) {
+      case instr.unreachable:
+        break
       case instr.block:
       case instr.loop:
       case instr.if:
         skipBlocktype()
         ++nesting
+        break
+      case instr.else:
         break
       case instr.end:
         assert(--nesting >= 0, `bad nesting @${pos - 1}`)
@@ -228,6 +232,7 @@ function rewriteCodeEntry(
         parseU32()
         break
       case instr.drop:
+      case instr.select:
         break
       case instr.local.get:
       case instr.local.set:
@@ -251,14 +256,21 @@ function rewriteCodeEntry(
       case instr.f64.const:
         pos += 8
         break
+      // @ts-ignore Fallthrough case in switch
+      case 0xfc:
+        if (bytes[pos] === 0x0b /* memory.fill */) {
+          pos++
+          parseU32()
+          break
+        }
+      // fall through
       default:
         if (instr.i32.load <= bc && bc <= instr.i64.store32) {
           parseU32()
           parseU32()
-        } else if (
-          (instr.memory.size <= bc && bc <= instr.memory.grow) ||
-          (instr.i32.eqz <= bc && bc <= instr.f64.reinterpret_i64)
-        ) {
+        } else if (instr.memory.size <= bc && bc <= instr.memory.grow) {
+          parseU32()
+        } else if (instr.i32.eqz <= bc && bc <= instr.f64.reinterpret_i64) {
           // do nothing
         } else {
           throw new Error(`unhandled bytecode 0x${bc.toString(16)} @${pos - 1}`)
