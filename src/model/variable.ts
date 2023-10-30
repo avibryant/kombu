@@ -3,7 +3,7 @@ import * as k from "../core/api"
 export interface Variable {
   type: "length" | "angle"
   param: k.Param
-  value: k.Num,
+  value: k.Num
   logJ: k.Num
 }
 
@@ -22,7 +22,7 @@ export function lengthVariable(name: string): LengthVariable {
     type: "length",
     param,
     value,
-    logJ: param
+    logJ: param,
   }
 }
 
@@ -37,10 +37,12 @@ export function angleVariable(name: string): AngleVariable {
     type: "angle",
     param,
     value,
-    logJ: k.mul(k.add(
-      k.log(2),
+    logJ: k.mul(
       k.add(
-        k.log(logisticParam), 
-        k.log(k.sub(1, logisticParam)))), -1)
+        k.log(2),
+        k.add(k.log(logisticParam), k.log(k.sub(1, logisticParam))),
+      ),
+      -1,
+    ),
   }
 }

@@ -2,11 +2,11 @@ import * as k from "../core/api"
 
 import * as pt from "../model/point"
 import * as a from "../model/angle"
-import { Model, node, constrain} from "../model/model"
+import { Model, node, constrain } from "../model/model"
 import { segment } from "../model/view"
 import { Node } from "../model/node"
-import {normal} from "../model/distribution"
-import {distance} from "../model/point"
+import { normal } from "../model/distribution"
+import { distance } from "../model/point"
 
 export interface Turtle {
   position: Node

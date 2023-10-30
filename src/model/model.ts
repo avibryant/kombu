@@ -6,7 +6,7 @@ import { Constraint, constraint } from "./constraint"
 import { View } from "./view"
 import { Point } from "./point"
 import { Angle, fromCos } from "./angle"
-import {Distribution, logNormal, normal} from './distribution'
+import { Distribution, logNormal, normal } from "./distribution"
 
 export interface Model {
   variables: Variable[]
@@ -44,7 +44,11 @@ export function node(m: Model, pt: Point): Node {
   return n
 }
 
-export function someLength(m: Model, name: string, hint: k.AnyNum = 100): k.Num {
+export function someLength(
+  m: Model,
+  name: string,
+  hint: k.AnyNum = 100,
+): k.Num {
   const variable = lengthVariable(name)
   m.variables.push(variable)
   m.constraints.push(constraint(logNormal(k.log(hint), 10), variable.value))
@@ -58,11 +62,7 @@ export function someAngle(m: Model, name: string): Angle {
   return fromCos(variable.value)
 }
 
-export function constrain(
-  m: Model,
-  dist: Distribution,
-  value: k.Num
-) {
+export function constrain(m: Model, dist: Distribution, value: k.Num) {
   const c = constraint(dist, value)
   m.constraints.push(c)
 }

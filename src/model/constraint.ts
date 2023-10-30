@@ -8,10 +8,7 @@ export interface Constraint {
   logP: k.Num
 }
 
-export function constraint(
-  dist: Distribution, 
-  value: k.Num
-): Constraint {
+export function constraint(dist: Distribution, value: k.Num): Constraint {
   const lp = logP(dist, value)
-  return {dist, value, logP: lp}
+  return { dist, value, logP: lp }
 }

@@ -11,7 +11,7 @@ import { createPanel } from "./panel"
 import { draw } from "../turtle/draw"
 import { Model, emptyModel, optimize, totalLoss } from "../model/model"
 import { renderView } from "../model/view"
-import {tex} from "../core/api"
+import { tex } from "../core/api"
 
 const html = htm.bind(h)
 
