@@ -754,3 +754,38 @@ class LBFGS
 	static sqr( x: f64 ): f64 { return x*x; }
 	static max3( x: f64, y: f64, z: f64 ): f64 { return x < y ? ( y < z ? z : y ) : ( x < z ? z : x ); }
 }
+
+export function optimize(
+  numFreeParams: u32,
+  iterations: u32,
+  learningRate: f64,
+  epsilon: f64,
+  gamma: f64,
+): void {
+  const x = newStaticArray<f64>(numFreeParams)
+  const g = newStaticArray<f64>(numFreeParams)
+
+  // Copy the params in.
+  for (let i = 0; i < numFreeParams; i++) {
+    x[i] = getParam(i)
+  }
+
+  let complete = false
+  const m = 5
+  const eps = 0.1
+  const lb = new LBFGS(x, m, eps)
+  while (!complete) {
+    //    df.update(x)
+    let i = 0
+    while (i < numFreeParams) {
+      g[i] = evaluateGradient(i) * -1
+      i += 1
+    }
+    complete = lb.apply(evaluateLoss() * -1, g)
+  }
+
+  // Copy the params back out again.
+  for (let i = 0; i < numFreeParams; i++) {
+    setParam(i, x[i])
+  }
+}
