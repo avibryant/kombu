@@ -1,5 +1,5 @@
 import fs from "node:fs"
-import { basename } from 'node:path'
+import { basename } from "node:path"
 
 import { assert } from "../src/core/assert"
 import { builtins } from "../src/core/wasm/builtins"
@@ -27,10 +27,12 @@ const sections = extractSections(buf, {
 })
 
 const { globalsec } = sections
-const toBase64 = (arr: Uint8Array) => Buffer.from(arr).toString('base64')
-assert(toBase64(globalsec.contents) === GLOBALSEC_CONTENTS,
+const toBase64 = (arr: Uint8Array) => Buffer.from(arr).toString("base64")
+assert(
+  toBase64(globalsec.contents) === GLOBALSEC_CONTENTS,
   `Oh no. Unexpected globalsec contents: "${toBase64(globalsec.contents)}"
-See ${basename(import.meta.url)} for more details.`)
+See ${basename(import.meta.url)} for more details.`,
+)
 
 let output = `function decodeBase64(str: string) {
   const bytes = atob(str)

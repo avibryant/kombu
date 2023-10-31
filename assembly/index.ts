@@ -78,7 +78,8 @@ Good defaults:
 //     i = i - 1
 //   }
 // }
-export { optimize } from './lbfgs'
+export { optimize } from "./lbfgs"
+
 
 @inline
 function getState(i: u32): f64 {

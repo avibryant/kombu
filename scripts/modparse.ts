@@ -51,10 +51,7 @@ interface ExtractOptions {
 }
 
 // Extracts the type, import, function, and code sections from a Wasm module.
-export function extractSections(
-  bytes: Uint8Array,
-  opts: ExtractOptions = {},
-) {
+export function extractSections(bytes: Uint8Array, opts: ExtractOptions = {}) {
   skipPreamble(bytes)
 
   const parseU32 = () => {
