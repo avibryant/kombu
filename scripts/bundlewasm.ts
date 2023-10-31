@@ -15,7 +15,7 @@ import { extractSections } from "./modparse"
 // AssemblyScript code and the globals have changed, you should:
 // 1. Make sure the code in instantiateModule() writes the globals correctly.
 // 2. Change the value of this constant to reflect the new expectation.
-const GLOBALSEC_CONTENTS = "fwFBAAt/AUEAC38AQQALfwBBAQt/AEECC38AQYwCCw=="
+const GLOBALSEC_CONTENTS = "fwFBAAt/AUEAC38AQQALfwBBAQt/AEECC38AQewCCw=="
 
 const inputPath = "../build/release.wasm"
 const inputUrl = new URL(inputPath, import.meta.url)
