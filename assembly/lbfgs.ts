@@ -181,19 +181,19 @@ class LBFGS
 	}
 
 
-	private static const gtol: f64 = 0.9;
+	private static gtol: f64 = 0.9;
 
-	private static const STPMIN: f64 = 1e-20;
-	private static const STPMAX: f64 = 1e20;
+	private static STPMIN: f64 = 1e-20;
+	private static STPMAX: f64 = 1e20;
 
-	private static const xtol: f64 = 1e-16;
-	private static const ftol: f64= 0.0001;
-	private static int maxfev= 20;
+	private static xtol: f64 = 1e-16;
+	private static ftol: f64= 0.0001;
+	private static maxfev: i32 = 20;
 
-	private static const p5: f64 = 0.5;
-	private static const p66: f64 = 0.66;
+	private static p5: f64 = 0.5;
+	private static p66: f64 = 0.66;
 
-	private static const xtrapf: f64 = 4;
+	private static xtrapf: f64 = 4;
 
 
 	private dg: f64;
@@ -228,6 +228,8 @@ class LBFGS
 
 	private void mcsrch (f: f64 , g: f64[])
 	{
+  	const { gtol, STPMIN, STPMAX, xtol, ftol, maxfev, p5, p66, xtrapf } = LBFGS;
+
 		int is0 = ispt + point * n;
 		if ( info != - 1 )
 		{
