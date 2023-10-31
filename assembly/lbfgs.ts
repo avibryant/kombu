@@ -41,7 +41,7 @@ class LBFGS
 	*       ||G|| < eps * max(1,||X||)
 	*/
 
-	public LBFGS(x: f64[], m: i32, eps: f64) {
+	public constructor(x: f64[], m: i32, eps: f64) {
 		this.x = x;
 		this.m = m;
 		this.n = x.length;
@@ -226,7 +226,7 @@ class LBFGS
 	private stx: f64;
 	private sty: f64;
 
-	private void mcsrch (f: f64 , g: f64[])
+	private mcsrch (f: f64 , g: f64[]): void
 	{
   	const { gtol, STPMIN, STPMAX, xtol, ftol, maxfev, p5, p66, xtrapf } = LBFGS;
 
@@ -451,7 +451,7 @@ class LBFGS
 	  *   as part of Minpack project. Argonne Nat'l Laboratory, June 1983.
 	  *   Robert Dodier: Java translation, August 1997.
 	  */
-	  private void mcstep (fx: f64[] , dx: f64[] , fy: f64[] , dy: f64[] , fp: f64 , dp: f64)
+	  private mcstep (fx: f64[] , dx: f64[] , fy: f64[] , dy: f64[] , fp: f64 , dp: f64): void
 	  {
 		let bound: boolean = false;
 		let gamma: f64; let p: f64; let q: f64; let r: f64; let s: f64; let sgnd: f64; let stpc: f64; let stpf: f64; let stpq: f64; let theta: f64;
@@ -655,7 +655,7 @@ class LBFGS
 	  * There could well be faster ways to carry out this operation; this
 	  * code is a straight translation from the Fortran.
 	  */
-	public static void daxpy ( n: i32 , da: f64 , dx: f64[] , ix0: i32, incx: i32 , dy: f64[] , iy0: i32, incy: i32 )
+	public static daxpy ( n: i32 , da: f64 , dx: f64[] , ix0: i32, incx: i32 , dy: f64[] , iy0: i32, incy: i32 ): void
 	{
 		let i: i32; let ix: i32; let iy: i32; let m: i32; let mp1: i32;
 
