@@ -1,7 +1,7 @@
 import { decodeULEB128, decodeSLEB128 } from "@thi.ng/leb128"
 import * as w from "@wasmgroundup/emit"
 
-import { assert, checkNotNull } from "../src/core/assert.ts"
+import { assert, checkNotNull } from "../src/core/assert"
 
 // For sanity checking, assume that the number of locals is never
 // above a certain number. (We can raise this if necessary.)
@@ -51,7 +51,10 @@ interface ExtractOptions {
 }
 
 // Extracts the type, import, function, and code sections from a Wasm module.
-export function extractSections(bytes: Uint8Array, opts: ExtractOptions = {}) {
+export function extractSections(
+  bytes: Uint8Array,
+  opts: ExtractOptions = {},
+) {
   skipPreamble(bytes)
 
   const parseU32 = () => {
@@ -71,7 +74,7 @@ export function extractSections(bytes: Uint8Array, opts: ExtractOptions = {}) {
     pos += size
   }
 
-  function parseSectionOpaque(expectedId: number) {
+  function parseVecSectionOpaque(expectedId: number) {
     const id = bytes[pos++]
     assert(
       id === expectedId,
@@ -91,10 +94,11 @@ export function extractSections(bytes: Uint8Array, opts: ExtractOptions = {}) {
     return { entryCount, contents }
   }
 
-  let typesec: VecContents | undefined = undefined
+  let typesec: VecContents | undefined
   let importsec: VecContents = { entryCount: 0, contents: new Uint8Array() }
-  let funcsec: VecContents | undefined = undefined
-  let codesec: VecContents | undefined = undefined
+  let funcsec: VecContents | undefined
+  let globalsec: VecContents | undefined
+  let codesec: VecContents | undefined
 
   let pos = 8
   let lastId = -1
@@ -109,13 +113,15 @@ export function extractSections(bytes: Uint8Array, opts: ExtractOptions = {}) {
     )
     lastId = id
     if (id === 1) {
-      typesec = parseSectionOpaque(id)
+      typesec = parseVecSectionOpaque(id)
     } else if (id === 2) {
-      importsec = parseSectionOpaque(id)
+      importsec = parseVecSectionOpaque(id)
     } else if (id === 3) {
-      funcsec = parseSectionOpaque(id)
+      funcsec = parseVecSectionOpaque(id)
+    } else if (id === 6) {
+      globalsec = parseVecSectionOpaque(id)
     } else if (id === 10) {
-      codesec = parseSectionOpaque(id)
+      codesec = parseVecSectionOpaque(id)
       // Rewrite the code section to account for the number of imports that
       // will exist in the final module.
       const srcImportCount = importsec?.entryCount ?? 0
@@ -133,6 +139,7 @@ export function extractSections(bytes: Uint8Array, opts: ExtractOptions = {}) {
     typesec: checkNotNull(typesec),
     importsec,
     funcsec: checkNotNull(funcsec),
+    globalsec: checkNotNull(globalsec),
     codesec: checkNotNull(codesec),
   }
 }
