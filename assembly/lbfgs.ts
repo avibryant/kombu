@@ -4,6 +4,8 @@
  * License: Apache license, version 2.
  */
 
+import { getParam, setParam, evaluateLoss, evaluateGradient, newStaticArray } from "./util"
+
 // prettier-ignore
 class LBFGS
 {
@@ -23,12 +25,12 @@ class LBFGS
 	private info: i32;
 	private stp: f64;
 	private nfev: i32;
-	private w: f64[];
+	private w: StaticArray<f64>;
 	private m: i32;
 	private n: i32;
 	private eps: f64;
-	private diag: f64[];
-	private x: f64[];
+	private diag: StaticArray<f64>;
+	private x: StaticArray<f64>;
 
 
 	/*  m The number of corrections used in the BFGS update.
@@ -41,18 +43,18 @@ class LBFGS
 	*       ||G|| < eps * max(1,||X||)
 	*/
 
-	public constructor(x: f64[], m: i32, eps: f64) {
+	public constructor(x: StaticArray<f64>, m: i32, eps: f64) {
 		this.x = x;
 		this.m = m;
 		this.n = x.length;
 		this.eps = eps;
 
-		w = new double[ n*(2*m+1)+2*m ];
+		w = newStaticArray<f64>(n*(2*m+1)+2*m);
 
 		iter = 0;
 		point= 0;
 
-		diag = new double[n];
+		diag = newStaticArray<f64>(n);
 		for (let i = 0 ; i < n ; i += 1 )
 			diag [i] = 1;
 
@@ -60,7 +62,7 @@ class LBFGS
 		iypt= ispt+n*m;
 	}
 
-	public apply (f: f64, g: f64[]): boolean
+	public apply (f: f64, g: StaticArray<f64>): boolean
 	{
 		let execute_entire_while_loop = false;
 		if ( iter == 0 )
@@ -213,23 +215,21 @@ class LBFGS
 	private infoc: i32;
 	private brackt: boolean = false;
 
-	private dgx: f64[] = new double[1];
-	private dgy: f64[] = new double[1];
-	private fx: f64[] = new double[1];
-	private fy: f64[] = new double[1];
+	private dgx: StaticArray<f64> = newStaticArray<f64>(1);
+	private dgy: StaticArray<f64> = newStaticArray<f64>(1);
+	private fx: StaticArray<f64> = newStaticArray<f64>(1);
+	private fy: StaticArray<f64> = newStaticArray<f64>(1);
 
-	private dgxm: f64[] = new double[1];
-	private dgym: f64[] = new double[1];
-	private fxm: f64[] = new double[1];
-	private fym: f64[] = new double[1];
+	private dgxm: StaticArray<f64> = newStaticArray<f64>(1);
+	private dgym: StaticArray<f64> = newStaticArray<f64>(1);
+	private fxm: StaticArray<f64> = newStaticArray<f64>(1);
+	private fym: StaticArray<f64> = newStaticArray<f64>(1);
 
 	private stx: f64;
 	private sty: f64;
 
-	private mcsrch (f: f64 , g: f64[]): void
+	private mcsrch (f: f64 , g: StaticArray<f64>): void
 	{
-  	const { gtol, STPMIN, STPMAX, xtol, ftol, maxfev, p5, p66, xtrapf } = LBFGS;
-
 		const is0: i32 = ispt + point * n;
 		if ( info != - 1 )
 		{
@@ -451,7 +451,7 @@ class LBFGS
 	  *   as part of Minpack project. Argonne Nat'l Laboratory, June 1983.
 	  *   Robert Dodier: Java translation, August 1997.
 	  */
-	  private mcstep (fx: f64[] , dx: f64[] , fy: f64[] , dy: f64[] , fp: f64 , dp: f64): void
+	  private mcstep (fx: StaticArray<f64> , dx: StaticArray<f64> , fy: StaticArray<f64> , dy: StaticArray<f64> , fp: f64 , dp: f64): void
 	  {
 		let bound: boolean = false;
 		let gamma: f64; let p: f64; let q: f64; let r: f64; let s: f64; let sgnd: f64; let stpc: f64; let stpf: f64; let stpq: f64; let theta: f64;
@@ -655,7 +655,7 @@ class LBFGS
 	  * There could well be faster ways to carry out this operation; this
 	  * code is a straight translation from the Fortran.
 	  */
-	public static daxpy ( n: i32 , da: f64 , dx: f64[] , ix0: i32, incx: i32 , dy: f64[] , iy0: i32, incy: i32 ): void
+	public static daxpy ( n: i32 , da: f64 , dx: StaticArray<f64> , ix0: i32, incx: i32 , dy: StaticArray<f64> , iy0: i32, incy: i32 ): void
 	{
 		let i: i32; let ix: i32; let iy: i32; let m: i32; let mp1: i32;
 
@@ -708,7 +708,7 @@ class LBFGS
 	  * There could well be faster ways to carry out this operation; this
 	  * code is a straight translation from the Fortran.
 	  */
-	public static ddot ( n: i32, dx: f64[], ix0: i32, incx: i32, dy: f64[], iy0: i32, incy: i32 ): f64
+	public static ddot ( n: i32, dx: StaticArray<f64>, ix0: i32, incx: i32, dy: StaticArray<f64>, iy0: i32, incy: i32 ): f64
 	{
 		let dtemp: f64;
 		let i: i32; let ix: i32; let iy: i32; let m: i32; let mp1: i32;
