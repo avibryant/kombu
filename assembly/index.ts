@@ -49,7 +49,6 @@ export { optimize } from "./lbfgs"
 //   return load<f64>(i * 16 + 8)
 // }
 
-
 // @inline
 // function setState(i: u32, val: f64): void {
 //   store<f64>(i * 16 + 8, val)

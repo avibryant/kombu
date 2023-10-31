@@ -793,6 +793,7 @@ export function optimize(
       i += 1
     }
     complete = lb.apply(evaluateLoss() * -1, g)
+    break; // Temp!
   }
 
   // Copy the params back out again.
