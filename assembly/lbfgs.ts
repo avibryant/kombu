@@ -3,14 +3,14 @@
  *
  * License: Apache license, version 2.
  */
-package com.stripe.rainier.optimizer;
 
+// prettier-ignore
 class LBFGS
 {
-	private double stp1;
-	private double ys;
-	private double yy;
-	private double yr;
+	private stp1: f64;
+	private ys: f64;
+	private yy: f64;
+	private yr: f64;
 	private int iter;
 	private int point;
 	private int ispt;
@@ -21,14 +21,14 @@ class LBFGS
 	private int inmc;
 
 	private int info;
-	private double stp;
+	private stp: f64;
 	private int nfev;
-	private double[] w;
+	private w: f64[];
 	private int m;
 	private int n;
-	private double eps;
-	private double[] diag;
-	private double[] x;
+	private eps: f64;
+	private diag: f64[];
+	private x: f64[];
 
 
 	/*  m The number of corrections used in the BFGS update.
@@ -41,7 +41,7 @@ class LBFGS
 	*       ||G|| < eps * max(1,||X||)
 	*/
 
-	public LBFGS(double[] x, int m, double eps) {
+	public LBFGS(x: f64[], int m, eps: f64) {
 		this.x = x;
 		this.m = m;
 		this.n = x.length;
@@ -60,7 +60,7 @@ class LBFGS
 		iypt= ispt+n*m;
 	}
 
-	public boolean apply (double f, double[] g)
+	public boolean apply (f: f64, g: f64[])
 	{
 		boolean execute_entire_while_loop = false;
 		if ( iter == 0 )
@@ -71,7 +71,7 @@ class LBFGS
 				w[ispt + i] = -g[i] * diag[i];
 			}
 
-			double gnorm = Math.sqrt ( ddot ( n , g , 0, 1 , g , 0, 1 ) );
+			const gnorm: f64 = Math.sqrt ( ddot ( n , g , 0, 1 , g , 0, 1 ) );
 			stp1= 1/gnorm;
 			execute_entire_while_loop = true;
 		}
@@ -113,7 +113,7 @@ class LBFGS
 					{
 						cp=cp-1;
 						if ( cp == - 1 ) cp = m - 1;
-						double sq = ddot ( n , w , ispt + cp * n , 1 , w , 0 , 1 );
+						const sq: f64 = ddot ( n , w , ispt + cp * n , 1 , w , 0 , 1 );
 						inmc=n+m+cp;
 						int iycn=iypt+cp*n;
 						w [inmc] = w [n + cp] * sq;
@@ -128,7 +128,7 @@ class LBFGS
 					for ( int i = 0 ; i < bound ; i += 1 )
 					{
 						yr = ddot ( n , w , iypt + cp * n , 1 , w , 0 , 1 );
-						double beta = w [ n + cp] * yr;
+						const beta: f64 = w [ n + cp] * yr;
 						inmc=n+m+cp;
 						beta = w [inmc] - beta;
 						int iscn=ispt+cp*n;
@@ -169,8 +169,8 @@ class LBFGS
 			point=point+1;
 			if ( point == m ) point = 0;
 
-			double gnorm = Math.sqrt ( ddot ( n , g , 0 , 1 , g , 0 , 1 ) );
-			double xnorm = Math.sqrt ( ddot ( n , x , 0 , 1 , x , 0 , 1 ) );
+			const gnorm: f64 = Math.sqrt ( ddot ( n , g , 0 , 1 , g , 0 , 1 ) );
+			const xnorm: f64 = Math.sqrt ( ddot ( n , x , 0 , 1 , x , 0 , 1 ) );
 			xnorm = Math.max ( 1.0 , xnorm );
 
 			if ( gnorm / xnorm <= eps )
@@ -181,52 +181,52 @@ class LBFGS
 	}
 
 
-	private static double gtol = 0.9;
+	private static const gtol: f64 = 0.9;
 
-	private static double STPMIN = 1e-20;
-	private static double STPMAX = 1e20;
+	private static const STPMIN: f64 = 1e-20;
+	private static const STPMAX: f64 = 1e20;
 
-	private static double xtol = 1e-16;
-	private static double ftol= 0.0001;
+	private static const xtol: f64 = 1e-16;
+	private static const ftol: f64= 0.0001;
 	private static int maxfev= 20;
 
-	private static double p5 = 0.5;
-	private static double p66 = 0.66;
+	private static const p5: f64 = 0.5;
+	private static const p66: f64 = 0.66;
 
-	private static double xtrapf = 4;
+	private static const xtrapf: f64 = 4;
 
 
-	private double dg;
-	private double dgm;
-	private double dginit;
-	private double dgtest;
-	private double finit;
-	private double ftest1;
-	private double fm;
-	private double stmin;
-	private double stmax;
-	private double width;
-	private double width1;
+	private dg: f64;
+	private dgm: f64;
+	private dginit: f64;
+	private dgtest: f64;
+	private finit: f64;
+	private ftest1: f64;
+	private fm: f64;
+	private stmin: f64;
+	private stmax: f64;
+	private width: f64;
+	private width1: f64;
 
 	private boolean stage1 = false;
 
 	private int infoc;
 	private boolean brackt;
 
-	private double dgx[] = new double[1];
-	private double dgy[] = new double[1];
-	private double fx[] = new double[1];
-	private double fy[] = new double[1];
+	private dgx: f64[] = new double[1];
+	private dgy: f64[] = new double[1];
+	private fx: f64[] = new double[1];
+	private fy: f64[] = new double[1];
 
-	private double dgxm[] = new double[1];
-	private double dgym[] = new double[1];
-	private double fxm[] = new double[1];
-	private double fym[] = new double[1];
+	private dgxm: f64[] = new double[1];
+	private dgym: f64[] = new double[1];
+	private fxm: f64[] = new double[1];
+	private fym: f64[] = new double[1];
 
-	private double stx;
-	private double sty;
+	private stx: f64;
+	private sty: f64;
 
-	private void mcsrch (double f , double[] g)
+	private void mcsrch (f: f64 , g: f64[])
 	{
 		int is0 = ispt + point * n;
 		if ( info != - 1 )
@@ -449,10 +449,10 @@ class LBFGS
 	  *   as part of Minpack project. Argonne Nat'l Laboratory, June 1983.
 	  *   Robert Dodier: Java translation, August 1997.
 	  */
-	  private void mcstep (double[] fx , double[] dx , double[] fy , double[] dy , double fp , double dp)
+	  private void mcstep (fx: f64[] , dx: f64[] , fy: f64[] , dy: f64[] , fp: f64 , dp: f64)
 	  {
 		boolean bound;
-		double gamma, p, q, r, s, sgnd, stpc, stpf, stpq, theta;
+		let gamma: f64; let p: f64; let q: f64; let r: f64; let s: f64; let sgnd: f64; let stpc: f64; let stpf: f64; let stpq: f64; let theta: f64;
 
 		infoc = 0;
 
@@ -653,7 +653,7 @@ class LBFGS
 	  * There could well be faster ways to carry out this operation; this
 	  * code is a straight translation from the Fortran.
 	  */
-	public static void daxpy ( int n , double da , double[] dx , int ix0, int incx , double[] dy , int iy0, int incy )
+	public static void daxpy ( int n , da: f64 , dx: f64[] , int ix0, int incx , dy: f64[] , int iy0, int incy )
 	{
 		int i, ix, iy, m, mp1;
 
@@ -706,9 +706,9 @@ class LBFGS
 	  * There could well be faster ways to carry out this operation; this
 	  * code is a straight translation from the Fortran.
 	  */
-	public static double ddot ( int n, double[] dx, int ix0, int incx, double[] dy, int iy0, int incy )
+	public static ddot ( int n, dx: f64[], int ix0, int incx, dy: f64[], int iy0, int incy ): f64
 	{
-		double dtemp;
+		let dtemp: f64;
 		int i, ix, iy, m, mp1;
 
 		dtemp = 0;
@@ -749,6 +749,6 @@ class LBFGS
 		return dtemp;
 	}
 
-	static double sqr( double x ) { return x*x; }
-	static double max3( double x, double y, double z ) { return x < y ? ( y < z ? z : y ) : ( x < z ? z : x ); }
+	static sqr( x: f64 ): f64 { return x*x; }
+	static max3( x: f64, y: f64, z: f64 ): f64 { return x < y ? ( y < z ? z : y ) : ( x < z ? z : x ); }
 }
