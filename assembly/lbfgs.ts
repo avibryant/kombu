@@ -6,6 +6,19 @@
 
 import { getParam, setParam, evaluateLoss, evaluateGradient, newStaticArray } from "./util"
 
+@inline const gtol: f64 = 0.9;
+@inline const STPMIN: f64 = 1e-20;
+@inline const STPMAX: f64 = 1e20;
+
+@inline const xtol: f64 = 1e-16;
+@inline const ftol: f64= 0.0001;
+@inline const maxfev: i32 = 20;
+
+@inline const p5: f64 = 0.5;
+@inline const p66: f64 = 0.66;
+
+@inline const xtrapf: f64 = 4;
+
 // prettier-ignore
 class LBFGS
 {
@@ -185,22 +198,6 @@ class LBFGS
 		}
 	}
 
-
-	private static gtol: f64 = 0.9;
-
-	private static STPMIN: f64 = 1e-20;
-	private static STPMAX: f64 = 1e20;
-
-	private static xtol: f64 = 1e-16;
-	private static ftol: f64= 0.0001;
-	private static maxfev: i32 = 20;
-
-	private static p5: f64 = 0.5;
-	private static p66: f64 = 0.66;
-
-	private static xtrapf: f64 = 4;
-
-
 	private dg: f64;
 	private dgm: f64;
 	private dginit: f64;
@@ -255,9 +252,9 @@ class LBFGS
 			this.stage1 = true;
 			this.nfev = 0;
 			this.finit = f;
-			this.dgtest = LBFGS.ftol*this.dginit;
-			this.width = LBFGS.STPMAX - LBFGS.STPMIN;
-			this.width1 = this.width/LBFGS.p5;
+			this.dgtest = ftol*this.dginit;
+			this.width = STPMAX - STPMIN;
+			this.width1 = this.width/p5;
 
 			for ( let j = 0 ; j < n ; j += 1 )
 				this.diag[j] = this.x[j];
@@ -293,18 +290,18 @@ class LBFGS
 				else
 				{
 					this.stmin = this.stx;
-					this.stmax = this.stp + LBFGS.xtrapf * ( this.stp - this.stx );
+					this.stmax = this.stp + xtrapf * ( this.stp - this.stx );
 				}
 
 				// Force the step to be within the bounds stmax and stmin.
 
-				this.stp = Math.max ( this.stp , LBFGS.STPMIN );
-				this.stp = Math.min ( this.stp , LBFGS.STPMAX );
+				this.stp = Math.max ( this.stp , STPMIN );
+				this.stp = Math.min ( this.stp , STPMAX );
 
 				// If an unusual termination is to occur then let
 				// stp be the lowest point obtained so far.
 
-				if ( ( this.brackt && ( this.stp <= this.stmin || this.stp >= this.stmax ) ) || this.nfev >= LBFGS.maxfev - 1 || this.infoc == 0 || ( this.brackt && this.stmax - this.stmin <= LBFGS.xtol * this.stmax ) ) this.stp = this.stx;
+				if ( ( this.brackt && ( this.stp <= this.stmin || this.stp >= this.stmax ) ) || this.nfev >= maxfev - 1 || this.infoc == 0 || ( this.brackt && this.stmax - this.stmin <= xtol * this.stmax ) ) this.stp = this.stx;
 
 				// Evaluate the function and gradient at stp
 				// and compute the directional derivative.
@@ -332,15 +329,15 @@ class LBFGS
 
 			if ( ( this.brackt && ( this.stp <= this.stmin || this.stp >= this.stmax ) ) || this.infoc == 0 ) this.info = 6;
 
-			if ( this.stp == LBFGS.STPMAX && f <= this.ftest1 && this.dg <= this.dgtest ) this.info = 5;
+			if ( this.stp == STPMAX && f <= this.ftest1 && this.dg <= this.dgtest ) this.info = 5;
 
-			if ( this.stp == LBFGS.STPMIN && ( f > this.ftest1 || this.dg >= this.dgtest ) ) this.info = 4;
+			if ( this.stp == STPMIN && ( f > this.ftest1 || this.dg >= this.dgtest ) ) this.info = 4;
 
-			if ( this.nfev >= LBFGS.maxfev ) this.info = 3;
+			if ( this.nfev >= maxfev ) this.info = 3;
 
-			if ( this.brackt && this.stmax - this.stmin <= LBFGS.xtol * this.stmax ) this.info = 2;
+			if ( this.brackt && this.stmax - this.stmin <= xtol * this.stmax ) this.info = 2;
 
-			if ( f <= this.ftest1 && Math.abs ( this.dg ) <= LBFGS.gtol * ( - this.dginit ) ) this.info = 1;
+			if ( f <= this.ftest1 && Math.abs ( this.dg ) <= gtol * ( - this.dginit ) ) this.info = 1;
 
 			// Check for termination.
 
@@ -349,7 +346,7 @@ class LBFGS
 			// In the first stage we seek a step for which the modified
 			// function has a nonpositive value and nonnegative derivative.
 
-			if ( this.stage1 && f <= this.ftest1 && this.dg >= Math.min ( LBFGS.ftol , LBFGS.gtol ) * this.dginit ) this.stage1 = false;
+			if ( this.stage1 && f <= this.ftest1 && this.dg >= Math.min ( ftol , gtol ) * this.dginit ) this.stage1 = false;
 
 			// A modified function is used to predict the step only if
 			// we have not obtained a step for which the modified
@@ -393,8 +390,8 @@ class LBFGS
 
 			if ( this.brackt )
 			{
-				if ( Math.abs ( this.sty - this.stx ) >= LBFGS.p66 * this.width1 )
-					this.stp = this.stx + LBFGS.p5 * ( this.sty - this.stx );
+				if ( Math.abs ( this.sty - this.stx ) >= p66 * this.width1 )
+					this.stp = this.stx + p5 * ( this.sty - this.stx );
 				this.width1 = this.width;
 				this.width = Math.abs ( this.sty - this.stx );
 			}
