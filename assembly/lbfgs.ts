@@ -11,21 +11,21 @@ class LBFGS
 	private ys: f64;
 	private yy: f64;
 	private yr: f64;
-	private int iter;
-	private int point;
-	private int ispt;
-	private int iypt;
-	private int bound;
-	private int npt;
+	private iter: i32;
+	private point: i32;
+	private ispt: i32;
+	private iypt: i32;
+	private bound: i32;
+	private npt: i32;
 
-	private int inmc;
+	private inmc: i32;
 
-	private int info;
+	private info: i32;
 	private stp: f64;
-	private int nfev;
+	private nfev: i32;
 	private w: f64[];
-	private int m;
-	private int n;
+	private m: i32;
+	private n: i32;
 	private eps: f64;
 	private diag: f64[];
 	private x: f64[];
@@ -41,7 +41,7 @@ class LBFGS
 	*       ||G|| < eps * max(1,||X||)
 	*/
 
-	public LBFGS(x: f64[], int m, eps: f64) {
+	public LBFGS(x: f64[], m: i32, eps: f64) {
 		this.x = x;
 		this.m = m;
 		this.n = x.length;
@@ -53,7 +53,7 @@ class LBFGS
 		point= 0;
 
 		diag = new double[n];
-		for (int i = 0 ; i < n ; i += 1 )
+		for (let i = 0 ; i < n ; i += 1 )
 			diag [i] = 1;
 
 		ispt= n+2*m;
@@ -66,7 +66,7 @@ class LBFGS
 		if ( iter == 0 )
 		{
 			//initialize
-			for (int i = 0 ; i < n ; i += 1 )
+			for (let i = 0 ; i < n ; i += 1 )
 			{
 				w[ispt + i] = -g[i] * diag[i];
 			}
@@ -89,7 +89,7 @@ class LBFGS
 					ys = ddot ( n , w , iypt + npt , 1 , w , ispt + npt , 1 );
 					yy = ddot ( n , w , iypt + npt , 1 , w , iypt + npt , 1 );
 
-					for ( int i = 0 ; i < n ; i += 1 )
+					for ( let i = 0 ; i < n ; i += 1 )
 						diag [i] = ys / yy;
 				}
 			}
@@ -98,46 +98,46 @@ class LBFGS
 			{
 				if ( iter != 1 )
 				{
-					int cp= point;
+					let cp: i32 = point;
 					if ( point == 0 ) cp = m;
 					w [ n + cp -1] = 1 / ys;
 
-					for ( int i = 0 ; i < n ; i += 1 )
+					for ( let i = 0 ; i < n ; i += 1 )
 					{
 						w[i] = -g[i];
 					}
 
 					cp= point;
 
-					for ( int i = 0 ; i < bound ; i += 1 )
+					for ( let i = 0 ; i < bound ; i += 1 )
 					{
 						cp=cp-1;
 						if ( cp == - 1 ) cp = m - 1;
 						const sq: f64 = ddot ( n , w , ispt + cp * n , 1 , w , 0 , 1 );
 						inmc=n+m+cp;
-						int iycn=iypt+cp*n;
+						let iycn: i32 =iypt+cp*n;
 						w [inmc] = w [n + cp] * sq;
 						daxpy ( n , -w[inmc] , w , iycn , 1 , w , 0 , 1 );
 					}
 
-					for ( int i = 0 ; i < n ; i += 1 )
+					for ( let i = 0 ; i < n ; i += 1 )
 					{
 						w [i] = diag [i] * w[i];
 					}
 
-					for ( int i = 0 ; i < bound ; i += 1 )
+					for ( let i = 0 ; i < bound ; i += 1 )
 					{
 						yr = ddot ( n , w , iypt + cp * n , 1 , w , 0 , 1 );
 						const beta: f64 = w [ n + cp] * yr;
 						inmc=n+m+cp;
 						beta = w [inmc] - beta;
-						int iscn=ispt+cp*n;
+						let iscn: i32 =ispt+cp*n;
 						daxpy ( n , beta , w , iscn , 1 , w , 0 , 1 );
 						cp=cp+1;
 						if ( cp == m ) cp = 0;
 					}
 
-					for ( int i = 0 ; i < n ; i += 1 )
+					for ( let i = 0 ; i < n ; i += 1 )
 					{
 						w[ispt + point * n + i] = w[i];
 					}
@@ -147,7 +147,7 @@ class LBFGS
 				stp=1;
 				if ( iter == 1 ) stp = stp1;
 
-				for (int i = 0; i < n; i += 1 )
+				for (let i = 0; i < n; i += 1 )
 				{
 					w[i] = g[i];
 				}
@@ -160,7 +160,7 @@ class LBFGS
 
 			npt=point*n;
 
-			for ( int i = 0 ; i < n ; i += 1 )
+			for ( let i = 0 ; i < n ; i += 1 )
 			{
 				w [ ispt + npt + i] = stp * w [ ispt + npt + i];
 				w [ iypt + npt + i] = g [i] - w[i];
@@ -210,7 +210,7 @@ class LBFGS
 
 	private boolean stage1 = false;
 
-	private int infoc;
+	private infoc: i32;
 	private boolean brackt;
 
 	private dgx: f64[] = new double[1];
@@ -230,7 +230,7 @@ class LBFGS
 	{
   	const { gtol, STPMIN, STPMAX, xtol, ftol, maxfev, p5, p66, xtrapf } = LBFGS;
 
-		int is0 = ispt + point * n;
+		const is0: i32 = ispt + point * n;
 		if ( info != - 1 )
 		{
 			infoc = 1;
@@ -240,7 +240,7 @@ class LBFGS
 
 			dginit = 0;
 
-			for ( int j = 0 ; j < n ; j += 1 )
+			for ( let j = 0 ; j < n ; j += 1 )
 				dginit = dginit + g [j] * w[is0+j];
 
 			if ( dginit >= 0 )
@@ -254,7 +254,7 @@ class LBFGS
 			width = STPMAX - STPMIN;
 			width1 = width/p5;
 
-			for ( int j = 0 ; j < n ; j += 1 )
+			for ( let j = 0 ; j < n ; j += 1 )
 				diag[j] = x[j];
 
 			// The variables stx, fx, dgx contain the values of the step,
@@ -305,7 +305,7 @@ class LBFGS
 				// and compute the directional derivative.
 				// We return to main program to obtain F and G.
 
-				for (int j = 0; j < n ; j += 1 )
+				for (let j = 0; j < n ; j += 1 )
 					x [j] = diag[j] + stp * w[ is0+j];
 
 				info=-1;
@@ -316,7 +316,7 @@ class LBFGS
 			nfev = nfev + 1;
 			dg = 0;
 
-			for (int j = 0 ; j < n ; j += 1 )
+			for (let j = 0 ; j < n ; j += 1 )
 			{
 				dg = dg + g [ j] * w [ is0+j];
 			}
@@ -655,9 +655,9 @@ class LBFGS
 	  * There could well be faster ways to carry out this operation; this
 	  * code is a straight translation from the Fortran.
 	  */
-	public static void daxpy ( int n , da: f64 , dx: f64[] , int ix0, int incx , dy: f64[] , int iy0, int incy )
+	public static void daxpy ( n: i32 , da: f64 , dx: f64[] , ix0: i32, incx: i32 , dy: f64[] , iy0: i32, incy: i32 )
 	{
-		int i, ix, iy, m, mp1;
+		let i: i32; let ix: i32; let iy: i32; let m: i32; let mp1: i32;
 
 		if ( n <= 0 ) return;
 
@@ -708,10 +708,10 @@ class LBFGS
 	  * There could well be faster ways to carry out this operation; this
 	  * code is a straight translation from the Fortran.
 	  */
-	public static ddot ( int n, dx: f64[], int ix0, int incx, dy: f64[], int iy0, int incy ): f64
+	public static ddot ( n: i32, dx: f64[], ix0: i32, incx: i32, dy: f64[], iy0: i32, incy: i32 ): f64
 	{
 		let dtemp: f64;
-		int i, ix, iy, m, mp1;
+		let i: i32; let ix: i32; let iy: i32; let m: i32; let mp1: i32;
 
 		dtemp = 0;
 
