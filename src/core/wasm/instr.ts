@@ -30,3 +30,7 @@ export function f64_store(offset: number, frag: w.BytecodeFragment) {
     [w.instr.f64.store, ALIGNMENT_AND_OFFSET],
   ]
 }
+
+export function i32_constexpr(value: number) {
+  return [w.instr.i32.const, w.i32(value), w.instr.end]
+}
