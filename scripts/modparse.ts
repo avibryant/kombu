@@ -5,7 +5,7 @@ import { assert, checkNotNull } from "../src/core/assert"
 
 // For sanity checking, assume that the number of locals is never
 // above a certain number. (We can raise this if necessary.)
-const MAX_LOCALS = 50
+const MAX_LOCALS = 64
 
 const WASM_NUMTYPES = [0x7c, 0x7d, 0x7e, 0x7f]
 const WASM_VECTYPE = 0x7b
@@ -198,6 +198,7 @@ function rewriteCodeEntry(
     // See https://pengowray.github.io/wasm-ops/ for an overview.
     switch (bc) {
       case instr.unreachable:
+      case instr.nop:
         break
       case instr.block:
       case instr.loop:
