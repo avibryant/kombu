@@ -15,19 +15,24 @@ import {
 
 @inline const gtol: f64 = 0.9
 
+
 @inline const STPMIN: f64 = 1e-20
+
 
 @inline const STPMAX: f64 = 1e20
 
 
 @inline const xtol: f64 = 1e-16
 
+
 @inline const ftol: f64 = 0.0001
+
 
 @inline const maxfev: i32 = 20
 
 
 @inline const p5: f64 = 0.5
+
 
 @inline const p66: f64 = 0.66
 
