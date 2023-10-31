@@ -46,35 +46,38 @@ class LBFGS
 	public constructor(x: StaticArray<f64>, m: i32, eps: f64) {
 		this.x = x;
 		this.m = m;
-		this.n = x.length;
+		const n = this.n = x.length;
 		this.eps = eps;
 
-		w = newStaticArray<f64>(n*(2*m+1)+2*m);
+		this.w = newStaticArray<f64>(n*(2*m+1)+2*m);
 
-		iter = 0;
-		point= 0;
+		this.iter = 0;
+		this.point= 0;
 
-		diag = newStaticArray<f64>(n);
+		this.diag = newStaticArray<f64>(n);
 		for (let i = 0 ; i < n ; i += 1 )
-			diag [i] = 1;
+			this.diag [i] = 1;
 
-		ispt= n+2*m;
-		iypt= ispt+n*m;
+		this.ispt= n+2*m;
+		this.iypt= this.ispt+n*m;
 	}
 
 	public apply (f: f64, g: StaticArray<f64>): boolean
 	{
+	  const n = this.n;
+		const w = this.w;
+
 		let execute_entire_while_loop = false;
-		if ( iter == 0 )
+		if ( this.iter == 0 )
 		{
 			//initialize
 			for (let i = 0 ; i < n ; i += 1 )
 			{
-				w[ispt + i] = -g[i] * diag[i];
+				w[this.ispt + i] = -g[i] * this.diag[i];
 			}
 
-			const gnorm: f64 = Math.sqrt ( ddot ( n , g , 0, 1 , g , 0, 1 ) );
-			stp1= 1/gnorm;
+			const gnorm: f64 = Math.sqrt ( LBFGS.ddot ( n , g , 0, 1 , g , 0, 1 ) );
+			this.stp1= 1/gnorm;
 			execute_entire_while_loop = true;
 		}
 
@@ -82,72 +85,72 @@ class LBFGS
 		{
 			if ( execute_entire_while_loop )
 			{
-				iter= iter+1;
-				info=0;
-				bound=iter-1;
+				const iter = this.iter= this.iter+1;
+				this.info=0;
+				this.bound=iter-1;
 				if ( iter != 1 )
 				{
-					if ( iter > m ) bound = m;
-					ys = ddot ( n , w , iypt + npt , 1 , w , ispt + npt , 1 );
-					yy = ddot ( n , w , iypt + npt , 1 , w , iypt + npt , 1 );
+					if ( iter > this.m ) this.bound = this.m;
+					this.ys = LBFGS.ddot ( n , w , this.iypt + this.npt , 1 , w , this.ispt + this.npt , 1 );
+					this.yy = LBFGS.ddot ( n , w , this.iypt + this.npt , 1 , w , this.iypt + this.npt , 1 );
 
 					for ( let i = 0 ; i < n ; i += 1 )
-						diag [i] = ys / yy;
+						this.diag [i] = this.ys / this.yy;
 				}
 			}
 
 			if ( execute_entire_while_loop)
 			{
-				if ( iter != 1 )
+				if ( this.iter != 1 )
 				{
-					let cp: i32 = point;
-					if ( point == 0 ) cp = m;
-					w [ n + cp -1] = 1 / ys;
+					let cp: i32 = this.point;
+					if ( this.point == 0 ) cp = this.m;
+					w [ n + cp -1] = 1 / this.ys;
 
 					for ( let i = 0 ; i < n ; i += 1 )
 					{
 						w[i] = -g[i];
 					}
 
-					cp= point;
+					cp= this.point;
 
-					for ( let i = 0 ; i < bound ; i += 1 )
+					for ( let i = 0 ; i < this.bound ; i += 1 )
 					{
 						cp=cp-1;
-						if ( cp == - 1 ) cp = m - 1;
-						const sq: f64 = ddot ( n , w , ispt + cp * n , 1 , w , 0 , 1 );
-						inmc=n+m+cp;
-						let iycn: i32 =iypt+cp*n;
-						w [inmc] = w [n + cp] * sq;
-						daxpy ( n , -w[inmc] , w , iycn , 1 , w , 0 , 1 );
+						if ( cp == - 1 ) cp = this.m - 1;
+						const sq: f64 = LBFGS.ddot ( n , w , this.ispt + cp * n , 1 , w , 0 , 1 );
+						this.inmc=n+this.m+cp;
+						let iycn: i32 =this.iypt+cp*n;
+						w [this.inmc] = w [n + cp] * sq;
+						LBFGS.daxpy ( n , -w[this.inmc] , w , iycn , 1 , w , 0 , 1 );
 					}
 
 					for ( let i = 0 ; i < n ; i += 1 )
 					{
-						w [i] = diag [i] * w[i];
+						w [i] = this.diag [i] * w[i];
 					}
 
-					for ( let i = 0 ; i < bound ; i += 1 )
+					for ( let i = 0 ; i < this.bound ; i += 1 )
 					{
-						yr = ddot ( n , w , iypt + cp * n , 1 , w , 0 , 1 );
-						const beta: f64 = w [ n + cp] * yr;
-						inmc=n+m+cp;
-						beta = w [inmc] - beta;
-						let iscn: i32 =ispt+cp*n;
-						daxpy ( n , beta , w , iscn , 1 , w , 0 , 1 );
+						this.yr = LBFGS.ddot ( n , w , this.iypt + cp * n , 1 , w , 0 , 1 );
+						let beta: f64 = w [ n + cp] * this.yr;
+						this.inmc=n+this.m+cp;
+						beta = w [this.inmc] - beta;
+						let iscn: i32 =this.ispt+cp*n;
+						LBFGS.daxpy ( n , beta , w , iscn , 1 , w , 0 , 1 );
 						cp=cp+1;
-						if ( cp == m ) cp = 0;
+						if ( cp == this.m ) cp = 0;
 					}
 
 					for ( let i = 0 ; i < n ; i += 1 )
 					{
-						w[ispt + point * n + i] = w[i];
+						w[this.ispt + this.point * n + i] = w[i];
 					}
 				}
 
-				nfev=0;
-				stp=1;
-				if ( iter == 1 ) stp = stp1;
+				this.nfev=0;
+				this.stp=1;
+				if ( this.iter == 1 ) this.stp = this.stp1;
 
 				for (let i = 0; i < n; i += 1 )
 				{
@@ -155,27 +158,27 @@ class LBFGS
 				}
 			}
 
-			mcsrch(f , g);
+			this.mcsrch(f , g);
 
-			if ( info == -1 )
+			if ( this.info == -1 )
 				return false;
 
-			npt=point*n;
+			this.npt=this.point*n;
 
 			for ( let i = 0 ; i < n ; i += 1 )
 			{
-				w [ ispt + npt + i] = stp * w [ ispt + npt + i];
-				w [ iypt + npt + i] = g [i] - w[i];
+				w [ this.ispt + this.npt + i] = this.stp * w [ this.ispt + this.npt + i];
+				w [ this.iypt + this.npt + i] = g [i] - w[i];
 			}
 
-			point=point+1;
-			if ( point == m ) point = 0;
+			this.point=this.point+1;
+			if ( this.point == this.m ) this.point = 0;
 
-			const gnorm: f64 = Math.sqrt ( ddot ( n , g , 0 , 1 , g , 0 , 1 ) );
-			const xnorm: f64 = Math.sqrt ( ddot ( n , x , 0 , 1 , x , 0 , 1 ) );
+			const gnorm: f64 = Math.sqrt ( LBFGS.ddot ( n , g , 0 , 1 , g , 0 , 1 ) );
+			let xnorm: f64 = Math.sqrt ( LBFGS.ddot ( n , this.x , 0 , 1 , this.x , 0 , 1 ) );
 			xnorm = Math.max ( 1.0 , xnorm );
 
-			if ( gnorm / xnorm <= eps )
+			if ( gnorm / xnorm <= this.eps )
 				return true;
 
 			execute_entire_while_loop = true;		// from now on, execute whole loop
@@ -230,32 +233,34 @@ class LBFGS
 
 	private mcsrch (f: f64 , g: StaticArray<f64>): void
 	{
-		const is0: i32 = ispt + point * n;
-		if ( info != - 1 )
+	  const n = this.n;
+		const w = this.w;
+		const is0: i32 = this.ispt + this.point * n;
+		if ( this.info != - 1 )
 		{
-			infoc = 1;
+			this.infoc = 1;
 
 			// Compute the initial gradient in the search direction
 			// and check that s is a descent direction.
 
-			dginit = 0;
+			this.dginit = 0;
 
 			for ( let j = 0 ; j < n ; j += 1 )
-				dginit = dginit + g [j] * w[is0+j];
+				this.dginit = this.dginit + g [j] * w[is0+j];
 
-			if ( dginit >= 0 )
+			if ( this.dginit >= 0 )
 				throw new RuntimeException("dginit");
 
-			brackt = false;
-			stage1 = true;
-			nfev = 0;
-			finit = f;
-			dgtest = ftol*dginit;
-			width = STPMAX - STPMIN;
-			width1 = width/p5;
+			this.brackt = false;
+			this.stage1 = true;
+			this.nfev = 0;
+			this.finit = f;
+			this.dgtest = LBFGS.ftol*this.dginit;
+			this.width = LBFGS.STPMAX - LBFGS.STPMIN;
+			this.width1 = this.width/LBFGS.p5;
 
 			for ( let j = 0 ; j < n ; j += 1 )
-				diag[j] = x[j];
+				this.diag[j] = this.x[j];
 
 			// The variables stx, fx, dgx contain the values of the step,
 			// function, and directional derivative at the best step.
@@ -265,86 +270,86 @@ class LBFGS
 			// The variables stp, f, dg contain the values of the step,
 			// function, and derivative at the current step.
 
-			stx = 0;
-			fx[0] = finit;
-			dgx[0] = dginit;
-			sty = 0;
-			fy[0] = finit;
-			dgy[0] = dginit;
+			this.stx = 0;
+			this.fx[0] = this.finit;
+			this.dgx[0] = this.dginit;
+			this.sty = 0;
+			this.fy[0] = this.finit;
+			this.dgy[0] = this.dginit;
 		}
 
 		while ( true )
 		{
-			if ( info != -1 )
+			if ( this.info != -1 )
 			{
 				// Set the minimum and maximum steps to correspond
 				// to the present interval of uncertainty.
 
-				if ( brackt )
+				if ( this.brackt )
 				{
-					stmin = Math.min ( stx , sty );
-					stmax = Math.max ( stx , sty );
+					this.stmin = Math.min ( this.stx , this.sty );
+					this.stmax = Math.max ( this.stx , this.sty );
 				}
 				else
 				{
-					stmin = stx;
-					stmax = stp + xtrapf * ( stp - stx );
+					this.stmin = this.stx;
+					this.stmax = this.stp + LBFGS.xtrapf * ( this.stp - this.stx );
 				}
 
 				// Force the step to be within the bounds stmax and stmin.
 
-				stp = Math.max ( stp , STPMIN );
-				stp = Math.min ( stp , STPMAX );
+				this.stp = Math.max ( this.stp , LBFGS.STPMIN );
+				this.stp = Math.min ( this.stp , LBFGS.STPMAX );
 
 				// If an unusual termination is to occur then let
 				// stp be the lowest point obtained so far.
 
-				if ( ( brackt && ( stp <= stmin || stp >= stmax ) ) || nfev >= maxfev - 1 || infoc == 0 || ( brackt && stmax - stmin <= xtol * stmax ) ) stp = stx;
+				if ( ( this.brackt && ( this.stp <= this.stmin || this.stp >= this.stmax ) ) || this.nfev >= LBFGS.maxfev - 1 || this.infoc == 0 || ( this.brackt && this.stmax - this.stmin <= LBFGS.xtol * this.stmax ) ) this.stp = this.stx;
 
 				// Evaluate the function and gradient at stp
 				// and compute the directional derivative.
 				// We return to main program to obtain F and G.
 
 				for (let j = 0; j < n ; j += 1 )
-					x [j] = diag[j] + stp * w[ is0+j];
+					this.x [j] = this.diag[j] + this.stp * w[ is0+j];
 
-				info=-1;
+				this.info=-1;
 				return;
 			}
 
-			info=0;
-			nfev = nfev + 1;
-			dg = 0;
+			this.info=0;
+			this.nfev = this.nfev + 1;
+			this.dg = 0;
 
 			for (let j = 0 ; j < n ; j += 1 )
 			{
-				dg = dg + g [ j] * w [ is0+j];
+				this.dg = this.dg + g [ j] * w [ is0+j];
 			}
 
-			ftest1 = finit + stp*dgtest;
+			this.ftest1 = this.finit + this.stp*this.dgtest;
 
 			// Test for convergence.
 
-			if ( ( brackt && ( stp <= stmin || stp >= stmax ) ) || infoc == 0 ) info = 6;
+			if ( ( this.brackt && ( this.stp <= this.stmin || this.stp >= this.stmax ) ) || this.infoc == 0 ) this.info = 6;
 
-			if ( stp == STPMAX && f <= ftest1 && dg <= dgtest ) info = 5;
+			if ( this.stp == LBFGS.STPMAX && f <= this.ftest1 && this.dg <= this.dgtest ) this.info = 5;
 
-			if ( stp == STPMIN && ( f > ftest1 || dg >= dgtest ) ) info = 4;
+			if ( this.stp == LBFGS.STPMIN && ( f > this.ftest1 || this.dg >= this.dgtest ) ) this.info = 4;
 
-			if ( nfev >= maxfev ) info = 3;
+			if ( this.nfev >= LBFGS.maxfev ) this.info = 3;
 
-			if ( brackt && stmax - stmin <= xtol * stmax ) info = 2;
+			if ( this.brackt && this.stmax - this.stmin <= LBFGS.xtol * this.stmax ) this.info = 2;
 
-			if ( f <= ftest1 && Math.abs ( dg ) <= gtol * ( - dginit ) ) info = 1;
+			if ( f <= this.ftest1 && Math.abs ( this.dg ) <= LBFGS.gtol * ( - this.dginit ) ) this.info = 1;
 
 			// Check for termination.
 
-			if ( info != 0 ) return;
+			if ( this.info != 0 ) return;
 
 			// In the first stage we seek a step for which the modified
 			// function has a nonpositive value and nonnegative derivative.
 
-			if ( stage1 && f <= ftest1 && dg >= Math.min ( ftol , gtol ) * dginit ) stage1 = false;
+			if ( this.stage1 && f <= this.ftest1 && this.dg >= Math.min ( LBFGS.ftol , LBFGS.gtol ) * this.dginit ) this.stage1 = false;
 
 			// A modified function is used to predict the step only if
 			// we have not obtained a step for which the modified
@@ -352,46 +357,46 @@ class LBFGS
 			// derivative, and if a lower function value has been
 			// obtained but the decrease is not sufficient.
 
-			if ( stage1 && f <= fx[0] && f > ftest1 )
+			if ( this.stage1 && f <= this.fx[0] && f > this.ftest1 )
 			{
 				// Define the modified function and derivative values.
 
-				fm = f - stp*dgtest;
-				fxm[0] = fx[0] - stx*dgtest;
-				fym[0] = fy[0] - sty*dgtest;
-				dgm = dg - dgtest;
-				dgxm[0] = dgx[0] - dgtest;
-				dgym[0] = dgy[0] - dgtest;
+				this.fm = f - this.stp*this.dgtest;
+				this.fxm[0] = this.fx[0] - this.stx*this.dgtest;
+				this.fym[0] = this.fy[0] - this.sty*this.dgtest;
+				this.dgm = this.dg - this.dgtest;
+				this.dgxm[0] = this.dgx[0] - this.dgtest;
+				this.dgym[0] = this.dgy[0] - this.dgtest;
 
 				// Call cstep to update the interval of uncertainty
 				// and to compute the new step.
 
-				mcstep (fxm , dgxm , fym , dgym , fm , dgm);
+				this.mcstep (this.fxm , this.dgxm , this.fym , this.dgym , this.fm , this.dgm);
 
 				// Reset the function and gradient values for f.
 
-				fx[0] = fxm[0] + stx*dgtest;
-				fy[0] = fym[0] + sty*dgtest;
-				dgx[0] = dgxm[0] + dgtest;
-				dgy[0] = dgym[0] + dgtest;
+				this.fx[0] = this.fxm[0] + this.stx*this.dgtest;
+				this.fy[0] = this.fym[0] + this.sty*this.dgtest;
+				this.dgx[0] = this.dgxm[0] + this.dgtest;
+				this.dgy[0] = this.dgym[0] + this.dgtest;
 			}
 			else
 			{
 				// Call mcstep to update the interval of uncertainty
 				// and to compute the new step.
 
-				mcstep (fx , dgx , fy , dgy , f , dg);
+				this.mcstep (this.fx , this.dgx , this.fy , this.dgy , f , this.dg);
 			}
 
 			// Force a sufficient decrease in the size of the
 			// interval of uncertainty.
 
-			if ( brackt )
+			if ( this.brackt )
 			{
-				if ( Math.abs ( sty - stx ) >= p66 * width1 )
-					stp = stx + p5 * ( sty - stx );
-				width1 = width;
-				width = Math.abs ( sty - stx );
+				if ( Math.abs ( this.sty - this.stx ) >= LBFGS.p66 * this.width1 )
+					this.stp = this.stx + LBFGS.p5 * ( this.sty - this.stx );
+				this.width1 = this.width;
+				this.width = Math.abs ( this.sty - this.stx );
 			}
 		}
 	}
@@ -456,9 +461,15 @@ class LBFGS
 		let bound: boolean = false;
 		let gamma: f64; let p: f64; let q: f64; let r: f64; let s: f64; let sgnd: f64; let stpc: f64; let stpf: f64; let stpq: f64; let theta: f64;
 
-		infoc = 0;
+		this.infoc = 0;
+		const stp = this.stp;
+		const stx = this.stx;
+		const sty = this.sty;
+		const stmax = this.stmax;
+		const stmin = this.stmin;
 
-		if ( ( brackt && ( stp <= Math.min ( stx , sty ) || stp >= Math.max ( stx , sty ) ) ) || dx[0] * ( stp - stx ) >= 0.0 || stmax < stmin ) return;
+
+		if ( ( this.brackt && ( stp <= Math.min ( stx , sty ) || stp >= Math.max ( stx , sty ) ) ) || dx[0] * ( stp - stx ) >= 0.0 || stmax < stmin ) return;
 
 		// Determine if the derivatives have opposite sign.
 
@@ -471,11 +482,11 @@ class LBFGS
 			// to stx than the quadratic step, the cubic step is taken,
 			// else the average of the cubic and quadratic steps is taken.
 
-			infoc = 1;
+			this.infoc = 1;
 			bound = true;
 			theta = 3 * ( fx[0] - fp ) / ( stp - stx ) + dx[0] + dp;
-			s = max3 ( Math.abs ( theta ) , Math.abs ( dx[0] ) , Math.abs ( dp ) );
-			gamma = s * Math.sqrt ( sqr( theta / s ) - ( dx[0] / s ) * ( dp / s ) );
+			s = LBFGS.max3 ( Math.abs ( theta ) , Math.abs ( dx[0] ) , Math.abs ( dp ) );
+			gamma = s * Math.sqrt ( LBFGS.sqr( theta / s ) - ( dx[0] / s ) * ( dp / s ) );
 			if ( stp < stx ) gamma = - gamma;
 			p = ( gamma - dx[0] ) + theta;
 			q = ( ( gamma - dx[0] ) + gamma ) + dp;
@@ -490,7 +501,7 @@ class LBFGS
 			{
 				stpf = stpc + ( stpq - stpc ) / 2;
 			}
-			brackt = true;
+			this.brackt = true;
 		}
 		else if ( sgnd < 0.0 )
 		{
@@ -499,11 +510,11 @@ class LBFGS
 			// step is closer to stx than the quadratic (secant) step,
 			// the cubic step is taken, else the quadratic step is taken.
 
-			infoc = 2;
+			this.infoc = 2;
 			bound = false;
 			theta = 3 * ( fx[0] - fp ) / ( stp - stx ) + dx[0] + dp;
-			s = max3 ( Math.abs ( theta ) , Math.abs ( dx[0] ) , Math.abs ( dp ) );
-			gamma = s * Math.sqrt ( sqr( theta / s ) - ( dx[0] / s ) * ( dp / s ) );
+			s = LBFGS.max3 ( Math.abs ( theta ) , Math.abs ( dx[0] ) , Math.abs ( dp ) );
+			gamma = s * Math.sqrt ( LBFGS.sqr( theta / s ) - ( dx[0] / s ) * ( dp / s ) );
 			if ( stp > stx ) gamma = - gamma;
 			p = ( gamma - dp ) + theta;
 			q = ( ( gamma - dp ) + gamma ) + dx[0];
@@ -518,7 +529,7 @@ class LBFGS
 			{
 				stpf = stpq;
 			}
-			brackt = true;
+			this.brackt = true;
 		}
 		else if ( Math.abs ( dp ) < Math.abs ( dx[0] ) )
 		{
@@ -531,11 +542,11 @@ class LBFGS
 			// computed and if the minimum is bracketed then the the step
 			// closest to stx is taken, else the step farthest away is taken.
 
-			infoc = 3;
+			this.infoc = 3;
 			bound = true;
 			theta = 3 * ( fx[0] - fp ) / ( stp - stx ) + dx[0] + dp;
-			s = max3 ( Math.abs ( theta ) , Math.abs ( dx[0] ) , Math.abs ( dp ) );
-			gamma = s * Math.sqrt ( Math.max ( 0, sqr( theta / s ) - ( dx[0] / s ) * ( dp / s ) ) );
+			s = LBFGS.max3 ( Math.abs ( theta ) , Math.abs ( dx[0] ) , Math.abs ( dp ) );
+			gamma = s * Math.sqrt ( Math.max ( 0, LBFGS.sqr( theta / s ) - ( dx[0] / s ) * ( dp / s ) ) );
 			if ( stp > stx ) gamma = - gamma;
 			p = ( gamma - dp ) + theta;
 			q = ( gamma + ( dx[0] - dp ) ) + gamma;
@@ -553,7 +564,7 @@ class LBFGS
 				stpc = stmin;
 			}
 			stpq = stp + ( dp / ( dp - dx[0] ) ) * ( stx - stp );
-			if ( brackt )
+			if ( this.brackt )
 			{
 				if ( Math.abs ( stp - stpc ) < Math.abs ( stp - stpq ) )
 				{
@@ -583,13 +594,13 @@ class LBFGS
 			// not decrease. If the minimum is not bracketed, the step
 			// is either stmin or stmax, else the cubic step is taken.
 
-			infoc = 4;
+			this.infoc = 4;
 			bound = false;
-			if ( brackt )
+			if ( this.brackt )
 			{
 				theta = 3 * ( fp - fy[0] ) / ( sty - stp ) + dy[0] + dp;
-				s = max3 ( Math.abs ( theta ) , Math.abs ( dy[0] ) , Math.abs ( dp ) );
-				gamma = s * Math.sqrt ( sqr( theta / s ) - ( dy[0] / s ) * ( dp / s ) );
+				s = LBFGS.max3 ( Math.abs ( theta ) , Math.abs ( dy[0] ) , Math.abs ( dp ) );
+				gamma = s * Math.sqrt ( LBFGS.sqr( theta / s ) - ( dy[0] / s ) * ( dp / s ) );
 				if ( stp > sty ) gamma = - gamma;
 				p = ( gamma - dp ) + theta;
 				q = ( ( gamma - dp ) + gamma ) + dy[0];
@@ -612,7 +623,7 @@ class LBFGS
 
 		if ( fp > fx[0] )
 		{
-			sty = stp;
+			this.sty = stp;
 			fy[0] = fp;
 			dy[0] = dp;
 		}
@@ -620,30 +631,30 @@ class LBFGS
 		{
 			if ( sgnd < 0.0 )
 			{
-				sty = stx;
+				this.sty = stx;
 				fy[0] = fx[0];
 				dy[0] = dx[0];
 			}
-			stx = stp;
+			this.stx = stp;
 			fx[0] = fp;
 			dx[0] = dp;
 		}
 
 		// Compute the new step and safeguard it.
 
-		stpf = Math.min ( stmax , stpf );
+		stpf = Math.min ( this.stmax , stpf );
 		stpf = Math.max ( stmin , stpf );
-		stp = stpf;
+		this.stp = stpf;
 
-		if ( brackt && bound )
+		if ( this.brackt && bound )
 		{
 			if ( sty > stx )
 			{
-				stp = Math.min ( stx + 0.66 * ( sty - stx ) , stp );
+				this.stp = Math.min ( stx + 0.66 * ( sty - stx ) , stp );
 			}
 			else
 			{
-				stp = Math.max ( stx + 0.66 * ( sty - stx ) , stp );
+				this.stp = Math.max ( stx + 0.66 * ( sty - stx ) , stp );
 			}
 		}
 
@@ -766,7 +777,7 @@ export function optimize(
   const g = newStaticArray<f64>(numFreeParams)
 
   // Copy the params in.
-  for (let i = 0; i < numFreeParams; i++) {
+  for (let i: u32 = 0; i < numFreeParams; i++) {
     x[i] = getParam(i)
   }
 
@@ -776,7 +787,7 @@ export function optimize(
   const lb = new LBFGS(x, m, eps)
   while (!complete) {
     //    df.update(x)
-    let i = 0
+    let i: u32 = 0
     while (i < numFreeParams) {
       g[i] = evaluateGradient(i) * -1
       i += 1
@@ -785,7 +796,7 @@ export function optimize(
   }
 
   // Copy the params back out again.
-  for (let i = 0; i < numFreeParams; i++) {
+  for (let i: u32 = 0; i < numFreeParams; i++) {
     setParam(i, x[i])
   }
 }
