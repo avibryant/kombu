@@ -60,9 +60,9 @@ class LBFGS
 		iypt= ispt+n*m;
 	}
 
-	public boolean apply (f: f64, g: f64[])
+	public apply (f: f64, g: f64[]): boolean
 	{
-		boolean execute_entire_while_loop = false;
+		let execute_entire_while_loop = false;
 		if ( iter == 0 )
 		{
 			//initialize
@@ -208,10 +208,10 @@ class LBFGS
 	private width: f64;
 	private width1: f64;
 
-	private boolean stage1 = false;
+	private stage1: boolean = false;
 
 	private infoc: i32;
-	private boolean brackt;
+	private brackt: boolean = false;
 
 	private dgx: f64[] = new double[1];
 	private dgy: f64[] = new double[1];
@@ -453,7 +453,7 @@ class LBFGS
 	  */
 	  private void mcstep (fx: f64[] , dx: f64[] , fy: f64[] , dy: f64[] , fp: f64 , dp: f64)
 	  {
-		boolean bound;
+		let bound: boolean = false;
 		let gamma: f64; let p: f64; let q: f64; let r: f64; let s: f64; let sgnd: f64; let stpc: f64; let stpf: f64; let stpq: f64; let theta: f64;
 
 		infoc = 0;
