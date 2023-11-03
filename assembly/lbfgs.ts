@@ -48,7 +48,6 @@ class LBFGS
 	private diag: StaticArray<f64>;
 	private x: StaticArray<f64>;
 
-
 	/*  m The number of corrections used in the BFGS update.
 	*		Values of less than 3 are not recommended;
 	*		large values will result in excessive
@@ -101,12 +100,12 @@ class LBFGS
 		{
 			if ( execute_entire_while_loop )
 			{
-				const iter = this.iter= this.iter+1;
+				this.iter= this.iter+1;
 				this.info=0;
-				this.bound=iter-1;
-				if ( iter != 1 )
+				this.bound=this.iter-1;
+				if ( this.iter != 1 )
 				{
-					if ( iter > this.m ) this.bound = this.m;
+					if ( this.iter > this.m ) this.bound = this.m;
 					this.ys = LBFGS.ddot ( n , w , this.iypt + this.npt , 1 , w , this.ispt + this.npt , 1 );
 					this.yy = LBFGS.ddot ( n , w , this.iypt + this.npt , 1 , w , this.iypt + this.npt , 1 );
 
@@ -297,7 +296,6 @@ class LBFGS
 				}
 
 				// Force the step to be within the bounds stmax and stmin.
-
 				this.stp = Math.max ( this.stp , STPMIN );
 				this.stp = Math.min ( this.stp , STPMAX );
 
@@ -462,14 +460,9 @@ class LBFGS
 		let gamma: f64; let p: f64; let q: f64; let r: f64; let s: f64; let sgnd: f64; let stpc: f64; let stpf: f64; let stpq: f64; let theta: f64;
 
 		this.infoc = 0;
-		const stp = this.stp;
-		const stx = this.stx;
-		const sty = this.sty;
-		const stmax = this.stmax;
-		const stmin = this.stmin;
 
 
-		if ( ( this.brackt && ( stp <= Math.min ( stx , sty ) || stp >= Math.max ( stx , sty ) ) ) || dx[0] * ( stp - stx ) >= 0.0 || stmax < stmin ) return;
+		if ( ( this.brackt && ( this.stp <= Math.min ( this.stx , this.sty ) || this.stp >= Math.max ( this.stx , this.sty ) ) ) || dx[0] * ( this.stp - this.stx ) >= 0.0 || this.stmax < this.stmin ) return;
 
 		// Determine if the derivatives have opposite sign.
 
@@ -482,18 +475,19 @@ class LBFGS
 			// to stx than the quadratic step, the cubic step is taken,
 			// else the average of the cubic and quadratic steps is taken.
 
+
 			this.infoc = 1;
 			bound = true;
-			theta = 3 * ( fx[0] - fp ) / ( stp - stx ) + dx[0] + dp;
+			theta = 3 * ( fx[0] - fp ) / ( this.stp - this.stx ) + dx[0] + dp;
 			s = LBFGS.max3 ( Math.abs ( theta ) , Math.abs ( dx[0] ) , Math.abs ( dp ) );
 			gamma = s * Math.sqrt ( LBFGS.sqr( theta / s ) - ( dx[0] / s ) * ( dp / s ) );
-			if ( stp < stx ) gamma = - gamma;
+			if ( this.stp < this.stx ) gamma = - gamma;
 			p = ( gamma - dx[0] ) + theta;
 			q = ( ( gamma - dx[0] ) + gamma ) + dp;
 			r = p/q;
-			stpc = stx + r * ( stp - stx );
-			stpq = stx + ( ( dx[0] / ( ( fx[0] - fp ) / ( stp - stx ) + dx[0] ) ) / 2 ) * ( stp - stx );
-			if ( Math.abs ( stpc - stx ) < Math.abs ( stpq - stx ) )
+			stpc = this.stx + r * ( this.stp - this.stx );
+			stpq = this.stx + ( ( dx[0] / ( ( fx[0] - fp ) / ( this.stp - this.stx ) + dx[0] ) ) / 2 ) * ( this.stp - this.stx );
+			if ( Math.abs ( stpc - this.stx ) < Math.abs ( stpq - this.stx ) )
 			{
 				stpf = stpc;
 			}
@@ -509,19 +503,18 @@ class LBFGS
 			// opposite sign. The minimum is bracketed. If the cubic
 			// step is closer to stx than the quadratic (secant) step,
 			// the cubic step is taken, else the quadratic step is taken.
-
 			this.infoc = 2;
 			bound = false;
-			theta = 3 * ( fx[0] - fp ) / ( stp - stx ) + dx[0] + dp;
+			theta = 3 * ( fx[0] - fp ) / ( this.stp - this.stx ) + dx[0] + dp;
 			s = LBFGS.max3 ( Math.abs ( theta ) , Math.abs ( dx[0] ) , Math.abs ( dp ) );
 			gamma = s * Math.sqrt ( LBFGS.sqr( theta / s ) - ( dx[0] / s ) * ( dp / s ) );
-			if ( stp > stx ) gamma = - gamma;
+			if ( this.stp > this.stx ) gamma = - gamma;
 			p = ( gamma - dp ) + theta;
 			q = ( ( gamma - dp ) + gamma ) + dx[0];
 			r = p/q;
-			stpc = stp + r * ( stx - stp );
-			stpq = stp + ( dp / ( dp - dx[0] ) ) * ( stx - stp );
-			if ( Math.abs ( stpc - stp ) > Math.abs ( stpq - stp ) )
+			stpc = this.stp + r * ( this.stx - this.stp );
+			stpq = this.stp + ( dp / ( dp - dx[0] ) ) * ( this.stx - this.stp );
+			if ( Math.abs ( stpc - this.stp ) > Math.abs ( stpq - this.stp ) )
 			{
 				stpf = stpc;
 			}
@@ -544,29 +537,29 @@ class LBFGS
 
 			this.infoc = 3;
 			bound = true;
-			theta = 3 * ( fx[0] - fp ) / ( stp - stx ) + dx[0] + dp;
+			theta = 3 * ( fx[0] - fp ) / ( this.stp - this.stx ) + dx[0] + dp;
 			s = LBFGS.max3 ( Math.abs ( theta ) , Math.abs ( dx[0] ) , Math.abs ( dp ) );
 			gamma = s * Math.sqrt ( Math.max ( 0, LBFGS.sqr( theta / s ) - ( dx[0] / s ) * ( dp / s ) ) );
-			if ( stp > stx ) gamma = - gamma;
+			if ( this.stp > this.stx ) gamma = - gamma;
 			p = ( gamma - dp ) + theta;
 			q = ( gamma + ( dx[0] - dp ) ) + gamma;
 			r = p/q;
 			if ( r < 0.0 && gamma != 0.0 )
 			{
-				stpc = stp + r * ( stx - stp );
+				stpc = this.stp + r * ( this.stx - this.stp );
 			}
-			else if ( stp > stx )
+			else if ( this.stp > this.stx )
 			{
-				stpc = stmax;
+				stpc = this.stmax;
 			}
 			else
 			{
-				stpc = stmin;
+				stpc = this.stmin;
 			}
-			stpq = stp + ( dp / ( dp - dx[0] ) ) * ( stx - stp );
+			stpq = this.stp + ( dp / ( dp - dx[0] ) ) * ( this.stx - this.stp );
 			if ( this.brackt )
 			{
-				if ( Math.abs ( stp - stpc ) < Math.abs ( stp - stpq ) )
+				if ( Math.abs ( this.stp - stpc ) < Math.abs ( this.stp - stpq ) )
 				{
 					stpf = stpc;
 				}
@@ -577,7 +570,7 @@ class LBFGS
 			}
 			else
 			{
-				if ( Math.abs ( stp - stpc ) > Math.abs ( stp - stpq ) )
+				if ( Math.abs ( this.stp - stpc ) > Math.abs ( this.stp - stpq ) )
 				{
 					stpf = stpc;
 				}
@@ -593,28 +586,27 @@ class LBFGS
 			// same sign, and the magnitude of the derivative does
 			// not decrease. If the minimum is not bracketed, the step
 			// is either stmin or stmax, else the cubic step is taken.
-
 			this.infoc = 4;
 			bound = false;
 			if ( this.brackt )
 			{
-				theta = 3 * ( fp - fy[0] ) / ( sty - stp ) + dy[0] + dp;
+				theta = 3 * ( fp - fy[0] ) / ( this.sty - this.stp ) + dy[0] + dp;
 				s = LBFGS.max3 ( Math.abs ( theta ) , Math.abs ( dy[0] ) , Math.abs ( dp ) );
 				gamma = s * Math.sqrt ( LBFGS.sqr( theta / s ) - ( dy[0] / s ) * ( dp / s ) );
-				if ( stp > sty ) gamma = - gamma;
+				if ( this.stp > this.sty ) gamma = - gamma;
 				p = ( gamma - dp ) + theta;
 				q = ( ( gamma - dp ) + gamma ) + dy[0];
 				r = p/q;
-				stpc = stp + r * ( sty - stp );
+				stpc = this.stp + r * ( this.sty - this.stp );
 				stpf = stpc;
 			}
-			else if ( stp > stx )
+			else if ( this.stp > this.stx )
 			{
-				stpf = stmax;
+				stpf = this.stmax;
 			}
 			else
 			{
-				stpf = stmin;
+				stpf = this.stmin;
 			}
 		}
 
@@ -623,7 +615,7 @@ class LBFGS
 
 		if ( fp > fx[0] )
 		{
-			this.sty = stp;
+			this.sty = this.stp;
 			fy[0] = fp;
 			dy[0] = dp;
 		}
@@ -631,11 +623,11 @@ class LBFGS
 		{
 			if ( sgnd < 0.0 )
 			{
-				this.sty = stx;
+				this.sty = this.stx;
 				fy[0] = fx[0];
 				dy[0] = dx[0];
 			}
-			this.stx = stp;
+			this.stx = this.stp;
 			fx[0] = fp;
 			dx[0] = dp;
 		}
@@ -643,18 +635,18 @@ class LBFGS
 		// Compute the new step and safeguard it.
 
 		stpf = Math.min ( this.stmax , stpf );
-		stpf = Math.max ( stmin , stpf );
+		stpf = Math.max ( this.stmin , stpf );
 		this.stp = stpf;
 
 		if ( this.brackt && bound )
 		{
-			if ( sty > stx )
+			if ( this.sty > this.stx )
 			{
-				this.stp = Math.min ( stx + 0.66 * ( sty - stx ) , stp );
+				this.stp = Math.min ( this.stx + 0.66 * ( this.sty - this.stx ) , this.stp );
 			}
 			else
 			{
-				this.stp = Math.max ( stx + 0.66 * ( sty - stx ) , stp );
+				this.stp = Math.max ( this.stx + 0.66 * ( this.sty - this.stx ) , this.stp );
 			}
 		}
 
@@ -776,28 +768,24 @@ export function optimize(
   const x = newStaticArray<f64>(numFreeParams)
   const g = newStaticArray<f64>(numFreeParams)
 
-  // Copy the params in.
-  for (let i: u32 = 0; i < numFreeParams; i++) {
-    x[i] = getParam(i)
-  }
-
-  let complete = false
   const m = 5
   const eps = 0.1
   const lb = new LBFGS(x, m, eps)
-  while (!complete) {
-    //    df.update(x)
-    let i: u32 = 0
-    while (i < numFreeParams) {
-      g[i] = evaluateGradient(i) * -1
-      i += 1
-    }
-    complete = lb.apply(evaluateLoss() * -1, g)
-    break; // Temp!
-  }
 
-  // Copy the params back out again.
-  for (let i: u32 = 0; i < numFreeParams; i++) {
-    setParam(i, x[i])
-  }
+  let zz: f64 = 99
+  let complete: boolean
+
+  x[0] = 0.1
+  g[0] = 2 * x[0]
+  complete = lb.apply(x[0] * x[0], g)
+  console.log('------>' + x[0].toString())
+
+  g[0] = 2 * x[0]
+  complete = lb.apply(x[0] * x[0], g)
+  console.log(x[0].toString())
+  console.log('------>' + x[0].toString())
+
+  g[0] = 2 * x[0]
+  complete = lb.apply(x[0] * x[0], g)
+  console.log(x[0].toString())
 }
