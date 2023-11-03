@@ -4,7 +4,6 @@ import * as w from "@wasmgroundup/emit"
 
 import { checkNotNull } from "../assert"
 import { builtins } from "./builtins"
-import { i32_constexpr } from "./instr"
 
 import * as prebuilt from "../../../build/release.wasm_sections"
 

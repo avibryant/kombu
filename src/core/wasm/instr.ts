@@ -1,7 +1,6 @@
 import * as w from "@wasmgroundup/emit"
 
 import * as prebuilt from "../../../build/release.wasm_sections"
-import { assert } from "../assert"
 import { builtins } from "./builtins"
 
 // Required as an immediate arg for all loads/stores.
@@ -30,9 +29,4 @@ export function f64_store(offset: number, frag: w.BytecodeFragment) {
     frag,
     [w.instr.f64.store, ALIGNMENT_AND_OFFSET],
   ]
-}
-
-export function i32_constexpr(value: number) {
-  assert(value >>> 0 === value, "not a 32-bit integer")
-  return [w.instr.i32.const, w.i32(value), w.instr.end]
 }
