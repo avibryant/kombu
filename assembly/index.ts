@@ -1,55 +1,40 @@
-//import { getParam, setParam, evaluateLoss, evaluateGradient } from "./util"
+import {
+  evaluateLoss,
+  evaluateGradient,
+  getParam,
+  newStaticArray,
+  setParam,
+} from "./util"
 
-/*
-  Based on an example Tensorflow implementation of RMSProp from "Dive into
-  Deep Learning".
+import { init, apply } from "./lbfgs"
 
-  Source: https://d2l.ai/chapter_optimization/rmsprop.html
+export function optimize(numFreeParams: u32): void {
+  const x = newStaticArray<f64>(numFreeParams)
+  const g = newStaticArray<f64>(numFreeParams)
 
-  def rmsprop(params, grads, states, hyperparams):
-      gamma, eps = hyperparams['gamma'], 1e-6
-      for p, s, g in zip(params, states, grads):
-          s[:].assign(gamma * s + (1 - gamma) * tf.math.square(g))
-          p[:].assign(p - hyperparams['lr'] * g / tf.math.sqrt(s + eps))
+  let complete = false
+  const m = 5
+  const eps = 0.1
 
-Good defaults:
-- learningRate = 0.001
-- epsilon = 1e-6
-- gamma = 0.9 - 0.99
-*/
-// export function optimize(
-//   numFreeParams: u32,
-//   iterations: u32,
-//   learningRate: f64,
-//   epsilon: f64,
-//   gamma: f64,
-// ): void {
-//   let i = iterations
-//   while (i > 0) {
-//     evaluateLoss()
-//     for (let i: u32 = 0; i < numFreeParams; ++i) {
-//       const g = evaluateGradient(i)
-//       const s = getState(i)
+  init(x, m, eps)
 
-//       // Update the cache with the decayed moving average of squared gradients.
-//       const newS = gamma * s + (1 - gamma) * g * g
-//       setState(i, newS)
+  // Copy params in.
+  for (let i: u32 = 0; i < numFreeParams; i++) {
+    x[i] = getParam(i)
+  }
 
-//       // Update the parameter value.
-//       const p = getParam(i)
-//       setParam(i, p - (learningRate * g) / Math.sqrt(newS + epsilon))
-//     }
-//     i = i - 1
-//   }
-// }
-export { optimize } from "./lbfgs"
+  // g[0] = 0.2
+  // apply(x[0] * x[0], g)
 
-// @inline
-// function getState(i: u32): f64 {
-//   return load<f64>(i * 16 + 8)
-// }
+  while (!complete) {
+    for (let i: u32 = 0; i < numFreeParams; i++) {
+      g[i] = evaluateGradient(i)
+    }
+    complete = apply(evaluateLoss(), g)
 
-// @inline
-// function setState(i: u32, val: f64): void {
-//   store<f64>(i * 16 + 8, val)
-// }
+    // Copy params back out.
+    for (let i: u32 = 0; i < numFreeParams; i++) {
+      setParam(i, x[i])
+    }
+  }
+}

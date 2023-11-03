@@ -55,7 +55,7 @@ let x: StaticArray<f64> = newStaticArray<f64>(0)
 *       ||G|| < eps * max(1,||X||)
 */
 
-function init(x_: StaticArray<f64>, m_: i32, eps: f64): void {
+export function init(x_: StaticArray<f64>, m_: i32, eps: f64): void {
 	x = x_;
 	m = m_;
 	n = x.length;
@@ -74,7 +74,7 @@ function init(x_: StaticArray<f64>, m_: i32, eps: f64): void {
 	iypt= ispt+n*m;
 }
 
-function apply (f: f64, g: StaticArray<f64>): boolean
+export function apply (f: f64, g: StaticArray<f64>): boolean
 {
 	let execute_entire_while_loop = false;
 	if ( iter == 0 )
@@ -748,40 +748,3 @@ function ddot ( n: i32, dx: StaticArray<f64>, ix0: i32, incx: i32, dy: StaticArr
 
 function sqr( x: f64 ): f64 { return x*x; }
 function max3( x: f64, y: f64, z: f64 ): f64 { return x < y ? ( y < z ? z : y ) : ( x < z ? z : x ); }
-
-export function optimize(
-  numFreeParams: u32,
-  iterations: u32,
-  learningRate: f64,
-  epsilon: f64,
-  gamma: f64,
-): void {
-  const x = newStaticArray<f64>(numFreeParams)
-  const g = newStaticArray<f64>(numFreeParams)
-
-  let complete = false
-  const m = 5
-  const eps = 0.1
-
-  init(x, m, eps)
-
-  // Copy params in.
-  for (let i: u32 = 0; i < numFreeParams; i++) {
-    x[i] = getParam(i)
-  }
-
-  // g[0] = 0.2
-  // apply(x[0] * x[0], g)
-
-  while (!complete) {
-    for (let i: u32 = 0; i < numFreeParams; i++) {
-      g[i] = evaluateGradient(i)
-    }
-    complete = apply(evaluateLoss(), g)
-
-    // Copy params back out.
-    for (let i: u32 = 0; i < numFreeParams; i++) {
-      setParam(i, x[i]);
-    }
-  }
-}
