@@ -22,7 +22,7 @@ import {
 @inline const p66: f64 = 0.66
 @inline const xtrapf: f64 = 4
 
-// prettier-ignore
+@unmanaged @final
 class LBFGS
 {
 	private stp1: f64;
