@@ -4,8 +4,7 @@ export interface Variable {
   type: "length" | "angle"
   param: k.Param
   value: k.Num
-  loss: k.Num
-  hint?: k.Num
+  logJ: k.Num
 }
 
 interface AngleVariable extends Variable {
@@ -16,31 +15,34 @@ interface LengthVariable extends Variable {
   type: "length"
 }
 
-const sigma = 1
-export function lengthVariable(name: string, hint?: k.Num): LengthVariable {
-  let h = hint ? hint : k.num(100)
+export function lengthVariable(name: string): LengthVariable {
   const param = k.param(name)
-  const value = k.exp(k.add(k.mul(param, sigma), k.log(h)))
-  const loss = k.div(k.mul(param, param), 2)
+  const value = k.exp(param)
   return {
     type: "length",
     param,
     value,
-    hint,
-    loss,
+    logJ: param,
   }
 }
 
 export function angleVariable(name: string): AngleVariable {
   const param = k.param(name)
-  const loss = k.zero
   //range: (-1,1)
-  const value = k.sub(k.mul(2, k.logistic(param)), 1)
+
+  const logisticParam = k.logistic(param)
+  const value = k.sub(k.mul(2, logisticParam), 1)
 
   return {
     type: "angle",
     param,
     value,
-    loss,
+    logJ: k.mul(
+      k.add(
+        k.log(2),
+        k.add(k.log(logisticParam), k.log(k.sub(1, logisticParam))),
+      ),
+      -1,
+    ),
   }
 }

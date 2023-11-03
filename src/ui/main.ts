@@ -9,8 +9,9 @@ import { checkNotNull } from "../core/assert"
 import { defaultOptions } from "../core/wasmopt"
 import { createPanel } from "./panel"
 import { draw } from "../turtle/draw"
-import { Model, emptyModel, optimize } from "../model/model"
+import { Model, emptyModel, optimize, totalLoss } from "../model/model"
 import { renderView } from "../model/view"
+import { tex } from "../core/api"
 
 const html = htm.bind(h)
 
@@ -28,6 +29,7 @@ const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
 
 let model: Model = emptyModel()
 draw(model)
+console.log(tex(totalLoss(model)))
 
 const ctx = canvas.getContext("2d")!
 

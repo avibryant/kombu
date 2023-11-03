@@ -5,7 +5,8 @@ import { Node } from "./node"
 import { Constraint, constraint } from "./constraint"
 import { View } from "./view"
 import { Point } from "./point"
-import { Angle, fromSin } from "./angle"
+import { Angle, fromCos } from "./angle"
+import { Distribution, logNormal, normal } from "./distribution"
 
 export interface Model {
   variables: Variable[]
@@ -43,26 +44,26 @@ export function node(m: Model, pt: Point): Node {
   return n
 }
 
-export function someLength(m: Model, name: string, hint?: k.AnyNum): k.Num {
-  const variable = lengthVariable(name, hint ? k.num(hint) : undefined)
+export function someLength(
+  m: Model,
+  name: string,
+  hint: k.AnyNum = 100,
+): k.Num {
+  const variable = lengthVariable(name)
   m.variables.push(variable)
+  m.constraints.push(constraint(logNormal(k.log(hint), 10), variable.value))
   return variable.value
 }
 
 export function someAngle(m: Model, name: string): Angle {
   const variable = angleVariable(name)
   m.variables.push(variable)
-  return fromSin(variable.value)
+  m.constraints.push(constraint(normal(0, 2), variable.value))
+  return fromCos(variable.value)
 }
 
-export function constrain(
-  m: Model,
-  a: Node,
-  b: Node,
-  distance: number,
-  sd: number,
-) {
-  const c = constraint(a, b, distance, sd)
+export function constrain(m: Model, dist: Distribution, value: k.Num) {
+  const c = constraint(dist, value)
   m.constraints.push(c)
 }
 
@@ -87,7 +88,7 @@ export function optimize(
 }
 
 export function totalLoss(m: Model): k.Num {
-  const varLoss = m.variables.map((v) => v.loss)
-  const conLoss = m.constraints.map((v) => v.loss)
-  return varLoss.concat(conLoss).reduce(k.add)
+  const varLoss = m.variables.map((v) => v.logJ)
+  const conLoss = m.constraints.map((v) => v.logP)
+  return conLoss.concat(varLoss).reduce(k.add)
 }

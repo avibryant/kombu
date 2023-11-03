@@ -20,7 +20,6 @@ interface Subpanel {
 
 interface VarInfo {
   value: number
-  loss: number
 }
 
 interface DisplayState {
@@ -37,17 +36,7 @@ function safelyAssign<T, K extends keyof T>(obj: T, key: K, val: any): void {
 
 function subpanel(parent: Pane | TabPageApi, label: string, data: VarInfo) {
   const sep = parent.addBlade({ view: "separator" })
-  const bindings = [
-    parent.addBinding(data, "value", { label }),
-    parent.addBinding(data, "loss"),
-    parent.addBinding(data, "loss", {
-      readonly: true,
-      view: "graph",
-      min: 0,
-      max: 1,
-      label: "",
-    }),
-  ]
+  const bindings = [parent.addBinding(data, "value", { label })]
 
   return {
     refresh() {
@@ -161,10 +150,9 @@ export function createPanel(mutableConfig: Config) {
       })
 
       added.forEach((v) => {
-        const data = {
-          value: ev.evaluate(v.value),
-          loss: ev.evaluate(v.loss),
-        }
+        let value = ev.evaluate(v.value)
+        if (v.type == "angle") value = (Math.acos(value) * 180) / Math.PI
+        const data = { value }
         const ui = subpanel(paramsPage, v.param.name, data)
         displayState.set(v, {
           ui,
@@ -173,8 +161,9 @@ export function createPanel(mutableConfig: Config) {
       })
 
       displayState.forEach(({ ui, data }, v) => {
-        data.value = ev.evaluate(v.value)
-        data.loss = ev.evaluate(v.loss)
+        let value = ev.evaluate(v.value)
+        if (v.type == "angle") value = (Math.acos(value) * 180) / Math.PI
+        data.value = value
         ui.refresh()
       })
     },

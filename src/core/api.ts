@@ -25,11 +25,4 @@ export {
   exp,
   log,
 } from "./num"
-export {
-  normalPrior,
-  uniformPrior,
-  normalLikelihood,
-  logistic,
-  softplus,
-} from "./stats"
-export type { Prior } from "./stats"
+export { logistic, softplus } from "./stats"
