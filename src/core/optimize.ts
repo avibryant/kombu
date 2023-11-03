@@ -7,6 +7,20 @@ import { wasmOptimizer, OptimizeOptions } from "./wasmopt"
 
 export type { OptimizeOptions, RMSPropOptions } from "./wasmopt"
 
+export interface Loss {
+  value: t.Num
+  gradient: g.Gradient
+  params: t.Param[]
+}
+
+export function loss(value: t.Num): Loss {
+  const gradient = g.gradient(value)
+  const params = collectParams(value)
+  return {
+    value, gradient, params
+  }
+}
+
 export interface Optimizer {
   optimize(
     iterations: number,
@@ -22,18 +36,16 @@ function standardNormalRandom() {
   )
 }
 
-export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
-  const gradient = g.gradient(loss)
-
+export function optimizer(loss: Loss, init?: Map<t.Param, number>): Optimizer {
   // Ensure that we have an initial value for all free parameters.
   const freeParams = new Map(init)
-  gradient.forEach((_, k) => {
-    if (!freeParams.has(k)) freeParams.set(k, standardNormalRandom())
+  loss.params.forEach(p => {
+    if (!p.fixed && !freeParams.has(p)) freeParams.set(p, standardNormalRandom())
   })
 
   // The internal optimizer inteface is similar to the public API, but we
   // assume that param values are fully specified.
-  let optimizeImpl = wasmOptimizer(loss, gradient, freeParams)
+  let optimizeImpl = wasmOptimizer(loss, freeParams)
 
   return {
     optimize(
@@ -42,7 +54,7 @@ export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
       opts?: OptimizeOptions,
     ) {
       // Ensure that we have a value for all fixed parameters.
-      collectParams(loss)
+      loss.params
         .filter((p) => p.fixed)
         .forEach((p) => {
           assert(
@@ -61,7 +73,7 @@ export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
 }
 
 export function optimize(
-  loss: t.Num,
+  loss: Loss,
   init: Map<t.Param, number>,
   iterations: number,
   observations?: Map<t.Param, number>,

@@ -7,7 +7,7 @@ export { param, observation, zero, one, nodeCount } from "./construct"
 export { tex } from "./tex"
 export { evaluator } from "./eval"
 export { gradient } from "./grad"
-export { optimize, optimizer } from "./optimize"
+export { optimize, optimizer, loss } from "./optimize"
 export {
   num,
   add,

@@ -1,4 +1,3 @@
-import { assertUnreachable } from "./assert"
 import * as t from "./types"
 
 export function collectParams(root: t.Num): t.Param[] {
@@ -16,13 +15,14 @@ export function collectParams(root: t.Num): t.Param[] {
           params.add(num)
           break
         case t.NumType.Sum:
-          return visitSum(num.firstTerm)
+          visitSum(num.firstTerm)
+          break
         case t.NumType.Product:
-          return visitProduct(num.firstTerm)
+          visitProduct(num.firstTerm)
+          break
         case t.NumType.Unary:
-          return visitNum(num.term)
-        default:
-          assertUnreachable(num)
+          visitNum(num.term)
+          break
       }
     }
   }
