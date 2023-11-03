@@ -157,9 +157,11 @@ export function wasmOptimizer(
       options.epsilon,
       options.gamma,
     )
-    return new Map(params.map((p, i) => {
-      return [p, cache.getParam(i)]
-    }))
+    return new Map(
+      params.map((p, i) => {
+        return [p, cache.getParam(i)]
+      }),
+    )
   }
 
   function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {

@@ -33,6 +33,6 @@ export function f64_store(offset: number, frag: w.BytecodeFragment) {
 }
 
 export function i32_constexpr(value: number) {
-  assert(value >>> 0 === value, 'not a 32-bit integer');
+  assert(value >>> 0 === value, "not a 32-bit integer")
   return [w.instr.i32.const, w.i32(value), w.instr.end]
 }

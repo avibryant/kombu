@@ -1,4 +1,4 @@
-import fs from 'node:fs'
+import fs from "node:fs"
 
 import * as w from "@wasmgroundup/emit"
 
@@ -84,8 +84,8 @@ export function instantiateModule(
   })
   const memorySize = memory.buffer.byteLength
   const numPages = Math.ceil(memorySize / WASM_PAGE_SIZE)
-  console.log({ numPages})
-  console.log(w.importdesc.mem(w.memtype(w.limits.min(numPages-1))))
+  console.log({ numPages })
+  console.log(w.importdesc.mem(w.memtype(w.limits.min(numPages - 1))))
   imports.push(
     w.import_(
       "memory",
@@ -136,10 +136,7 @@ export function instantiateModule(
       // (global $~lib/shared/runtime/Runtime.Incremental i32 (i32.const 2))
       w.global(w.globaltype(w.valtype.i32, w.mut.const), i32_constexpr(2)),
       // (global $~lib/memory/__heap_base i32 (i32.const 268))
-      w.global(
-        w.globaltype(w.valtype.i32, w.mut.const),
-        i32_constexpr(364),
-      ),
+      w.global(w.globaltype(w.valtype.i32, w.mut.const), i32_constexpr(364)),
     ]),
     w.exportsec(exports),
     w.startsec(w.funcidx(userFuncIdx(-1))),
