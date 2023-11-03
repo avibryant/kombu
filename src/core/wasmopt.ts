@@ -26,31 +26,27 @@ type IdentifiableNum = t.Num & { id: number }
 
 const SIZEOF_F64 = 8
 
-// For each parameter, we reserve multiple f64 slots.
-// The first slot holds the parameter value itself. Currently the second
-// slot is used to hold the moving average the gradient.
-const cacheSlotsPerParam = 2
-
 class OptimizerCache {
   memory: WebAssembly.Memory
-  cache: Float64Array
 
-  constructor(size: number) {
-    this.memory = new WebAssembly.Memory({ initial: size })
-    this.cache = new Float64Array(this.memory.buffer)
+  constructor(public numParams: number) {
+    this.memory = new WebAssembly.Memory({ initial: numParams * SIZEOF_F64 })
   }
 
   getParam(idx: number): number {
-    return this.cache[idx * cacheSlotsPerParam]
+    const cache = new Float64Array(this.memory.buffer, 0, this.numParams)
+    return cache[idx]
   }
 
   setParam(idx: number, val: number): void {
-    this.cache[idx * cacheSlotsPerParam] = val
+    const cache = new Float64Array(this.memory.buffer, 0, this.numParams)
+    cache[idx] = val
   }
 
   setParams(entries: [t.Param, number][]): void {
-    entries.forEach(([_, val], i) => {
-      this.setParam(i, val)
+    const cache = new Float64Array(this.memory.buffer, 0, this.numParams)
+    entries.forEach(([_, val], idx) => {
+      cache[idx] = val
     })
   }
 }
@@ -116,7 +112,7 @@ export function wasmOptimizer(
   // For each parameter, allocate two f64 slots: one for the current value,
   // and one for temporary data used by the optimization algorithm.
   params.forEach((p) => {
-    ctx.allocateCache(p, 2)
+    ctx.allocateCache(p)
   })
 
   const functions = [loss, ...gradientValues].map((num) => ({
@@ -125,7 +121,7 @@ export function wasmOptimizer(
     body: emitCachedNum(num, ctx),
   }))
 
-  const cache = new OptimizerCache(ctx.memorySize() * 1024)
+  const cache = new OptimizerCache(freeParams.length)
 
   // Initialize the cache with values for the free params.
   cache.setParams(freeParams.map((p) => [p, checkNotNull(init.get(p))]))

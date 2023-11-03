@@ -1,5 +1,5 @@
 import fs from "node:fs"
-import { basename } from "node:path"
+import * as w from "@wasmgroundup/emit"
 
 import { assert } from "../src/core/assert"
 import { builtins } from "../src/core/wasm/builtins"
@@ -10,13 +10,6 @@ import { extractSections } from "./modparse"
   and writes it to a .ts module in the same directory.
 */
 
-// Because we manually rewrite the global section, we make sure that the bytes
-// are exactly what we're expecting. If you've made changes to the
-// AssemblyScript code and the globals have changed, you should:
-// 1. Make sure the code in instantiateModule() writes the globals correctly.
-// 2. Change the value of this constant to reflect the new expectation.
-const GLOBALSEC_CONTENTS = "fwFBAAt/AUEAC38AQQALfwBBAQt/AEECC38AQewCCw=="
-
 const inputPath = "../build/release.wasm"
 const inputUrl = new URL(inputPath, import.meta.url)
 const outputUrl = new URL(inputPath + "_sections.ts", import.meta.url)
@@ -26,12 +19,24 @@ const sections = extractSections(buf, {
   destImportCount: builtins.length,
 })
 
-const { globalsec } = sections
-const toBase64 = (arr: Uint8Array) => Buffer.from(arr).toString("base64")
+// Expect the last global to represent the following:
+//  (global $~lib/memory/__heap_base i32 (i32.const 364))
+// Changes to the AssemblyScript source code may cause the constant to change.
+// To avoid overwriting the wrong global, make sure the contents are exactly
+// what we expect.
+const expectedHeapBase = w.global(w.globaltype(w.valtype.i32, w.mut.const), [
+  w.instr.i32.const,
+  w.i32(364),
+  w.instr.end,
+])
+const lastGlobal = Array.from(sections.globalsec.contents.slice(-6))
+
+// If this assertion fails, check the globals defined in build/release.wat,
+// and if necessary, update the i32 constant to reflect the new value.
 assert(
-  toBase64(globalsec.contents) === GLOBALSEC_CONTENTS,
-  `Oh no. Unexpected globalsec contents: "${toBase64(globalsec.contents)}"
-See ${basename(import.meta.url)} for more details.`,
+  JSON.stringify(lastGlobal) ===
+    JSON.stringify(expectedHeapBase.flat(Infinity)),
+  "unexpected contents in last global variable",
 )
 
 let output = `function decodeBase64(str: string) {
