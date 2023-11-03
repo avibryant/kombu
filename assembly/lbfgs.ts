@@ -768,24 +768,25 @@ export function optimize(
   const x = newStaticArray<f64>(numFreeParams)
   const g = newStaticArray<f64>(numFreeParams)
 
+  let complete = false
   const m = 5
   const eps = 0.1
   const lb = new LBFGS(x, m, eps)
 
-  let zz: f64 = 99
-  let complete: boolean
+  // Copy params in.
+  for (let i: u32 = 0; i < numFreeParams; i++) {
+    x[i] = getParam(i)
+  }
 
-  x[0] = 0.1
-  g[0] = 2 * x[0]
-  complete = lb.apply(x[0] * x[0], g)
-  console.log('------>' + x[0].toString())
+  while (!complete) {
+    for (let i: u32 = 0; i < numFreeParams; i++) {
+      g[i] = evaluateGradient(i)
+    }
+    complete = lb.apply(evaluateLoss(), g)
 
-  g[0] = 2 * x[0]
-  complete = lb.apply(x[0] * x[0], g)
-  console.log(x[0].toString())
-  console.log('------>' + x[0].toString())
-
-  g[0] = 2 * x[0]
-  complete = lb.apply(x[0] * x[0], g)
-  console.log(x[0].toString())
+    // Copy params back out.
+    for (let i: u32 = 0; i < numFreeParams; i++) {
+      setParam(i, x[i]);
+    }
+  }
 }
