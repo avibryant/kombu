@@ -125,7 +125,7 @@ export function wasmOptimizer(
     body: emitCachedNum(num, ctx),
   }))
 
-  const cache = new OptimizerCache(ctx.memorySize())
+  const cache = new OptimizerCache(ctx.memorySize() * 1024)
 
   // Initialize the cache with values for the free params.
   cache.setParams(freeParams.map((p) => [p, checkNotNull(init.get(p))]))
@@ -157,7 +157,9 @@ export function wasmOptimizer(
       options.epsilon,
       options.gamma,
     )
-    return new Map(params.map((p, i) => [p, cache.getParam(i)]))
+    return new Map(params.map((p, i) => {
+      return [p, cache.getParam(i)]
+    }))
   }
 
   function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {

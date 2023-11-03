@@ -1,3 +1,5 @@
+import fs from 'node:fs'
+
 import * as w from "@wasmgroundup/emit"
 
 import { checkNotNull } from "../assert"
@@ -81,11 +83,14 @@ export function instantiateModule(
     return w.import_("builtins", name, [w.importdesc.func(typeIdx)])
   })
   const memorySize = memory.buffer.byteLength
+  const numPages = Math.ceil(memorySize / WASM_PAGE_SIZE)
+  console.log({ numPages})
+  console.log(w.importdesc.mem(w.memtype(w.limits.min(numPages-1))))
   imports.push(
     w.import_(
       "memory",
       "cache",
-      w.importdesc.mem(w.memtype(w.limits.min(memorySize / WASM_PAGE_SIZE))),
+      w.importdesc.mem(w.memtype(w.limits.min(numPages))),
     ),
   )
 
@@ -133,7 +138,7 @@ export function instantiateModule(
       // (global $~lib/memory/__heap_base i32 (i32.const 268))
       w.global(
         w.globaltype(w.valtype.i32, w.mut.const),
-        i32_constexpr(memorySize),
+        i32_constexpr(364),
       ),
     ]),
     w.exportsec(exports),
@@ -157,7 +162,7 @@ export function instantiateModule(
   // type instantiation.
   const bytes = Uint8Array.from((fragment as any[]).flat(Infinity))
 
-  //  fs.writeFileSync("module.wasm", bytes)
+  fs.writeFileSync("module.wasm", bytes)
   const mod = new WebAssembly.Module(bytes)
   return new WebAssembly.Instance(mod, {
     builtins: Object.fromEntries(
