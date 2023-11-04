@@ -1,15 +1,13 @@
 import * as k from "../core/api"
 
-import { Variable, lengthVariable, angleVariable } from "./variable"
 import { Node } from "./node"
 import { Constraint, constraint } from "./constraint"
 import { View } from "./view"
 import { Point } from "./point"
-import { Angle, fromCos } from "./angle"
-import { Distribution, logNormal, normal } from "./distribution"
+import { Angle } from "./angle"
+import { Distribution, normal, laplace } from "./distribution"
 
 export interface Model {
-  variables: Variable[]
   constraints: Constraint[]
   nodes: Node[]
   views: View[]
@@ -28,7 +26,6 @@ export function emptyModel() {
 
 export function cloneModel(m: Model): Model {
   return {
-    variables: m.variables.slice(),
     constraints: m.constraints.slice(),
     nodes: m.nodes.slice(),
     views: m.views.slice(),
@@ -49,17 +46,21 @@ export function someLength(
   name: string,
   hint: k.AnyNum = 100,
 ): k.Num {
-  const variable = lengthVariable(name)
-  m.variables.push(variable)
-  m.constraints.push(constraint(logNormal(k.log(hint), 10), variable.value))
-  return variable.value
+  const param = k.param(name)
+  const value = k.mul(hint, k.abs(param))
+  m.constraints.push(constraint(normal(hint, 20), value))
+  return value
 }
 
 export function someAngle(m: Model, name: string): Angle {
-  const variable = angleVariable(name)
-  m.variables.push(variable)
-  m.constraints.push(constraint(normal(0, 2), variable.value))
-  return fromCos(variable.value)
+  const a = k.param(name)
+  const b = k.param(name)
+  const n = k.sqrt(k.add(k.mul(a, a), k.mul(b, b)))
+  const cos = k.div(a, n)
+  const sin = k.div(b, n)
+  m.constraints.push(constraint(laplace(0, 2), a))
+  m.constraints.push(constraint(laplace(0, 2), b))
+  return { cos, sin }
 }
 
 export function constrain(m: Model, dist: Distribution, value: k.Num) {
@@ -88,7 +89,6 @@ export function optimize(
 }
 
 export function totalLoss(m: Model): k.Num {
-  const varLoss = m.variables.map((v) => v.logJ)
   const conLoss = m.constraints.map((v) => v.logP)
-  return conLoss.concat(varLoss).reduce(k.add)
+  return conLoss.reduce(k.add)
 }

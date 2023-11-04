@@ -13,8 +13,8 @@ export function draw(m: Model) {
   forward(t, side)
   right(t, a)
   forward(t, side)
-  right(t, a)
-  forward(t, side)
+  //  right(t, a)
+  //  forward(t, side)
 
   at(t, o)
 }
