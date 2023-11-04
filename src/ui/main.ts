@@ -7,7 +7,6 @@ import { Canvas } from "./canvas"
 import * as r from "./render"
 import { checkNotNull } from "../core/assert"
 import { defaultOptions } from "../core/wasmopt"
-import { createPanel } from "./panel"
 import { draw } from "../turtle/draw"
 import { Model, emptyModel, optimize, totalLoss } from "../model/model"
 import { renderView } from "../model/view"
@@ -42,12 +41,8 @@ const config = {
   iterations: 10000,
 }
 
-const panel = createPanel(config)
-
 function render() {
   model = optimize(model, config.iterations, config.optimization)
-
-  panel.render(model)
 
   ctx.fillStyle = config.bgColor
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
