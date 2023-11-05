@@ -76,10 +76,11 @@ export function optimize(
   iterations: number,
   opts: k.OptimizeOptions,
 ): Model {
-  const loss = totalLoss(m)
-  if (!optimizer || loss !== oldLoss) {
+  const lossValue = totalLoss(m)
+  if (!optimizer || lossValue !== oldLoss) {
+    const loss = k.loss(lossValue)
     optimizer = k.optimizer(loss, m.ev.params)
-    oldLoss = loss
+    oldLoss = lossValue
   }
 
   const ev = optimizer.optimize(iterations, new Map(), opts)

@@ -2,17 +2,18 @@ import { expect, test } from "vitest"
 
 import { checkNotNull } from "./assert"
 import * as k from "./api"
-import * as g from "./grad"
+import { loss } from "./loss"
 
 import { wasmOptimizer } from "./wasmopt"
 
 function optimize(
-  loss: k.Num,
+  lossNum: k.Num,
   init: Map<k.Param, number>,
   iterations: number,
   observations: Map<k.Param, number> = new Map(),
 ) {
-  const optimizeImpl = wasmOptimizer(loss, g.gradient(loss), init)
+  const l = loss(lossNum)
+  const optimizeImpl = wasmOptimizer(l, init)
   const params = optimizeImpl(iterations, observations)
   return {
     evaluate(p: k.Param) {

@@ -1,9 +1,8 @@
 import { assert } from "./assert"
 import * as e from "./eval"
-import * as g from "./grad"
-import { collectParams } from "./params"
 import * as t from "./types"
 import { wasmOptimizer, OptimizeOptions } from "./wasmopt"
+import { Loss } from "./loss"
 
 export type { OptimizeOptions, RMSPropOptions } from "./wasmopt"
 
@@ -22,18 +21,16 @@ function standardNormalRandom() {
   )
 }
 
-export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
-  const gradient = g.gradient(loss)
-
+export function optimizer(loss: Loss, init?: Map<t.Param, number>): Optimizer {
   // Ensure that we have an initial value for all free parameters.
   const freeParams = new Map(init)
-  gradient.forEach((_, k) => {
-    if (!freeParams.has(k)) freeParams.set(k, standardNormalRandom())
+  loss.freeParams.forEach((p) => {
+    if (!freeParams.has(p)) freeParams.set(p, standardNormalRandom())
   })
 
   // The internal optimizer inteface is similar to the public API, but we
   // assume that param values are fully specified.
-  let optimizeImpl = wasmOptimizer(loss, gradient, freeParams)
+  let optimizeImpl = wasmOptimizer(loss, freeParams)
 
   return {
     optimize(
@@ -42,14 +39,12 @@ export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
       opts?: OptimizeOptions,
     ) {
       // Ensure that we have a value for all fixed parameters.
-      collectParams(loss)
-        .filter((p) => p.fixed)
-        .forEach((p) => {
-          assert(
-            !!observations.get(p),
-            `missing value for observation '${p.name}'`,
-          )
-        })
+      loss.fixedParams.forEach((p) => {
+        assert(
+          !!observations.get(p),
+          `missing value for observation '${p.name}'`,
+        )
+      })
 
       const newParams = optimizeImpl(iterations, observations, opts)
       newParams.forEach((v, p) => {
@@ -61,7 +56,7 @@ export function optimizer(loss: t.Num, init?: Map<t.Param, number>): Optimizer {
 }
 
 export function optimize(
-  loss: t.Num,
+  loss: Loss,
   init: Map<t.Param, number>,
   iterations: number,
   observations?: Map<t.Param, number>,

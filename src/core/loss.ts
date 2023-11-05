@@ -1,7 +1,27 @@
-import { assertUnreachable } from "./assert"
 import * as t from "./types"
+import * as g from "./grad"
 
-export function collectParams(root: t.Num): t.Param[] {
+export interface Loss {
+  value: t.Num
+  gradient: g.Gradient
+  freeParams: t.Param[]
+  fixedParams: t.Param[]
+}
+
+export function loss(value: t.Num): Loss {
+  const gradient = g.gradient(value)
+  const params = collectParams(value)
+  const freeParams = params.filter((p) => !p.fixed)
+  const fixedParams = params.filter((p) => p.fixed)
+  return {
+    value,
+    gradient,
+    freeParams,
+    fixedParams,
+  }
+}
+
+function collectParams(root: t.Num): t.Param[] {
   const params = new Set<t.Param>()
   const visited = new Set<t.Num>()
 
@@ -16,13 +36,14 @@ export function collectParams(root: t.Num): t.Param[] {
           params.add(num)
           break
         case t.NumType.Sum:
-          return visitSum(num.firstTerm)
+          visitSum(num.firstTerm)
+          break
         case t.NumType.Product:
-          return visitProduct(num.firstTerm)
+          visitProduct(num.firstTerm)
+          break
         case t.NumType.Unary:
-          return visitNum(num.term)
-        default:
-          assertUnreachable(num)
+          visitNum(num.term)
+          break
       }
     }
   }
