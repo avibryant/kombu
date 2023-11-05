@@ -24,7 +24,7 @@ function standardNormalRandom() {
 export function optimizer(loss: Loss, init?: Map<t.Param, number>): Optimizer {
   // Ensure that we have an initial value for all free parameters.
   const freeParams = new Map(init)
-  loss.freeParams.forEach(p => {
+  loss.freeParams.forEach((p) => {
     if (!freeParams.has(p)) freeParams.set(p, standardNormalRandom())
   })
 
@@ -39,13 +39,12 @@ export function optimizer(loss: Loss, init?: Map<t.Param, number>): Optimizer {
       opts?: OptimizeOptions,
     ) {
       // Ensure that we have a value for all fixed parameters.
-      loss.fixedParams
-        .forEach((p) => {
-          assert(
-            !!observations.get(p),
-            `missing value for observation '${p.name}'`,
-          )
-        })
+      loss.fixedParams.forEach((p) => {
+        assert(
+          !!observations.get(p),
+          `missing value for observation '${p.name}'`,
+        )
+      })
 
       const newParams = optimizeImpl(iterations, observations, opts)
       newParams.forEach((v, p) => {

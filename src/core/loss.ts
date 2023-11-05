@@ -11,10 +11,13 @@ export interface Loss {
 export function loss(value: t.Num): Loss {
   const gradient = g.gradient(value)
   const params = collectParams(value)
-  const freeParams = params.filter(p => !p.fixed)
-  const fixedParams = params.filter(p => p.fixed)
+  const freeParams = params.filter((p) => !p.fixed)
+  const fixedParams = params.filter((p) => p.fixed)
   return {
-    value, gradient, freeParams, fixedParams
+    value,
+    gradient,
+    freeParams,
+    fixedParams,
   }
 }
 

@@ -81,7 +81,7 @@ class CodegenContext {
 
 function frag(dbg: string, ...fragment: w.BytecodeFragment) {
   const arr = Array.from(fragment)
-    ; (arr as any).dbg = dbg
+  ;(arr as any).dbg = dbg
   return arr
 }
 
@@ -95,10 +95,7 @@ function debugPrint(frag: any[], depth = 0) {
   else log(`@${count++} ${frag} (0x${(frag as any).toString(16)})`)
 }
 
-export function wasmOptimizer(
-  loss: Loss,
-  init: Map<t.Param, number>,
-) {
+export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
   const { instr } = w
   const ctx = new CodegenContext()
 
@@ -106,7 +103,9 @@ export function wasmOptimizer(
   const params = [...loss.freeParams, ...loss.fixedParams]
 
   // Get a list of gradient values in the same order as `freeParams`.
-  const gradientValues = loss.freeParams.map((p) => checkNotNull(loss.gradient.elements.get(p)))
+  const gradientValues = loss.freeParams.map((p) =>
+    checkNotNull(loss.gradient.elements.get(p)),
+  )
 
   // For each parameter, allocate two f64 slots: one for the current value,
   // and one for temporary data used by the optimization algorithm.
@@ -145,13 +144,13 @@ export function wasmOptimizer(
 
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
-      ; (exports as any)["optimize"](
-        loss.freeParams.length,
-        iterations,
-        options.learningRate,
-        options.epsilon,
-        options.gamma,
-      )
+    ;(exports as any)["optimize"](
+      loss.freeParams.length,
+      iterations,
+      options.learningRate,
+      options.epsilon,
+      options.gamma,
+    )
     return new Map(params.map((p, i) => [p, cache.getParam(i)]))
   }
 
