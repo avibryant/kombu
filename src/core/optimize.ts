@@ -1,25 +1,10 @@
 import { assert } from "./assert"
 import * as e from "./eval"
-import * as g from "./grad"
-import { collectParams } from "./params"
 import * as t from "./types"
 import { wasmOptimizer, OptimizeOptions } from "./wasmopt"
+import { Loss } from "./loss"
 
 export type { OptimizeOptions, RMSPropOptions } from "./wasmopt"
-
-export interface Loss {
-  value: t.Num
-  gradient: g.Gradient
-  params: t.Param[]
-}
-
-export function loss(value: t.Num): Loss {
-  const gradient = g.gradient(value)
-  const params = collectParams(value)
-  return {
-    value, gradient, params
-  }
-}
 
 export interface Optimizer {
   optimize(
@@ -39,8 +24,8 @@ function standardNormalRandom() {
 export function optimizer(loss: Loss, init?: Map<t.Param, number>): Optimizer {
   // Ensure that we have an initial value for all free parameters.
   const freeParams = new Map(init)
-  loss.params.forEach(p => {
-    if (!p.fixed && !freeParams.has(p)) freeParams.set(p, standardNormalRandom())
+  loss.freeParams.forEach(p => {
+    if (!freeParams.has(p)) freeParams.set(p, standardNormalRandom())
   })
 
   // The internal optimizer inteface is similar to the public API, but we
@@ -54,8 +39,7 @@ export function optimizer(loss: Loss, init?: Map<t.Param, number>): Optimizer {
       opts?: OptimizeOptions,
     ) {
       // Ensure that we have a value for all fixed parameters.
-      loss.params
-        .filter((p) => p.fixed)
+      loss.fixedParams
         .forEach((p) => {
           assert(
             !!observations.get(p),

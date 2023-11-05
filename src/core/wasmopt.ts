@@ -4,7 +4,7 @@ import { assert, checkNotNull } from "./assert"
 import { callBuiltin, f64_const, f64_load, f64_store } from "./wasm/instr"
 import { instantiateModule } from "./wasm/mod"
 import * as t from "./types"
-import { Loss } from "./optimize"
+import { Loss } from "./loss"
 
 export interface RMSPropOptions {
   method: "RMSProp"
@@ -102,14 +102,11 @@ export function wasmOptimizer(
   const { instr } = w
   const ctx = new CodegenContext()
 
-  const freeParams = loss.params.filter((p) => !p.fixed)
-  const fixedParams = loss.params.filter((p) => p.fixed)
-
   // Reorder params — the generated code assumes free params come first.
-  const params = [...freeParams, ...fixedParams]
+  const params = [...loss.freeParams, ...loss.fixedParams]
 
   // Get a list of gradient values in the same order as `freeParams`.
-  const gradientValues = freeParams.map((p) => checkNotNull(loss.gradient.elements.get(p)))
+  const gradientValues = loss.freeParams.map((p) => checkNotNull(loss.gradient.elements.get(p)))
 
   // For each parameter, allocate two f64 slots: one for the current value,
   // and one for temporary data used by the optimization algorithm.
@@ -126,7 +123,7 @@ export function wasmOptimizer(
   const cache = new OptimizerCache(ctx.memorySize())
 
   // Initialize the cache with values for the free params.
-  cache.setParams(freeParams.map((p) => [p, checkNotNull(init.get(p))]))
+  cache.setParams(loss.freeParams.map((p) => [p, checkNotNull(init.get(p))]))
 
   const { exports } = instantiateModule(functions, cache.memory)
 
@@ -135,9 +132,9 @@ export function wasmOptimizer(
     observations: Map<t.Param, number>,
     opts?: RMSPropOptions,
   ): Map<t.Param, number> {
-    fixedParams.forEach((p, i) => {
+    loss.fixedParams.forEach((p, i) => {
       assert(observations.has(p), `Missing observation '${p.name}'`)
-      const idx = freeParams.length + i
+      const idx = loss.freeParams.length + i
       cache.setParam(idx, checkNotNull(observations.get(p)))
     })
 
@@ -149,7 +146,7 @@ export function wasmOptimizer(
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
       ; (exports as any)["optimize"](
-        freeParams.length,
+        loss.freeParams.length,
         iterations,
         options.learningRate,
         options.epsilon,
