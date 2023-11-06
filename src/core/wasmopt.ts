@@ -112,8 +112,7 @@ export function wasmOptimizer(
   // Get a list of gradient values in the same order as `freeParams`.
   const gradientValues = freeParams.map((p) => checkNotNull(gradient.get(p)))
 
-  // For each parameter, allocate two f64 slots: one for the current value,
-  // and one for temporary data used by the optimization algorithm.
+  // Allocate storage for all params.
   params.forEach((p) => {
     ctx.allocateCache(p)
   })

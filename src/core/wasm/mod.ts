@@ -153,7 +153,7 @@ export function instantiateModule(
   // type instantiation.
   const bytes = Uint8Array.from((fragment as any[]).flat(Infinity))
 
-  fs.writeFileSync("module.wasm", bytes)
+  // fs.writeFileSync("module.wasm", bytes)
   const mod = new WebAssembly.Module(bytes)
   return new WebAssembly.Instance(mod, {
     builtins: Object.fromEntries(
