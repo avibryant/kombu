@@ -25,30 +25,31 @@ export type OptimizeOptions = RMSPropOptions
 type IdentifiableNum = t.Num & { id: number }
 
 const SIZEOF_F64 = 8
+const WASM_PAGE_SIZE = 65536
 
 class OptimizerCache {
   memory: WebAssembly.Memory
 
-  constructor(public numParams: number) {
-    this.memory = new WebAssembly.Memory({ initial: numParams * SIZEOF_F64 })
+  constructor(public numEntries: number) {
+    const sizeBytes = numEntries * SIZEOF_F64
+    this.memory = new WebAssembly.Memory({
+      initial: Math.ceil(sizeBytes / WASM_PAGE_SIZE),
+    })
   }
 
   getParam(idx: number): number {
-    assert(idx < this.numParams, `bad param index: ${idx}`)
-    const cache = new Float64Array(this.memory.buffer, 0, this.numParams)
+    const cache = new Float64Array(this.memory.buffer, 0, this.numEntries)
     return cache[idx]
   }
 
   setParam(idx: number, val: number): void {
-    assert(idx < this.numParams, `bad param index: ${idx}`)
-    const cache = new Float64Array(this.memory.buffer, 0, this.numParams)
+    const cache = new Float64Array(this.memory.buffer, 0, this.numEntries)
     cache[idx] = val
   }
 
   setParams(entries: [t.Param, number][]): void {
-    const cache = new Float64Array(this.memory.buffer, 0, this.numParams)
+    const cache = new Float64Array(this.memory.buffer, 0, this.numEntries)
     entries.forEach(([_, val], idx) => {
-      assert(idx < this.numParams, `bad param index: ${idx}`)
       cache[idx] = val
     })
   }
@@ -71,10 +72,6 @@ class CodegenContext {
 
   cacheOffsetForParam(p: t.Param) {
     return checkNotNull(this.cacheOffset(p))
-  }
-
-  memorySize() {
-    return this.cacheEntries * SIZEOF_F64
   }
 }
 
@@ -117,7 +114,7 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     body: emitCachedNum(num, ctx),
   }))
 
-  const cache = new OptimizerCache(params.length)
+  const cache = new OptimizerCache(ctx.cacheEntries)
 
   // Initialize the cache with values for the free params.
   cache.setParams(loss.freeParams.map((p) => [p, checkNotNull(init.get(p))]))
