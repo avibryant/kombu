@@ -1,7 +1,7 @@
 import { decodeULEB128, decodeSLEB128 } from "@thi.ng/leb128"
 import * as w from "@wasmgroundup/emit"
 
-import { assert, checkNotNull } from "../src/core/assert.ts"
+import { assert, checkNotNull } from "../src/core/assert"
 
 // For sanity checking, assume that the number of locals is never
 // above a certain number. (We can raise this if necessary.)

@@ -1,4 +1,4 @@
-import fs from "node:fs"
+import * as fs from "node:fs"
 
 import { builtins } from "../src/core/wasm/builtins"
 import { extractSections } from "./modparse"
