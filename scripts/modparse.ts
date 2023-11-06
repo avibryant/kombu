@@ -252,8 +252,8 @@ function rewriteCodeEntry(
       case instr.i64.const:
         const origPos = pos
         const [_, count] = decodeULEB128(bytes.slice(pos))
-        assert(count <= 8, `too many bytes (${count}) for i64 @${origPos}`)
-        pos += 8
+        assert(count <= 10, `too many bytes (${count}) for i64 @${origPos}`)
+        pos += count
         break
       case instr.f32.const:
         pos += 4
@@ -263,12 +263,25 @@ function rewriteCodeEntry(
         break
       // @ts-ignore Fallthrough case in switch
       case 0xfc:
-        if (bytes[pos] === 0x0b /* memory.fill */) {
-          pos++
-          parseU32()
+        const bc2 = parseU32()
+        if (0 <= bc2 && bc2 <= 7) {
+          // i32.trunc_sat_XXX
           break
         }
-      // fall through
+        switch (bc2) {
+          case 0x0a: // memory.copy
+            parseU32()
+            parseU32()
+            break
+          case 0x0b: // memory.fill
+            parseU32()
+            break
+          default:
+            throw new Error(
+              `unhandled multibyte ${bc2.toString(16)} @${pos - 1}`,
+            )
+        }
+        break
       default:
         if (instr.i32.load <= bc && bc <= instr.i64.store32) {
           parseU32()
