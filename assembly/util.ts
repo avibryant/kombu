@@ -1,13 +1,13 @@
 
 @inline
 export function getParam(i: u32): f64 {
-  return load<f64>(i * 16) // Get param_i
+  return load<f64>(i * sizeof<f64>()) // Get param_i
 }
 
 
 @inline
 export function setParam(i: u32, val: f64): void {
-  store<f64>(i * 16, val) // Set param_i
+  store<f64>(i * sizeof<f64>(), val) // Set param_i
 }
 
 

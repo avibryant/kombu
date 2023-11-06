@@ -21,7 +21,7 @@ function optimize(
   }
 }
 
-test.only("simple case with one param", () => {
+test("simple case with one param", () => {
   const x = k.param("x")
   const loss = k.pow(x, 2)
 

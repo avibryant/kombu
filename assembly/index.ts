@@ -23,8 +23,8 @@ export function optimize(numFreeParams: u32): void {
     x[i] = getParam(i)
   }
 
-  // g[0] = 0.2
-  // apply(x[0] * x[0], g)
+  // We need to evaluate the loss before any gradients.
+  evaluateLoss()
 
   while (!complete) {
     for (let i: u32 = 0; i < numFreeParams; i++) {

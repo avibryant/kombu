@@ -34,11 +34,13 @@ class OptimizerCache {
   }
 
   getParam(idx: number): number {
+    assert(idx < this.numParams, `bad param index: ${idx}`)
     const cache = new Float64Array(this.memory.buffer, 0, this.numParams)
     return cache[idx]
   }
 
   setParam(idx: number, val: number): void {
+    assert(idx < this.numParams, `bad param index: ${idx}`)
     const cache = new Float64Array(this.memory.buffer, 0, this.numParams)
     cache[idx] = val
   }
@@ -46,6 +48,7 @@ class OptimizerCache {
   setParams(entries: [t.Param, number][]): void {
     const cache = new Float64Array(this.memory.buffer, 0, this.numParams)
     entries.forEach(([_, val], idx) => {
+      assert(idx < this.numParams, `bad param index: ${idx}`)
       cache[idx] = val
     })
   }
@@ -121,7 +124,7 @@ export function wasmOptimizer(
     body: emitCachedNum(num, ctx),
   }))
 
-  const cache = new OptimizerCache(freeParams.length)
+  const cache = new OptimizerCache(params.length)
 
   // Initialize the cache with values for the free params.
   cache.setParams(freeParams.map((p) => [p, checkNotNull(init.get(p))]))
