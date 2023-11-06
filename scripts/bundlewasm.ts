@@ -1,4 +1,4 @@
-import fs from "node:fs"
+import * as fs from "node:fs"
 import * as w from "@wasmgroundup/emit"
 
 import { assert } from "../src/core/assert"

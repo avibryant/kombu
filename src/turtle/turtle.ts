@@ -2,9 +2,11 @@ import * as k from "../core/api"
 
 import * as pt from "../model/point"
 import * as a from "../model/angle"
-import { Model, node } from "../model/model"
+import { Model, node, constrain } from "../model/model"
 import { segment } from "../model/view"
 import { Node } from "../model/node"
+import { normal } from "../model/distribution"
+import { distance } from "../model/point"
 
 export interface Turtle {
   position: Node
@@ -36,4 +38,9 @@ export function left(t: Turtle, angle: a.Angle) {
 
 export function right(t: Turtle, angle: a.Angle) {
   t.direction = a.add(t.direction, angle)
+}
+
+export function at(t: Turtle, node: Node) {
+  const d = distance(t.position.point, node.point)
+  constrain(t.model, normal(0, 1), d)
 }

@@ -3,7 +3,11 @@ import * as c from "./construct"
 import * as n from "./num"
 import { assertUnreachable } from "./assert"
 
-export function gradient(output: t.Num): Map<t.Param, t.Num> {
+export interface Gradient {
+  elements: Map<t.Param, t.Num>
+}
+
+export function gradient(output: t.Num): Gradient {
   const diffs = new Map<t.Num, CompoundDiff>()
   const params = new Set<t.Param>()
 
@@ -82,11 +86,11 @@ export function gradient(output: t.Num): Map<t.Param, t.Num> {
   }
   visit(output)
 
-  const g = new Map<t.Param, t.Num>()
+  const elements = new Map<t.Param, t.Num>()
   params.forEach((p) => {
-    g.set(p, toNum(diff(p)))
+    elements.set(p, toNum(diff(p)))
   })
-  return g
+  return { elements }
 }
 
 type Diff = ConstantDiff | CompoundDiff | ProductDiff | ExponentDiff | UnaryDiff

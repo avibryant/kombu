@@ -1,14 +1,13 @@
 import * as k from "../core/api"
 
-import { Variable, lengthVariable, angleVariable } from "./variable"
 import { Node } from "./node"
 import { Constraint, constraint } from "./constraint"
 import { View } from "./view"
 import { Point } from "./point"
-import { Angle, fromSin } from "./angle"
+import { Angle } from "./angle"
+import { Distribution, normal, laplace } from "./distribution"
 
 export interface Model {
-  variables: Variable[]
   constraints: Constraint[]
   nodes: Node[]
   views: View[]
@@ -27,7 +26,6 @@ export function emptyModel() {
 
 export function cloneModel(m: Model): Model {
   return {
-    variables: m.variables.slice(),
     constraints: m.constraints.slice(),
     nodes: m.nodes.slice(),
     views: m.views.slice(),
@@ -43,26 +41,30 @@ export function node(m: Model, pt: Point): Node {
   return n
 }
 
-export function someLength(m: Model, name: string, hint?: k.AnyNum): k.Num {
-  const variable = lengthVariable(name, hint ? k.num(hint) : undefined)
-  m.variables.push(variable)
-  return variable.value
+export function someLength(
+  m: Model,
+  name: string,
+  hint: k.AnyNum = 100,
+): k.Num {
+  const param = k.param(name)
+  const value = k.mul(hint, k.abs(param))
+  m.constraints.push(constraint(normal(hint, 20), value))
+  return value
 }
 
 export function someAngle(m: Model, name: string): Angle {
-  const variable = angleVariable(name)
-  m.variables.push(variable)
-  return fromSin(variable.value)
+  const a = k.param(name)
+  const b = k.param(name)
+  const n = k.sqrt(k.add(k.mul(a, a), k.mul(b, b)))
+  const cos = k.div(a, n)
+  const sin = k.div(b, n)
+  m.constraints.push(constraint(laplace(0, 2), a))
+  m.constraints.push(constraint(laplace(0, 2), b))
+  return { cos, sin }
 }
 
-export function constrain(
-  m: Model,
-  a: Node,
-  b: Node,
-  distance: number,
-  sd: number,
-) {
-  const c = constraint(a, b, distance, sd)
+export function constrain(m: Model, dist: Distribution, value: k.Num) {
+  const c = constraint(dist, value)
   m.constraints.push(c)
 }
 
@@ -74,10 +76,11 @@ export function optimize(
   iterations: number,
   opts: k.OptimizeOptions,
 ): Model {
-  const loss = totalLoss(m)
-  if (!optimizer || loss !== oldLoss) {
+  const lossValue = totalLoss(m)
+  if (!optimizer || lossValue !== oldLoss) {
+    const loss = k.loss(lossValue)
     optimizer = k.optimizer(loss, m.ev.params)
-    oldLoss = loss
+    oldLoss = lossValue
   }
 
   const ev = optimizer.optimize(iterations, new Map(), opts)
@@ -87,7 +90,6 @@ export function optimize(
 }
 
 export function totalLoss(m: Model): k.Num {
-  const varLoss = m.variables.map((v) => v.loss)
-  const conLoss = m.constraints.map((v) => v.loss)
-  return varLoss.concat(conLoss).reduce(k.add)
+  const conLoss = m.constraints.map((v) => v.logP)
+  return conLoss.reduce(k.add)
 }

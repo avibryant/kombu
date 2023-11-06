@@ -1,10 +1,10 @@
 import * as w from "@wasmgroundup/emit"
 
 import { assert, checkNotNull } from "./assert"
-import { collectParams } from "./params"
 import { callBuiltin, f64_const, f64_load, f64_store } from "./wasm/instr"
 import { instantiateModule } from "./wasm/mod"
 import * as t from "./types"
+import { Loss } from "./loss"
 
 export interface RMSPropOptions {
   method: "RMSProp"
@@ -94,30 +94,24 @@ function debugPrint(frag: any[], depth = 0) {
   else log(`@${count++} ${frag} (0x${(frag as any).toString(16)})`)
 }
 
-export function wasmOptimizer(
-  loss: t.Num,
-  gradient: Map<t.Param, t.Num>,
-  init: Map<t.Param, number>,
-) {
+export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
   const { instr } = w
   const ctx = new CodegenContext()
 
-  let params = collectParams(loss)
-  const freeParams = params.filter((p) => !p.fixed)
-  const fixedParams = params.filter((p) => p.fixed)
-
   // Reorder params — the generated code assumes free params come first.
-  params = [...freeParams, ...fixedParams]
+  const params = [...loss.freeParams, ...loss.fixedParams]
 
   // Get a list of gradient values in the same order as `freeParams`.
-  const gradientValues = freeParams.map((p) => checkNotNull(gradient.get(p)))
+  const gradientValues = loss.freeParams.map((p) =>
+    checkNotNull(loss.gradient.elements.get(p)),
+  )
 
   // Allocate storage for all params.
   params.forEach((p) => {
     ctx.allocateCache(p)
   })
 
-  const functions = [loss, ...gradientValues].map((num) => ({
+  const functions = [loss.value, ...gradientValues].map((num) => ({
     name: "",
     type: w.functype([], [w.valtype.f64]),
     body: emitCachedNum(num, ctx),
@@ -126,7 +120,7 @@ export function wasmOptimizer(
   const cache = new OptimizerCache(params.length)
 
   // Initialize the cache with values for the free params.
-  cache.setParams(freeParams.map((p) => [p, checkNotNull(init.get(p))]))
+  cache.setParams(loss.freeParams.map((p) => [p, checkNotNull(init.get(p))]))
 
   const { exports } = instantiateModule(functions, cache.memory)
 
@@ -135,9 +129,9 @@ export function wasmOptimizer(
     observations: Map<t.Param, number>,
     opts?: RMSPropOptions,
   ): Map<t.Param, number> {
-    fixedParams.forEach((p, i) => {
+    loss.fixedParams.forEach((p, i) => {
       assert(observations.has(p), `Missing observation '${p.name}'`)
-      const idx = freeParams.length + i
+      const idx = loss.freeParams.length + i
       cache.setParam(idx, checkNotNull(observations.get(p)))
     })
 
@@ -149,7 +143,7 @@ export function wasmOptimizer(
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
     ;(exports as any)["optimize"](
-      freeParams.length,
+      loss.freeParams.length,
       iterations,
       options.learningRate,
       options.epsilon,
