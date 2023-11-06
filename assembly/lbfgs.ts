@@ -4,13 +4,7 @@
  * License: Apache license, version 2.
  */
 
-import {
-  getParam,
-  setParam,
-  evaluateLoss,
-  evaluateGradient,
-  newStaticArray,
-} from "./util"
+import { newStaticArray } from "./util"
 
 @inline const gtol: f64 = 0.9
 @inline const STPMIN: f64 = 1e-20
@@ -240,7 +234,7 @@ function mcsrch (f: f64 , g: StaticArray<f64>): void
 			dginit = dginit + g [j] * w[is0+j];
 
 		if ( dginit >= 0 )
-			throw new RuntimeException("dginit");
+			throw new Error("dginit");
 
 		brackt = false;
 		stage1 = true;
