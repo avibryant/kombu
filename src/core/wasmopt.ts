@@ -6,51 +6,49 @@ import { instantiateModule } from "./wasm/mod"
 import * as t from "./types"
 import { Loss } from "./loss"
 
-export interface RMSPropOptions {
-  method: "RMSProp"
-  learningRate: number
+export interface LBFGSOptions {
+  method: "LBFGS"
   epsilon: number
-  gamma: number
+  m: number
 }
 
-export const defaultOptions: RMSPropOptions = {
-  method: "RMSProp",
-  learningRate: 0.001,
-  epsilon: 1e-6,
-  gamma: 0.99,
+export const defaultOptions: LBFGSOptions = {
+  method: "LBFGS",
+  epsilon: 0.1,
+  m: 5,
 }
 
-export type OptimizeOptions = RMSPropOptions
+export type OptimizeOptions = LBFGSOptions
 
 type IdentifiableNum = t.Num & { id: number }
 
 const SIZEOF_F64 = 8
-
-// For each parameter, we reserve multiple f64 slots.
-// The first slot holds the parameter value itself. Currently the second
-// slot is used to hold the moving average the gradient.
-const cacheSlotsPerParam = 2
+const WASM_PAGE_SIZE = 65536
 
 class OptimizerCache {
   memory: WebAssembly.Memory
-  cache: Float64Array
 
-  constructor(size: number) {
-    this.memory = new WebAssembly.Memory({ initial: size })
-    this.cache = new Float64Array(this.memory.buffer)
+  constructor(public numEntries: number) {
+    const sizeBytes = numEntries * SIZEOF_F64
+    this.memory = new WebAssembly.Memory({
+      initial: Math.ceil(sizeBytes / WASM_PAGE_SIZE),
+    })
   }
 
   getParam(idx: number): number {
-    return this.cache[idx * cacheSlotsPerParam]
+    const cache = new Float64Array(this.memory.buffer, 0, this.numEntries)
+    return cache[idx]
   }
 
   setParam(idx: number, val: number): void {
-    this.cache[idx * cacheSlotsPerParam] = val
+    const cache = new Float64Array(this.memory.buffer, 0, this.numEntries)
+    cache[idx] = val
   }
 
   setParams(entries: [t.Param, number][]): void {
-    entries.forEach(([_, val], i) => {
-      this.setParam(i, val)
+    const cache = new Float64Array(this.memory.buffer, 0, this.numEntries)
+    entries.forEach(([_, val], idx) => {
+      cache[idx] = val
     })
   }
 }
@@ -72,10 +70,6 @@ class CodegenContext {
 
   cacheOffsetForParam(p: t.Param) {
     return checkNotNull(this.cacheOffset(p))
-  }
-
-  memorySize() {
-    return this.cacheEntries * SIZEOF_F64
   }
 }
 
@@ -107,10 +101,9 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     checkNotNull(loss.gradient.elements.get(p)),
   )
 
-  // For each parameter, allocate two f64 slots: one for the current value,
-  // and one for temporary data used by the optimization algorithm.
+  // Allocate storage for all params.
   params.forEach((p) => {
-    ctx.allocateCache(p, 2)
+    ctx.allocateCache(p)
   })
 
   const functions = [loss.value, ...gradientValues].map((num) => ({
@@ -119,7 +112,7 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     body: emitCachedNum(num, ctx),
   }))
 
-  const cache = new OptimizerCache(ctx.memorySize())
+  const cache = new OptimizerCache(ctx.cacheEntries)
 
   // Initialize the cache with values for the free params.
   cache.setParams(loss.freeParams.map((p) => [p, checkNotNull(init.get(p))]))
@@ -127,9 +120,9 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
   const { exports } = instantiateModule(functions, cache.memory)
 
   function optimize(
-    iterations: number,
+    maxIterations: number,
     observations: Map<t.Param, number>,
-    opts?: RMSPropOptions,
+    opts?: OptimizeOptions,
   ): Map<t.Param, number> {
     loss.fixedParams.forEach((p, i) => {
       assert(observations.has(p), `Missing observation '${p.name}'`)
@@ -146,12 +139,15 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
       throw new Error(`export 'optimize' not found or not callable`)
     ;(exports as any)["optimize"](
       loss.freeParams.length,
-      iterations,
-      options.learningRate,
+      maxIterations,
+      options.m,
       options.epsilon,
-      options.gamma,
     )
-    return new Map(params.map((p, i) => [p, cache.getParam(i)]))
+    return new Map(
+      params.map((p, i) => {
+        return [p, cache.getParam(i)]
+      }),
+    )
   }
 
   function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {

@@ -4,7 +4,7 @@ import * as t from "./types"
 import { wasmOptimizer, OptimizeOptions } from "./wasmopt"
 import { Loss } from "./loss"
 
-export type { OptimizeOptions, RMSPropOptions } from "./wasmopt"
+export type { OptimizeOptions } from "./wasmopt"
 
 export interface Optimizer {
   optimize(

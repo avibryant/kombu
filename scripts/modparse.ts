@@ -5,7 +5,7 @@ import { assert, checkNotNull } from "../src/core/assert"
 
 // For sanity checking, assume that the number of locals is never
 // above a certain number. (We can raise this if necessary.)
-const MAX_LOCALS = 50
+const MAX_LOCALS = 64
 
 const WASM_NUMTYPES = [0x7c, 0x7d, 0x7e, 0x7f]
 const WASM_VECTYPE = 0x7b
@@ -71,7 +71,7 @@ export function extractSections(bytes: Uint8Array, opts: ExtractOptions = {}) {
     pos += size
   }
 
-  function parseSectionOpaque(expectedId: number) {
+  function parseVecSectionOpaque(expectedId: number) {
     const id = bytes[pos++]
     assert(
       id === expectedId,
@@ -91,10 +91,11 @@ export function extractSections(bytes: Uint8Array, opts: ExtractOptions = {}) {
     return { entryCount, contents }
   }
 
-  let typesec: VecContents | undefined = undefined
+  let typesec: VecContents | undefined
   let importsec: VecContents = { entryCount: 0, contents: new Uint8Array() }
-  let funcsec: VecContents | undefined = undefined
-  let codesec: VecContents | undefined = undefined
+  let funcsec: VecContents | undefined
+  let globalsec: VecContents | undefined
+  let codesec: VecContents | undefined
 
   let pos = 8
   let lastId = -1
@@ -109,13 +110,15 @@ export function extractSections(bytes: Uint8Array, opts: ExtractOptions = {}) {
     )
     lastId = id
     if (id === 1) {
-      typesec = parseSectionOpaque(id)
+      typesec = parseVecSectionOpaque(id)
     } else if (id === 2) {
-      importsec = parseSectionOpaque(id)
+      importsec = parseVecSectionOpaque(id)
     } else if (id === 3) {
-      funcsec = parseSectionOpaque(id)
+      funcsec = parseVecSectionOpaque(id)
+    } else if (id === 6) {
+      globalsec = parseVecSectionOpaque(id)
     } else if (id === 10) {
-      codesec = parseSectionOpaque(id)
+      codesec = parseVecSectionOpaque(id)
       // Rewrite the code section to account for the number of imports that
       // will exist in the final module.
       const srcImportCount = importsec?.entryCount ?? 0
@@ -133,6 +136,7 @@ export function extractSections(bytes: Uint8Array, opts: ExtractOptions = {}) {
     typesec: checkNotNull(typesec),
     importsec,
     funcsec: checkNotNull(funcsec),
+    globalsec: checkNotNull(globalsec),
     codesec: checkNotNull(codesec),
   }
 }
@@ -190,11 +194,16 @@ function rewriteCodeEntry(
     // The cases here are ordered by ascending opcode.
     // See https://pengowray.github.io/wasm-ops/ for an overview.
     switch (bc) {
+      case instr.unreachable:
+      case instr.nop:
+        break
       case instr.block:
       case instr.loop:
       case instr.if:
         skipBlocktype()
         ++nesting
+        break
+      case instr.else:
         break
       case instr.end:
         assert(--nesting >= 0, `bad nesting @${pos - 1}`)
@@ -228,6 +237,7 @@ function rewriteCodeEntry(
         parseU32()
         break
       case instr.drop:
+      case instr.select:
         break
       case instr.local.get:
       case instr.local.set:
@@ -242,8 +252,8 @@ function rewriteCodeEntry(
       case instr.i64.const:
         const origPos = pos
         const [_, count] = decodeULEB128(bytes.slice(pos))
-        assert(count <= 8, `too many bytes (${count}) for i64 @${origPos}`)
-        pos += 8
+        assert(count <= 10, `too many bytes (${count}) for i64 @${origPos}`)
+        pos += count
         break
       case instr.f32.const:
         pos += 4
@@ -251,14 +261,34 @@ function rewriteCodeEntry(
       case instr.f64.const:
         pos += 8
         break
+      // @ts-ignore Fallthrough case in switch
+      case 0xfc:
+        const bc2 = parseU32()
+        if (0 <= bc2 && bc2 <= 7) {
+          // i32.trunc_sat_XXX
+          break
+        }
+        switch (bc2) {
+          case 0x0a: // memory.copy
+            parseU32()
+            parseU32()
+            break
+          case 0x0b: // memory.fill
+            parseU32()
+            break
+          default:
+            throw new Error(
+              `unhandled multibyte ${bc2.toString(16)} @${pos - 1}`,
+            )
+        }
+        break
       default:
         if (instr.i32.load <= bc && bc <= instr.i64.store32) {
           parseU32()
           parseU32()
-        } else if (
-          (instr.memory.size <= bc && bc <= instr.memory.grow) ||
-          (instr.i32.eqz <= bc && bc <= instr.f64.reinterpret_i64)
-        ) {
+        } else if (instr.memory.size <= bc && bc <= instr.memory.grow) {
+          parseU32()
+        } else if (instr.i32.eqz <= bc && bc <= instr.f64.reinterpret_i64) {
           // do nothing
         } else {
           throw new Error(`unhandled bytecode 0x${bc.toString(16)} @${pos - 1}`)

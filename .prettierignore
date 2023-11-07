@@ -1,2 +1,3 @@
+assembly/lbfgs.ts
 build
 package-lock.json
