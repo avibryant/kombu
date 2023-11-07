@@ -23,14 +23,12 @@ export function optimize(numFreeParams: u32): void {
     x[i] = getParam(i)
   }
 
-  // We need to evaluate the loss before any gradients.
-  evaluateLoss()
-
   while (!complete) {
+    const loss = evaluateLoss()
     for (let i: u32 = 0; i < numFreeParams; i++) {
       g[i] = evaluateGradient(i)
     }
-    complete = apply(evaluateLoss(), g)
+    complete = apply(loss, g)
 
     // Copy params back out.
     for (let i: u32 = 0; i < numFreeParams; i++) {
