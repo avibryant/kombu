@@ -38,11 +38,11 @@ const config = {
   optimization: {
     ...defaultOptions,
   },
-  iterations: 10000,
+  maxIterations: 30,
 }
 
 function render() {
-  model = optimize(model, config.iterations, config.optimization)
+  model = optimize(model, config.maxIterations, config.optimization)
 
   ctx.fillStyle = config.bgColor
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)

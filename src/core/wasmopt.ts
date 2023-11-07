@@ -6,21 +6,19 @@ import { instantiateModule } from "./wasm/mod"
 import * as t from "./types"
 import { Loss } from "./loss"
 
-export interface RMSPropOptions {
-  method: "RMSProp"
-  learningRate: number
+export interface LBFGSOptions {
+  method: "LBFGS"
   epsilon: number
-  gamma: number
+  m: number
 }
 
-export const defaultOptions: RMSPropOptions = {
-  method: "RMSProp",
-  learningRate: 0.001,
-  epsilon: 1e-6,
-  gamma: 0.99,
+export const defaultOptions: LBFGSOptions = {
+  method: "LBFGS",
+  epsilon: 0.1,
+  m: 5,
 }
 
-export type OptimizeOptions = RMSPropOptions
+export type OptimizeOptions = LBFGSOptions
 
 type IdentifiableNum = t.Num & { id: number }
 
@@ -122,9 +120,9 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
   const { exports } = instantiateModule(functions, cache.memory)
 
   function optimize(
-    iterations: number,
+    maxIterations: number,
     observations: Map<t.Param, number>,
-    opts?: RMSPropOptions,
+    opts?: OptimizeOptions,
   ): Map<t.Param, number> {
     loss.fixedParams.forEach((p, i) => {
       assert(observations.has(p), `Missing observation '${p.name}'`)
@@ -139,12 +137,11 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
 
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
-    ;(exports as any)["optimize"](
+      ;(exports as any)["optimize"](
       loss.freeParams.length,
-      iterations,
-      options.learningRate,
+      maxIterations,
+      options.m,
       options.epsilon,
-      options.gamma,
     )
     return new Map(
       params.map((p, i) => {

@@ -49,11 +49,11 @@ let x: StaticArray<f64> = newStaticArray<f64>(0)
 *       ||G|| < eps * max(1,||X||)
 */
 
-export function init(x_: StaticArray<f64>, m_: i32, eps: f64): void {
+export function init(x_: StaticArray<f64>, m_: i32, eps_: f64): void {
 	x = x_;
 	m = m_;
 	n = x.length;
-	eps = eps;
+	eps = eps_;
 
 	w = newStaticArray<f64>(n*(2*m+1)+2*m);
 

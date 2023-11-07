@@ -8,13 +8,16 @@ import {
 
 import { init, apply } from "./lbfgs"
 
-export function optimize(numFreeParams: u32): void {
+export function optimize(
+  numFreeParams: u32,
+  maxIterations: u32,
+  m: u32,
+  eps: f64,
+): void {
   const x = newStaticArray<f64>(numFreeParams)
   const g = newStaticArray<f64>(numFreeParams)
 
   let complete = false
-  const m = 5
-  const eps = 0.1
 
   init(x, m, eps)
 
@@ -23,8 +26,9 @@ export function optimize(numFreeParams: u32): void {
     x[i] = getParam(i)
   }
 
-  while (!complete) {
+  for (let i: u32 = 0; i < maxIterations && !complete; i++) {
     const loss = evaluateLoss()
+
     for (let i: u32 = 0; i < numFreeParams; i++) {
       g[i] = evaluateGradient(i)
     }
