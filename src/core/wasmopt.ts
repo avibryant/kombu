@@ -137,7 +137,7 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
 
     if (typeof exports.optimize !== "function")
       throw new Error(`export 'optimize' not found or not callable`)
-      ;(exports as any)["optimize"](
+    ;(exports as any)["optimize"](
       loss.freeParams.length,
       maxIterations,
       options.m,
