@@ -4,15 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "make && vite",
     "build": "make",
     "check": "tsc --noEmit",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "format:fix": "prettier --write --log-level warn . && git commit -am prettier",
     "preview": "vite preview",
-    "test": "make prebuilt-wasm && vitest run",
+    "test": "make && vitest run",
     "test:watch": "make prebuilt-wasm && vitest",
+    "test:debug": "make && vitest --inspect-brk --single-thread",
     "prepare": "husky install"
   },
   "devDependencies": {
@@ -29,7 +30,9 @@
     "@tweakpane/core": "^2.0.1",
     "@wasmgroundup/emit": "^0.2.17",
     "htm": "^3.1.1",
+    "mitata": "^0.1.6",
     "preact": "^10.18.1",
+    "serve": "^14.2.1",
     "tweakpane": "^4.0.1"
   }
 }

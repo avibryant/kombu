@@ -3,6 +3,7 @@ export type { AnyNum } from "./num"
 export type { Optimizer, OptimizeOptions } from "./optimize"
 export type { Num, Param } from "./types"
 export type { Loss } from "./loss"
+export type { Gradient } from "./grad"
 
 export { param, observation, zero, one, nodeCount } from "./construct"
 export { tex } from "./tex"
