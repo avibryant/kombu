@@ -9,6 +9,10 @@ bundle: prebuilt-wasm
 .PHONY: prebuilt-wasm
 prebuilt-wasm: build/release.wasm_sections.ts
 
+.PHONY: bench
+bench: prebuilt-wasm
+	npx ts-node scripts/bench.ts
+
 build/release.wasm_sections.ts: build/release.wasm $(scripts)
 	npx ts-node scripts/bundlewasm.ts
 

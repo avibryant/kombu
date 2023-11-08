@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "make && vite",
-    "build": "make",
+    "dev": "make prebuilt-wasm && vite",
+    "bench": "make bench",
+    "build": "make prebuilt-wasm",
     "check": "tsc --noEmit",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
