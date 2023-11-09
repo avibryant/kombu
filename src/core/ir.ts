@@ -10,7 +10,7 @@ export enum ExprType {
   Param,
   Unary,
   Binary,
-  Precomputed
+  Precomputed,
 }
 
 export interface ConstantExpr {
@@ -27,7 +27,7 @@ export interface ParamExpr {
   param: t.Param
 }
 
-type BinaryOp = '+' | '*' | 'pow'
+type BinaryOp = "+" | "*" | "pow"
 
 export interface BinaryExpr {
   type: ExprType.Binary
@@ -69,9 +69,10 @@ export function module(loss: Loss) {
 
   function visitNum(num: t.Num): Expr {
     if (num.type === t.NumType.Constant) {
-        return constant(num.value)
-    } if (num.type === t.NumType.Param) {
-        return { type: ExprType.Param, param: num }
+      return constant(num.value)
+    }
+    if (num.type === t.NumType.Param) {
+      return { type: ExprType.Param, param: num }
     }
 
     if (cacheable.has(num)) {
@@ -81,9 +82,7 @@ export function module(loss: Loss) {
     let exp: CacheableExpr
     switch (num.type) {
       case t.NumType.Sum:
-        exp = binary('+',
-            visitSumTerm(num.firstTerm),
-            constant(num.k))
+        exp = binary("+", visitSumTerm(num.firstTerm), constant(num.k))
         break
       case t.NumType.Product:
         exp = visitProductTerm(num.firstTerm)
@@ -97,22 +96,22 @@ export function module(loss: Loss) {
   }
 
   function visitSumTerm(node: t.TermNode<t.SumTerm>): BinaryExpr {
-    let result = binary('*',
-      constant(node.a),
-      visitNum(node.x))
-    if (node.nextTerm) result = binary('+', result, visitSumTerm(node.nextTerm))
+    let result = binary("*", constant(node.a), visitNum(node.x))
+    if (node.nextTerm) result = binary("+", result, visitSumTerm(node.nextTerm))
     return result
   }
 
   function visitProductTerm(node: t.TermNode<t.ProductTerm>): BinaryExpr {
-    let result = binary('pow', visitNum(node.x), constant(node.a))
-    if (node.nextTerm) result = binary('*', result, visitProductTerm(node.nextTerm))
+    let result = binary("pow", visitNum(node.x), constant(node.a))
+    if (node.nextTerm)
+      result = binary("*", result, visitProductTerm(node.nextTerm))
     return result
   }
 
   return {
     loss: visitNum(loss.value),
     gradient: new Map(
-      Array.from(loss.gradient.elements).map(([p, num]) => [p, visitNum(num)]))
+      Array.from(loss.gradient.elements).map(([p, num]) => [p, visitNum(num)]),
+    ),
   }
 }
