@@ -1,9 +1,11 @@
 /*
-  Convert AssemblyScript sources to be valid TypeScript.
+  as2ts: Convert AssemblyScript sources to be valid TypeScript.
 */
 
 import * as fs from "node:fs"
 import { basename } from "node:path"
+
+const sources = ["../assembly/lbfgs.ts", "../assembly/asopt.ts"]
 
 const replacements: [RegExp, string][] = [
   [/@inline const/g, "const"],
@@ -25,4 +27,4 @@ function rewrite(filename: string) {
   fs.writeFileSync(scriptRel(`../build/${basename(filename)}`), output, "utf-8")
 }
 
-;["../assembly/lbfgs.ts", "../assembly/asopt.ts"].forEach(rewrite)
+sources.forEach(rewrite)
