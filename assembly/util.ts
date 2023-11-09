@@ -28,8 +28,8 @@ export function evaluateGradient(i: u32): f64 {
 
 
 @inline
-export function newStaticArray<T>(len: u32): StaticArray<T> {
-  return changetype<StaticArray<T>>(heap.alloc(len << alignof<T>()))
+export function newArrayOfDouble(len: u32): StaticArray<f64> {
+  return changetype<StaticArray<f64>>(heap.alloc(len << alignof<f64>()))
 }
 
 

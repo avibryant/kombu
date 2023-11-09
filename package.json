@@ -6,15 +6,15 @@
   "scripts": {
     "dev": "make prebuilt-wasm && vite",
     "bench": "make bench",
-    "build": "make prebuilt-wasm",
+    "build": "make",
     "check": "tsc --noEmit",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "format:fix": "prettier --write --log-level warn . && git commit -am prettier",
     "preview": "vite preview",
-    "test": "make && vitest run",
+    "test": "make prebuilt-wasm && vitest run",
     "test:watch": "make prebuilt-wasm && vitest",
-    "test:debug": "make && vitest --inspect-brk --single-thread",
+    "test:debug": "make prebuilt-wasm && vitest --inspect-brk --single-thread",
     "prepare": "husky install"
   },
   "devDependencies": {

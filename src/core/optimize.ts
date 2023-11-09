@@ -1,8 +1,9 @@
 import { assert } from "./assert"
 import * as e from "./eval"
+import { jsOptimizer } from "./jsopt"
+import { Loss } from "./loss"
 import * as t from "./types"
 import { wasmOptimizer, OptimizeOptions } from "./wasmopt"
-import { Loss } from "./loss"
 
 export type { OptimizeOptions } from "./wasmopt"
 
@@ -21,7 +22,11 @@ function standardNormalRandom() {
   )
 }
 
-export function optimizer(loss: Loss, init?: Map<t.Param, number>): Optimizer {
+export function optimizer(
+  loss: Loss,
+  init?: Map<t.Param, number>,
+  useWasm = true,
+): Optimizer {
   // Ensure that we have an initial value for all free parameters.
   const freeParams = new Map(init)
   loss.freeParams.forEach((p) => {
@@ -30,7 +35,7 @@ export function optimizer(loss: Loss, init?: Map<t.Param, number>): Optimizer {
 
   // The internal optimizer inteface is similar to the public API, but we
   // assume that param values are fully specified.
-  let optimizeImpl = wasmOptimizer(loss, freeParams)
+  let optimizeImpl = (useWasm ? wasmOptimizer : jsOptimizer)(loss, freeParams)
 
   return {
     optimize(
