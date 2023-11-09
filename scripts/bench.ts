@@ -45,19 +45,18 @@ bench("k.loss()", () => {
 })
 
 let optimizer: k.Optimizer
-bench("creating optimizer", () => {
+const optimize = () => optimizer.optimize(20, new Map())
+
+bench("creating optimizer (Wasm)", () => {
   optimizer = k.optimizer(loss, model.ev.params)
 })
+bench("optimizing (Wasm)", optimize)
 
-bench("optimize", () => {
-  optimizer.optimize(20, new Map())
+bench("creating optimizer (JS)", () => {
+  optimizer = k.optimizer(loss, model.ev.params, false)
 })
+bench("optimizing (JS)", optimize)
 
 await run({
-  avg: true, // enable/disable avg column (default: true)
-  json: false, // enable/disable json output (default: false)
-  colors: true, // enable/disable colors (default: true)
-  min_max: true, // enable/disable min/max column (default: true)
-  collect: false, // enable/disable collecting returned values into an array during the benchmark (default: false)
-  percentiles: false, // enable/disable percentiles column (default: true)
+  percentiles: false,
 })

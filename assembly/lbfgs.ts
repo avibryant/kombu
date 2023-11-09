@@ -4,40 +4,41 @@
  * License: Apache license, version 2.
  */
 
-import { newStaticArray } from "./util"
+import { ArrayOfDouble, double, int } from "./types"
+import { newArrayOfDouble} from "./util"
 
-@inline const gtol: f64 = 0.9
-@inline const STPMIN: f64 = 1e-20
-@inline const STPMAX: f64 = 1e20
-@inline const xtol: f64 = 1e-16
-@inline const ftol: f64 = 0.0001
-@inline const maxfev: i32 = 20
-@inline const p5: f64 = 0.5
-@inline const p66: f64 = 0.66
-@inline const xtrapf: f64 = 4
+@inline const gtol: double = 0.9
+@inline const STPMIN: double = 1e-20
+@inline const STPMAX: double = 1e20
+@inline const xtol: double = 1e-16
+@inline const ftol: double = 0.0001
+@inline const maxfev: int = 20
+@inline const p5: double = 0.5
+@inline const p66: double = 0.66
+@inline const xtrapf: double = 4
 
-let stp1: f64;
-let ys: f64;
-let yy: f64;
-let yr: f64;
-let iter: i32;
-let point: i32;
-let ispt: i32;
-let iypt: i32;
-let bound: i32;
-let npt: i32;
+let stp1: double;
+let ys: double;
+let yy: double;
+let yr: double;
+let iter: int;
+let point: int;
+let ispt: int;
+let iypt: int;
+let bound: int;
+let npt: int;
 
-let inmc: i32;
+let inmc: int;
 
-let info: i32;
-let stp: f64;
-let nfev: i32;
-let w: StaticArray<f64> = newStaticArray<f64>(0)
-let m: i32;
-let n: i32;
-let eps: f64;
-let diag: StaticArray<f64> = newStaticArray<f64>(0)
-let x: StaticArray<f64> = newStaticArray<f64>(0)
+let info: int;
+let stp: double;
+let nfev: int;
+let w: ArrayOfDouble = newArrayOfDouble(0)
+let m: int;
+let n: int;
+let eps: double;
+let diag: ArrayOfDouble = newArrayOfDouble(0)
+let x: ArrayOfDouble = newArrayOfDouble(0)
 
 /*  m The number of corrections used in the BFGS update.
 *		Values of less than 3 are not recommended;
@@ -49,18 +50,18 @@ let x: StaticArray<f64> = newStaticArray<f64>(0)
 *       ||G|| < eps * max(1,||X||)
 */
 
-export function init(x_: StaticArray<f64>, m_: i32, eps_: f64): void {
+export function init(x_: ArrayOfDouble, m_: int, eps_: double): void {
 	x = x_;
 	m = m_;
 	n = x.length;
 	eps = eps_;
 
-	w = newStaticArray<f64>(n*(2*m+1)+2*m);
+	w = newArrayOfDouble(n*(2*m+1)+2*m);
 
 	iter = 0;
 	point= 0;
 
-	diag = newStaticArray<f64>(n);
+	diag = newArrayOfDouble(n);
 	for (let i = 0 ; i < n ; i += 1 )
 		diag [i] = 1;
 
@@ -68,7 +69,7 @@ export function init(x_: StaticArray<f64>, m_: i32, eps_: f64): void {
 	iypt= ispt+n*m;
 }
 
-export function apply (f: f64, g: StaticArray<f64>): boolean
+export function apply (f: double, g: ArrayOfDouble): boolean
 {
 	let execute_entire_while_loop = false;
 	if ( iter == 0 )
@@ -79,7 +80,7 @@ export function apply (f: f64, g: StaticArray<f64>): boolean
 			w[ispt + i] = -g[i] * diag[i];
 		}
 
-		const gnorm: f64 = Math.sqrt (  ddot ( n , g , 0, 1 , g , 0, 1 ) );
+		const gnorm: double = Math.sqrt (  ddot ( n , g , 0, 1 , g , 0, 1 ) );
 		stp1= 1/gnorm;
 		execute_entire_while_loop = true;
 	}
@@ -106,7 +107,7 @@ export function apply (f: f64, g: StaticArray<f64>): boolean
 		{
 			if ( iter != 1 )
 			{
-				let cp: i32 = point;
+				let cp: int = point;
 				if ( point == 0 ) cp = m;
 				w [ n + cp -1] = 1 / ys;
 
@@ -121,9 +122,9 @@ export function apply (f: f64, g: StaticArray<f64>): boolean
 				{
 					cp=cp-1;
 					if ( cp == - 1 ) cp = m - 1;
-					const sq: f64 =  ddot ( n , w , ispt + cp * n , 1 , w , 0 , 1 );
+					const sq: double =  ddot ( n , w , ispt + cp * n , 1 , w , 0 , 1 );
 					inmc=n+m+cp;
-					let iycn: i32 =iypt+cp*n;
+					let iycn: int =iypt+cp*n;
 					w [inmc] = w [n + cp] * sq;
 					 daxpy ( n , -w[inmc] , w , iycn , 1 , w , 0 , 1 );
 				}
@@ -136,10 +137,10 @@ export function apply (f: f64, g: StaticArray<f64>): boolean
 				for ( let i = 0 ; i < bound ; i += 1 )
 				{
 					yr =  ddot ( n , w , iypt + cp * n , 1 , w , 0 , 1 );
-					let beta: f64 = w [ n + cp] * yr;
+					let beta: double = w [ n + cp] * yr;
 					inmc=n+m+cp;
 					beta = w [inmc] - beta;
-					let iscn: i32 =ispt+cp*n;
+					let iscn: int =ispt+cp*n;
 					 daxpy ( n , beta , w , iscn , 1 , w , 0 , 1 );
 					cp=cp+1;
 					if ( cp == m ) cp = 0;
@@ -177,8 +178,8 @@ export function apply (f: f64, g: StaticArray<f64>): boolean
 		point=point+1;
 		if ( point == m ) point = 0;
 
-		const gnorm: f64 = Math.sqrt (  ddot ( n , g , 0 , 1 , g , 0 , 1 ) );
-		let xnorm: f64 = Math.sqrt (  ddot ( n , x , 0 , 1 , x , 0 , 1 ) );
+		const gnorm: double = Math.sqrt (  ddot ( n , g , 0 , 1 , g , 0 , 1 ) );
+		let xnorm: double = Math.sqrt (  ddot ( n , x , 0 , 1 , x , 0 , 1 ) );
 		xnorm = Math.max ( 1.0 , xnorm );
 
 		if ( gnorm / xnorm <= eps )
@@ -188,39 +189,39 @@ export function apply (f: f64, g: StaticArray<f64>): boolean
 	}
 }
 
-let dg: f64;
-let dgm: f64;
-let dginit: f64;
-let dgtest: f64;
-let finit: f64;
-let ftest1: f64;
-let fm: f64;
-let stmin: f64;
-let stmax: f64;
-let width: f64;
-let width1: f64;
+let dg: double;
+let dgm: double;
+let dginit: double;
+let dgtest: double;
+let finit: double;
+let ftest1: double;
+let fm: double;
+let stmin: double;
+let stmax: double;
+let width: double;
+let width1: double;
 
 let stage1: boolean = false;
 
-let infoc: i32;
+let infoc: int;
 let brackt: boolean = false;
 
-let dgx: StaticArray<f64> = newStaticArray<f64>(1);
-let dgy: StaticArray<f64> = newStaticArray<f64>(1);
-let fx: StaticArray<f64> = newStaticArray<f64>(1);
-let fy: StaticArray<f64> = newStaticArray<f64>(1);
+let dgx: ArrayOfDouble = newArrayOfDouble(1);
+let dgy: ArrayOfDouble = newArrayOfDouble(1);
+let fx: ArrayOfDouble = newArrayOfDouble(1);
+let fy: ArrayOfDouble = newArrayOfDouble(1);
 
-let dgxm: StaticArray<f64> = newStaticArray<f64>(1);
-let dgym: StaticArray<f64> = newStaticArray<f64>(1);
-let fxm: StaticArray<f64> = newStaticArray<f64>(1);
-let fym: StaticArray<f64> = newStaticArray<f64>(1);
+let dgxm: ArrayOfDouble = newArrayOfDouble(1);
+let dgym: ArrayOfDouble = newArrayOfDouble(1);
+let fxm: ArrayOfDouble = newArrayOfDouble(1);
+let fym: ArrayOfDouble = newArrayOfDouble(1);
 
-let stx: f64;
-let sty: f64;
+let stx: double;
+let sty: double;
 
-function mcsrch (f: f64 , g: StaticArray<f64>): void
+function mcsrch (f: double , g: ArrayOfDouble): void
 {
-	const is0: i32 = ispt + point * n;
+	const is0: int = ispt + point * n;
 	if ( info != - 1 )
 	{
 		infoc = 1;
@@ -440,10 +441,10 @@ function mcsrch (f: f64 , g: StaticArray<f64>): void
   *   as part of Minpack project. Argonne Nat'l Laboratory, June 1983.
   *   Robert Dodier: Java translation, August 1997.
   */
-  function mcstep (fx: StaticArray<f64> , dx: StaticArray<f64> , fy: StaticArray<f64> , dy: StaticArray<f64> , fp: f64 , dp: f64): void
+  function mcstep (fx: ArrayOfDouble , dx: ArrayOfDouble , fy: ArrayOfDouble , dy: ArrayOfDouble , fp: double , dp: double): void
   {
 	let bound: boolean = false;
-	let gamma: f64; let p: f64; let q: f64; let r: f64; let s: f64; let sgnd: f64; let stpc: f64; let stpf: f64; let stpq: f64; let theta: f64;
+	let gamma: double; let p: double; let q: double; let r: double; let s: double; let sgnd: double; let stpc: double; let stpf: double; let stpq: double; let theta: double;
 
 	infoc = 0;
 
@@ -644,9 +645,9 @@ function mcsrch (f: f64 , g: StaticArray<f64>): void
   * There could well be faster ways to carry out this operation; this
   * code is a straight translation from the Fortran.
   */
-function daxpy ( n: i32 , da: f64 , dx: StaticArray<f64> , ix0: i32, incx: i32 , dy: StaticArray<f64> , iy0: i32, incy: i32 ): void
+function daxpy ( n: int , da: double , dx: ArrayOfDouble , ix0: int, incx: int , dy: ArrayOfDouble , iy0: int, incy: int ): void
 {
-	let i: i32; let ix: i32; let iy: i32; let m: i32; let mp1: i32;
+	let i: int; let ix: int; let iy: int; let m: int; let mp1: int;
 
 	if ( n <= 0 ) return;
 
@@ -697,10 +698,10 @@ function daxpy ( n: i32 , da: f64 , dx: StaticArray<f64> , ix0: i32, incx: i32 ,
   * There could well be faster ways to carry out this operation; this
   * code is a straight translation from the Fortran.
   */
-function ddot ( n: i32, dx: StaticArray<f64>, ix0: i32, incx: i32, dy: StaticArray<f64>, iy0: i32, incy: i32 ): f64
+function ddot ( n: int, dx: ArrayOfDouble, ix0: int, incx: int, dy: ArrayOfDouble, iy0: int, incy: int ): double
 {
-	let dtemp: f64;
-	let i: i32; let ix: i32; let iy: i32; let m: i32; let mp1: i32;
+	let dtemp: double;
+	let i: int; let ix: int; let iy: int; let m: int; let mp1: int;
 
 	dtemp = 0;
 
@@ -740,5 +741,5 @@ function ddot ( n: i32, dx: StaticArray<f64>, ix0: i32, incx: i32, dy: StaticArr
 	return dtemp;
 }
 
-function sqr( x: f64 ): f64 { return x*x; }
-function max3( x: f64, y: f64, z: f64 ): f64 { return x < y ? ( y < z ? z : y ) : ( x < z ? z : x ); }
+function sqr( x: double ): double { return x*x; }
+function max3( x: double, y: double, z: double ): double { return x < y ? ( y < z ? z : y ) : ( x < z ? z : x ); }
