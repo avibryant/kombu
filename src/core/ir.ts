@@ -70,8 +70,7 @@ export function module(loss: Loss) {
   function visitNum(num: t.Num): Expr {
     if (num.type === t.NumType.Constant) {
       return constant(num.value)
-    }
-    if (num.type === t.NumType.Param) {
+    } else if (num.type === t.NumType.Param) {
       return { type: ExprType.Param, param: num }
     }
 
