@@ -82,9 +82,9 @@ class CodegenContext {
     return this.cacheOffsetById.get(num.id)
   }
 
-  cacheOffset2(exp: ir.Expr): number | undefined {
+  cacheOffset2(exp: ir.Expr): number {
     const key = exp.type === ir.ExprType.Param ? exp.param : exp
-    return this.cacheOffsetById2.get(key)
+    return checkNotNull(this.cacheOffsetById2.get(key))
   }
 }
 
@@ -186,14 +186,10 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     switch (node.type) {
       case ir.ExprType.Constant:
         return frag("Constant", f64_const(node.value))
-      case ir.ExprType.Precomputed: {
-        const offset = checkNotNull(ctx.cacheOffset2(node.exp))
-        return frag("precomp", f64_load(offset))
-      }
-      case ir.ExprType.Param: {
-        const offset = checkNotNull(ctx.cacheOffset2(node))
-        return frag("precomp", f64_load(offset))
-      }
+      case ir.ExprType.Precomputed:
+        return frag("precomp", f64_load(ctx.cacheOffset2(node.exp)))
+      case ir.ExprType.Param:
+        return frag("precomp", f64_load(ctx.cacheOffset2(node)))
     }
 
     // Get the code that computes the result.
