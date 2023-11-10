@@ -5,6 +5,7 @@ import { callBuiltin, f64_const, f64_load, f64_store } from "./wasm/instr"
 import { instantiateModule } from "./wasm/mod"
 import * as t from "./types"
 import { Loss } from "./loss"
+import * as ir from "./ir"
 
 export interface LBFGSOptions {
   method: "LBFGS"
@@ -56,6 +57,7 @@ class OptimizerCache {
 class CodegenContext {
   cacheEntries = 0
   cacheOffsetById = new Map<number, number>()
+  cacheOffsetById2 = new Map<ir.Expr | t.Param, number>()
 
   allocateCache(num: IdentifiableNum, numSlots = 1): number {
     const offset = this.cacheEntries * SIZEOF_F64
@@ -64,12 +66,25 @@ class CodegenContext {
     return offset
   }
 
+  allocateCache2(exp: ir.Expr): number {
+    const offset = this.cacheEntries++ * SIZEOF_F64
+    this.cacheOffsetById2.set(exp, offset)
+    return offset
+  }
+
+  allocateCacheForParam(p: t.Param): number {
+    const offset = this.cacheEntries++ * SIZEOF_F64
+    this.cacheOffsetById2.set(p, offset)
+    return offset
+  }
+
   cacheOffset(num: IdentifiableNum): number | undefined {
     return this.cacheOffsetById.get(num.id)
   }
 
-  cacheOffsetForParam(p: t.Param) {
-    return checkNotNull(this.cacheOffset(p))
+  cacheOffset2(exp: ir.Expr): number | undefined {
+    const key = exp.type === ir.ExprType.Param ? exp.param : exp
+    return this.cacheOffsetById2.get(key)
   }
 }
 
@@ -101,16 +116,33 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     checkNotNull(loss.gradient.elements.get(p)),
   )
 
+  const ctx2 = new CodegenContext()
+  const mod = ir.module(loss)
+
   // Allocate storage for all params.
   params.forEach((p) => {
     ctx.allocateCache(p)
+    ctx2.allocateCacheForParam(p)
   })
 
-  const functions = [loss.value, ...gradientValues].map((num) => ({
-    name: "",
-    type: w.functype([], [w.valtype.f64]),
-    body: emitCachedNum(num, ctx),
-  }))
+  const functions = [loss.value, ...gradientValues].map((num) => {
+    return {
+      name: "",
+      type: w.functype([], [w.valtype.f64]),
+      body: emitCachedNum(num, ctx),
+    }
+  })
+
+  // Rewrite body to invoke
+  functions[0].body = [
+    functions[0].body,
+    visitIrNode(mod.loss, ctx2),
+    0x62, // f64.ne
+    [w.instr.if, 0x40],
+    w.instr.unreachable,
+    w.instr.end,
+    functions[0].body,
+  ]
 
   const cache = new OptimizerCache(ctx.cacheEntries)
 
@@ -147,6 +179,62 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
       params.map((p, i) => {
         return [p, cache.getParam(i)]
       }),
+    )
+  }
+
+  function visitIrNode(node: ir.Expr, ctx: CodegenContext): w.BytecodeFragment {
+    switch (node.type) {
+      case ir.ExprType.Constant:
+        return frag("Constant", f64_const(node.value))
+      case ir.ExprType.Precomputed: {
+        const offset = checkNotNull(ctx.cacheOffset2(node.exp))
+        return frag("precomp", f64_load(offset))
+      }
+      case ir.ExprType.Param: {
+        const offset = checkNotNull(ctx.cacheOffset2(node))
+        return frag("precomp", f64_load(offset))
+      }
+    }
+
+    // Get the code that computes the result.
+    let computeFrag =
+      node.type === ir.ExprType.Unary
+        ? frag("unary", visitUnary(node, ctx))
+        : frag("binary", visitBinary(node, ctx))
+
+    // If its reused, do compute, store, load. Otherwise, just compute.
+    if (node.reused) {
+      const cacheOffset = ctx.allocateCache2(node)
+      return [
+        frag("store", f64_store(cacheOffset, computeFrag)),
+        f64_load(cacheOffset),
+      ]
+    }
+    return computeFrag
+  }
+
+  function visitUnary(
+    node: ir.UnaryExpr,
+    ctx: CodegenContext,
+  ): w.BytecodeFragment {
+    return frag("Unary", visitIrNode(node.operand, ctx), callBuiltin(node.fn))
+  }
+
+  function visitBinary(
+    node: ir.BinaryExpr,
+    ctx: CodegenContext,
+  ): w.BytecodeFragment {
+    const opImpl =
+      node.op === "+"
+        ? instr.f64.add
+        : node.op === "*"
+        ? instr.f64.mul
+        : callBuiltin("pow")
+    return frag(
+      node.op,
+      frag("l", visitIrNode(node.l, ctx)),
+      frag("r", visitIrNode(node.r, ctx)),
+      opImpl,
     )
   }
 
@@ -193,7 +281,7 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     ctx: CodegenContext,
   ): w.BytecodeFragment {
     let result = frag(
-      "Sum2",
+      "Mul",
       f64_const(node.a),
       emitCachedNum(node.x, ctx),
       instr.f64.mul,

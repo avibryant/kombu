@@ -2,8 +2,8 @@ import { checkNotNull } from "./assert"
 import { Loss } from "./loss"
 import * as t from "./types"
 
-type Expr = CacheableExpr | ConstantExpr | ParamExpr | PrecomputedExpr
-type CacheableExpr = BinaryExpr | UnaryExpr
+export type Expr = CacheableExpr | ConstantExpr | ParamExpr | PrecomputedExpr
+export type CacheableExpr = BinaryExpr | UnaryExpr
 
 export enum ExprType {
   Constant,
@@ -34,20 +34,22 @@ export interface BinaryExpr {
   op: BinaryOp
   l: Expr
   r: Expr
+  reused: boolean
 }
 
 function binary(op: BinaryOp, l: Expr, r: Expr): BinaryExpr {
-  return { type: ExprType.Binary, op, l, r }
+  return { type: ExprType.Binary, op, l, r, reused: false }
 }
 
 export interface UnaryExpr {
   type: ExprType.Unary
   operand: Expr
   fn: t.UnaryFn
+  reused: boolean
 }
 
 function unary(fn: t.UnaryFn, operand: Expr): UnaryExpr {
-  return { type: ExprType.Unary, fn, operand }
+  return { type: ExprType.Unary, fn, operand, reused: false }
 }
 
 export interface PrecomputedExpr {
@@ -75,7 +77,9 @@ export function module(loss: Loss) {
     }
 
     if (cacheable.has(num)) {
-      return precomputed(checkNotNull(cacheable.get(num)))
+      const store = checkNotNull(cacheable.get(num))
+      store.reused = true
+      return precomputed(store)
     }
 
     let exp: CacheableExpr
