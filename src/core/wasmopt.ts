@@ -3,7 +3,6 @@ import * as w from "@wasmgroundup/emit"
 import { assert, checkNotNull } from "./assert"
 import { callBuiltin, f64_const, f64_load, f64_store } from "./wasm/instr"
 import { instantiateModule } from "./wasm/mod"
-import { mergeRedundantFunctions, oldCompile } from "./wasm/oldcodegen"
 import * as t from "./types"
 import { Loss } from "./loss"
 import * as ir from "./ir"
@@ -106,7 +105,7 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
   const ctx = new CodegenContext(params)
   const mod = ir.module(loss)
 
-  // Get gradient IR nodes in the same order as `freeParams`.
+  // Get a list of gradient IR nodes in the same order as `freeParams`.
   const gradientNodes = loss.freeParams.map((p) =>
     checkNotNull(mod.gradient.get(p)),
   )
@@ -116,12 +115,6 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     type: w.functype([], [w.valtype.f64]),
     body: visitIrNode(node, ctx),
   }))
-
-  // For now, emit Wasm using both the old and the new codegen code, and
-  // compare the results.
-  oldCompile(loss).forEach(({ body }, i) => {
-    functions[i].body = mergeRedundantFunctions(functions[i].body, body)
-  })
 
   const cache = new OptimizerCache(ctx.cacheEntries)
 
