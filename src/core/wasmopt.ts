@@ -52,31 +52,26 @@ class OptimizerCache {
   }
 }
 
+type CacheKey = t.Param | ir.CacheableExpr
+
 class CodegenContext {
   cacheEntries = 0
-  cacheOffsetById = new Map<ir.Expr | t.Param, number>()
+  cacheOffsetById = new Map<CacheKey, number>()
 
   constructor(params: t.Param[]) {
     params.forEach((p) => {
-      this.allocateCacheForParam(p)
+      this.allocateCache(p)
     })
   }
 
-  allocateCache2(exp: ir.Expr): number {
+  allocateCache(k: CacheKey): number {
     const offset = this.cacheEntries++ * SIZEOF_F64
-    this.cacheOffsetById.set(exp, offset)
+    this.cacheOffsetById.set(k, offset)
     return offset
   }
 
-  allocateCacheForParam(p: t.Param): number {
-    const offset = this.cacheEntries++ * SIZEOF_F64
-    this.cacheOffsetById.set(p, offset)
-    return offset
-  }
-
-  cacheOffset2(exp: ir.Expr): number {
-    const key = exp.type === ir.ExprType.Param ? exp.param : exp
-    return checkNotNull(this.cacheOffsetById.get(key))
+  cacheOffset(k: CacheKey): number {
+    return checkNotNull(this.cacheOffsetById.get(k))
   }
 }
 
@@ -159,9 +154,9 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
       case ir.ExprType.Constant:
         return frag("Constant", f64_const(node.value))
       case ir.ExprType.Precomputed:
-        return frag("precomp", f64_load(ctx.cacheOffset2(node.exp)))
+        return frag("precomp", f64_load(ctx.cacheOffset(node.exp)))
       case ir.ExprType.Param:
-        return frag("precomp", f64_load(ctx.cacheOffset2(node)))
+        return frag("param", f64_load(ctx.cacheOffset(node.param)))
     }
 
     // Get the code that computes the result.
@@ -172,7 +167,7 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
 
     // If its reused, do compute, store, load. Otherwise, just compute.
     if (node.reused) {
-      const cacheOffset = ctx.allocateCache2(node)
+      const cacheOffset = ctx.allocateCache(node)
       return [
         frag("store", f64_store(cacheOffset, computeFrag)),
         f64_load(cacheOffset),
