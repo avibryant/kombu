@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@tweakpane/core": "^2.0.1",
-    "@wasmgroundup/emit": "^0.2.17",
+    "@wasmgroundup/emit": "^0.2.18",
     "htm": "^3.1.1",
     "mitata": "^0.1.6",
     "preact": "^10.18.1",

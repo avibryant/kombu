@@ -3,6 +3,7 @@ import * as w from "@wasmgroundup/emit"
 import { assert, checkNotNull } from "./assert"
 import { callBuiltin, f64_const, f64_load, f64_store } from "./wasm/instr"
 import { instantiateModule } from "./wasm/mod"
+import { mergeRedundantFunctions, oldCompile } from "./wasm/oldcodegen"
 import * as t from "./types"
 import { Loss } from "./loss"
 import * as ir from "./ir"
@@ -20,8 +21,6 @@ export const defaultOptions: LBFGSOptions = {
 }
 
 export type OptimizeOptions = LBFGSOptions
-
-type IdentifiableNum = t.Num & { id: number }
 
 const SIZEOF_F64 = 8
 const WASM_PAGE_SIZE = 65536
@@ -56,35 +55,29 @@ class OptimizerCache {
 
 class CodegenContext {
   cacheEntries = 0
-  cacheOffsetById = new Map<number, number>()
-  cacheOffsetById2 = new Map<ir.Expr | t.Param, number>()
+  cacheOffsetById = new Map<ir.Expr | t.Param, number>()
 
-  allocateCache(num: IdentifiableNum, numSlots = 1): number {
-    const offset = this.cacheEntries * SIZEOF_F64
-    this.cacheOffsetById.set(num.id, offset)
-    this.cacheEntries += numSlots
-    return offset
+  constructor(params: t.Param[]) {
+    params.forEach((p) => {
+      this.allocateCacheForParam(p)
+    })
   }
 
   allocateCache2(exp: ir.Expr): number {
     const offset = this.cacheEntries++ * SIZEOF_F64
-    this.cacheOffsetById2.set(exp, offset)
+    this.cacheOffsetById.set(exp, offset)
     return offset
   }
 
   allocateCacheForParam(p: t.Param): number {
     const offset = this.cacheEntries++ * SIZEOF_F64
-    this.cacheOffsetById2.set(p, offset)
+    this.cacheOffsetById.set(p, offset)
     return offset
-  }
-
-  cacheOffset(num: IdentifiableNum): number | undefined {
-    return this.cacheOffsetById.get(num.id)
   }
 
   cacheOffset2(exp: ir.Expr): number {
     const key = exp.type === ir.ExprType.Param ? exp.param : exp
-    return checkNotNull(this.cacheOffsetById2.get(key))
+    return checkNotNull(this.cacheOffsetById.get(key))
   }
 }
 
@@ -106,43 +99,29 @@ function debugPrint(frag: any[], depth = 0) {
 
 export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
   const { instr } = w
-  const ctx = new CodegenContext()
 
   // Reorder params — the generated code assumes free params come first.
   const params = [...loss.freeParams, ...loss.fixedParams]
 
-  // Get a list of gradient values in the same order as `freeParams`.
-  const gradientValues = loss.freeParams.map((p) =>
-    checkNotNull(loss.gradient.elements.get(p)),
-  )
-
-  const ctx2 = new CodegenContext()
+  const ctx = new CodegenContext(params)
   const mod = ir.module(loss)
 
-  // Allocate storage for all params.
-  params.forEach((p) => {
-    ctx.allocateCache(p)
-    ctx2.allocateCacheForParam(p)
-  })
+  // Get gradient IR nodes in the same order as `freeParams`.
+  const gradientNodes = loss.freeParams.map((p) =>
+    checkNotNull(mod.gradient.get(p)),
+  )
 
-  const functions = [loss.value, ...gradientValues].map((num) => {
-    return {
-      name: "",
-      type: w.functype([], [w.valtype.f64]),
-      body: emitCachedNum(num, ctx),
-    }
-  })
+  const functions = [mod.loss, ...gradientNodes].map((node) => ({
+    name: "",
+    type: w.functype([], [w.valtype.f64]),
+    body: visitIrNode(node, ctx),
+  }))
 
-  // Rewrite body to invoke
-  functions[0].body = [
-    functions[0].body,
-    visitIrNode(mod.loss, ctx2),
-    0x62, // f64.ne
-    [w.instr.if, 0x40],
-    w.instr.unreachable,
-    w.instr.end,
-    functions[0].body,
-  ]
+  // For now, emit Wasm using both the old and the new codegen code, and
+  // compare the results.
+  oldCompile(loss).forEach(({ body }, i) => {
+    functions[i].body = mergeRedundantFunctions(functions[i].body, body)
+  })
 
   const cache = new OptimizerCache(ctx.cacheEntries)
 
@@ -232,82 +211,6 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
       frag("r", visitIrNode(node.r, ctx)),
       opImpl,
     )
-  }
-
-  function emitNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
-    switch (num.type) {
-      case t.NumType.Constant:
-        return frag("Constant", f64_const(num.value))
-      case t.NumType.Param:
-        return frag("Param", f64_const(Number.NaN))
-      case t.NumType.Sum:
-        return frag(
-          "Sum",
-          emitSum(num.firstTerm, ctx),
-          f64_const(num.k),
-          instr.f64.add,
-        )
-      case t.NumType.Product:
-        return emitProduct(num.firstTerm, ctx)
-      case t.NumType.Unary:
-        return emitUnary(num.term, num.fn, ctx)
-    }
-  }
-
-  function emitCachedNum(num: t.Num, ctx: CodegenContext): w.BytecodeFragment {
-    // Constants are never cached.
-    if (num.type === t.NumType.Constant) return emitNum(num, ctx)
-
-    let result = []
-    let cacheOffset = ctx.cacheOffset(num)
-    if (cacheOffset === undefined) {
-      assert(num.type !== t.NumType.Param, "no cache found for param")
-      cacheOffset = ctx.allocateCache(num)
-
-      // Compute the result and write to the cache.
-      result.push(f64_store(cacheOffset, emitNum(num, ctx)))
-    }
-    // Read from the cache.
-    result.push(f64_load(cacheOffset))
-    return result
-  }
-
-  function emitSum(
-    node: t.TermNode<t.SumTerm>,
-    ctx: CodegenContext,
-  ): w.BytecodeFragment {
-    let result = frag(
-      "Mul",
-      f64_const(node.a),
-      emitCachedNum(node.x, ctx),
-      instr.f64.mul,
-    )
-    if (node.nextTerm)
-      return result.concat(emitSum(node.nextTerm, ctx), instr.f64.add)
-    return result
-  }
-
-  function emitProduct(
-    node: t.TermNode<t.ProductTerm>,
-    ctx: CodegenContext,
-  ): w.BytecodeFragment {
-    let result = frag(
-      "Pow",
-      emitCachedNum(node.x, ctx),
-      f64_const(node.a),
-      callBuiltin("pow"),
-    )
-    if (node.nextTerm)
-      return result.concat(emitProduct(node.nextTerm, ctx), instr.f64.mul)
-    return result
-  }
-
-  function emitUnary(
-    node: t.Term,
-    type: t.UnaryFn,
-    ctx: CodegenContext,
-  ): w.BytecodeFragment {
-    return frag("Unary", emitCachedNum(node, ctx), callBuiltin(type))
   }
 
   return optimize
