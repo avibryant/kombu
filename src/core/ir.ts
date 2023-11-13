@@ -66,6 +66,37 @@ export interface Module {
   gradient: Map<t.Param, Expr>
 }
 
+function isConstant(exp: Expr, value?: number) {
+  return (
+    exp.type === ExprType.Constant &&
+    (value === undefined || exp.value === value)
+  )
+}
+
+function plus(a: Expr, b: Expr) {
+  if (isConstant(a, 0)) return b
+  if (isConstant(b, 0)) return a
+  return binary("+", a, b)
+}
+
+function times(a: Expr, b: Expr) {
+  if (isConstant(a, 1)) return b
+  if (isConstant(b, 1)) return a
+  if (isConstant(a, 0) || isConstant(b, 0)) return constant(0)
+  return binary("*", a, b)
+}
+
+function pow(base: Expr, exponent: number) {
+  switch (exponent) {
+    case 0:
+      return constant(1)
+    case 1:
+      return base
+    default:
+      return binary("pow", base, constant(exponent))
+  }
+}
+
 export function module(loss: Loss) {
   const cacheable = new Map<t.Num, CacheableExpr>()
 
@@ -82,10 +113,10 @@ export function module(loss: Loss) {
       return precomputed(store)
     }
 
-    let exp: CacheableExpr
+    let exp: Expr
     switch (num.type) {
       case t.NumType.Sum:
-        exp = binary("+", visitSumTerm(num.firstTerm), constant(num.k))
+        exp = plus(visitSumTerm(num.firstTerm), constant(num.k))
         break
       case t.NumType.Product:
         exp = visitProductTerm(num.firstTerm)
@@ -94,20 +125,21 @@ export function module(loss: Loss) {
         exp = unary(num.fn, visitNum(num.term))
         break
     }
-    cacheable.set(num, exp)
+    if (exp.type === ExprType.Binary || exp.type === ExprType.Unary) {
+      cacheable.set(num, exp)
+    }
     return exp
   }
 
-  function visitSumTerm(node: t.TermNode<t.SumTerm>): BinaryExpr {
-    let result = binary("*", constant(node.a), visitNum(node.x))
-    if (node.nextTerm) result = binary("+", result, visitSumTerm(node.nextTerm))
+  function visitSumTerm(node: t.TermNode<t.SumTerm>) {
+    let result = times(constant(node.a), visitNum(node.x))
+    if (node.nextTerm) result = plus(result, visitSumTerm(node.nextTerm))
     return result
   }
 
-  function visitProductTerm(node: t.TermNode<t.ProductTerm>): BinaryExpr {
-    let result = binary("pow", visitNum(node.x), constant(node.a))
-    if (node.nextTerm)
-      result = binary("*", result, visitProductTerm(node.nextTerm))
+  function visitProductTerm(node: t.TermNode<t.ProductTerm>) {
+    let result = pow(visitNum(node.x), node.a)
+    if (node.nextTerm) result = times(result, visitProductTerm(node.nextTerm))
     return result
   }
 
