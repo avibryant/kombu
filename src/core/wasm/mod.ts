@@ -73,7 +73,7 @@ function functypeIndex(types: w.BytecodeFragment[], startIdx: number) {
 export function instantiateModule(
   functions: WasmFunction[],
   memory: WebAssembly.Memory,
-  cacheSizeBytes: number
+  cacheSizeBytes: number,
 ) {
   const functypes = functypeIndex(
     [...builtins.map(({ type }) => type), ...functions.map(({ type }) => type)],

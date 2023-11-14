@@ -117,7 +117,11 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
   // Initialize the cache with values for the free params.
   cache.setParams(loss.freeParams.map((p) => [p, checkNotNull(init.get(p))]))
 
-  const { exports } = instantiateModule(functions, cache.memory, cache.sizeBytes)
+  const { exports } = instantiateModule(
+    functions,
+    cache.memory,
+    cache.sizeBytes,
+  )
 
   function optimize(
     maxIterations: number,
