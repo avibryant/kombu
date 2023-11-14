@@ -2,7 +2,7 @@
 
 import * as w from "@wasmgroundup/emit"
 
-import { assert, checkNotNull } from "../assert"
+import { checkNotNull } from "../assert"
 import { builtins } from "./builtins"
 import { traceImpl } from "./trace"
 
