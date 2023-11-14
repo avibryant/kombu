@@ -2,7 +2,7 @@
 
 import * as w from "@wasmgroundup/emit"
 
-import { checkNotNull } from "../assert"
+import { assert, checkNotNull } from "../assert"
 import { builtins } from "./builtins"
 import { traceImpl } from "./trace"
 
@@ -73,6 +73,7 @@ function functypeIndex(types: w.BytecodeFragment[], startIdx: number) {
 export function instantiateModule(
   functions: WasmFunction[],
   memory: WebAssembly.Memory,
+  cacheSizeBytes: number
 ) {
   const functypes = functypeIndex(
     [...builtins.map(({ type }) => type), ...functions.map(({ type }) => type)],
@@ -111,7 +112,7 @@ export function instantiateModule(
   // AssemblyScript's memory manager uses the __heap_base global as the
   // beginning of its heap. Rewrite that value to account for the memory
   // that we are manually managing (for the params and optimizer cache).
-  const heapBase = w.i32(Math.max(memorySize, 128))
+  const heapBase = w.u32(cacheSizeBytes)
   const newGlobalsec = {
     contents: [
       ...prebuilt.globalsec.contents.slice(0, -3),

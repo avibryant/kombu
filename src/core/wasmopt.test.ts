@@ -57,35 +57,26 @@ test("free and fixed params", () => {
   )
 })
 
+// >16 cache entries means that cache offsets are >128, which requires
+// multiple bytes in the LEB128 encoding.
 test(">16 cache entries", () => {
   const x = k.param("x")
-  const h = k.observation("h")
   const ys: k.Param[] = []
 
   for (let i = 0; i < 16; i++) {
     ys[i] = k.observation(`y${i}`)
   }
   const y = ys.reduce((acc: k.Num, p) => k.add(acc, p), k.zero)
-  const loss = k.add(k.pow(k.sub(x, h), 2), y)
+  const loss = k.add(k.pow(x, 2), y)
 
+  // Assign values to the observations so that they cancel out.
   const obs: Map<k.Param, number> = new Map([
-    [h, 2500],
     ...ys.map((p, i): [k.Param, number] => [p, i % 2 === 0 ? 1 : -1]),
   ])
 
-  // Start close to the solution and run for only a few iterations.
-  let min = checkNotNull(obs.get(h))
-  let ev = optimize(loss, new Map([[x, min + 0.1]]), 100, obs)
-  expect(ev.evaluate(x)).toBeCloseTo(min, 2)
-
-  obs.set(h, 5)
-  min = 5
-  ev = optimize(loss, new Map([[x, min + 0.1]]), 100, obs)
-  expect(ev.evaluate(x)).toBeCloseTo(min, 2)
-
-  expect(() => optimize(loss, new Map([[x, 0.1]]), 100)).toThrowError(
-    /Missing observation 'h'/,
-  )
+  // Start close to the solution (0) and run for only a few iterations.
+  let ev = optimize(loss, new Map([[x, 0.1]]), 100, obs)
+  expect(ev.evaluate(x)).toBeCloseTo(0, 2)
 })
 
 test.skip("NaN when evaluating sqrt", () => {

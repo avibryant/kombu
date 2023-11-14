@@ -26,11 +26,12 @@ const WASM_PAGE_SIZE = 65536
 
 class OptimizerCache {
   memory: WebAssembly.Memory
+  sizeBytes: number
 
   constructor(public numEntries: number) {
-    const sizeBytes = numEntries * SIZEOF_F64
+    this.sizeBytes = numEntries * SIZEOF_F64
     this.memory = new WebAssembly.Memory({
-      initial: Math.ceil(sizeBytes / WASM_PAGE_SIZE),
+      initial: Math.ceil(this.sizeBytes / WASM_PAGE_SIZE),
     })
   }
 
@@ -116,7 +117,7 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
   // Initialize the cache with values for the free params.
   cache.setParams(loss.freeParams.map((p) => [p, checkNotNull(init.get(p))]))
 
-  const { exports } = instantiateModule(functions, cache.memory)
+  const { exports } = instantiateModule(functions, cache.memory, cache.sizeBytes)
 
   function optimize(
     maxIterations: number,
