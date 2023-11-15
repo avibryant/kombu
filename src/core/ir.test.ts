@@ -1,4 +1,3 @@
-import dedent from "tiny-dedent"
 import { describe, expect, test } from "vitest"
 
 import * as k from "./api"
@@ -40,9 +39,7 @@ describe("pseudocode", () => {
     const lossValue = k.add(k.pow(k.abs(x), 2), k.mul(3, k.log(k.abs(x))))
     const mod = ir.module(loss(lossValue))
     expect(ir.pseudocode(mod.loss)).toBe(
-      dedent(`
-        temp0 = abs(x)
-        3 * log(temp0) + pow(temp0, 2)`),
+      "temp0 = abs(x)\n3 * log(temp0) + pow(temp0, 2)",
     )
   })
 })
