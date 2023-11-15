@@ -6,6 +6,7 @@ import { instantiateModule } from "./wasm/mod"
 import * as t from "./types"
 import { Loss } from "./loss"
 import * as ir from "./ir"
+import { DEBUG_logIrModule } from "./debug"
 
 export interface LBFGSOptions {
   method: "LBFGS"
@@ -100,6 +101,7 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
 
   const ctx = new CodegenContext(params)
   const mod = ir.module(loss)
+  DEBUG_logIrModule(mod)
 
   // Get a list of gradient IR nodes in the same order as `freeParams`.
   const gradientNodes = loss.freeParams.map((p) =>
