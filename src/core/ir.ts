@@ -192,3 +192,47 @@ export function lisp(node: Expr): string {
   }
   return `(let* (${bindings.join(" ")}) ${body})`
 }
+
+export function pseudocode(node: Expr): string {
+  let nextId = 0
+  const varNames: Map<Expr, string> = new Map()
+  const bindings: string[] = []
+
+  function visitIrNode(node: Expr, forBinding = false): string {
+    switch (node.type) {
+      case ExprType.Constant:
+        return node.value.toString()
+      case ExprType.Precomputed:
+        return visitReusedNode(node.exp)
+      case ExprType.Param:
+        return node.param.name
+      case ExprType.Unary:
+      case ExprType.Binary:
+        if (node.reused && !forBinding) {
+          return visitReusedNode(node)
+        } else if (node.type === ExprType.Unary) {
+          return `${node.fn}(${visitIrNode(node.operand)})`
+        } else if (node.op.length === 1) {
+          return `${visitIrNode(node.l)} ${node.op} ${visitIrNode(node.r)}`
+        } else {
+          return `${node.op}(${visitIrNode(node.l)}, ${visitIrNode(node.r)})`
+        }
+    }
+  }
+
+  function visitReusedNode(node: CacheableExpr): string {
+    if (!varNames.has(node)) {
+      const name = `temp${nextId++}`
+      bindings.push(`${name} = ${visitIrNode(node, true)}`)
+      varNames.set(node, name)
+      return name
+    }
+    return checkNotNull(varNames.get(node))
+  }
+
+  const body = visitIrNode(node)
+  if (bindings.length === 0) {
+    return body
+  }
+  return `${bindings.join("\n")}\n${body}`
+}

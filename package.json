@@ -22,6 +22,7 @@
     "assemblyscript": "^0.27.11",
     "assemblyscript-prettier": "^3.0.1",
     "husky": "^8.0.3",
+    "tiny-dedent": "^1.0.2",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.2",
     "vite": "^4.4.5",
