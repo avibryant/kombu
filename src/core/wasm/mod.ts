@@ -5,6 +5,7 @@ import * as w from "@wasmgroundup/emit"
 import { checkNotNull } from "../assert"
 import { builtins } from "./builtins"
 import { traceImpl } from "./trace"
+import { DEBUG_writeFile } from "../debug"
 
 import * as prebuilt from "../../../build/release.wasm_sections"
 
@@ -155,7 +156,8 @@ export function instantiateModule(
   // type instantiation.
   const bytes = Uint8Array.from((fragment as any[]).flat(Infinity))
 
-  // fs.writeFileSync("module.wasm", bytes)
+  DEBUG_writeFile("module", ".wasm", bytes)
+
   const mod = new WebAssembly.Module(bytes)
   return new WebAssembly.Instance(mod, {
     builtins: Object.fromEntries(
