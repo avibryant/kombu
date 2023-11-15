@@ -214,6 +214,8 @@ export function pseudocode(node: Expr): string {
           return `${node.fn}(${visitIrNode(node.operand)})`
         } else if (node.op.length === 1) {
           return `${visitIrNode(node.l)} ${node.op} ${visitIrNode(node.r)}`
+        } else if (node.op === "pow") {
+          return `${visitIrNode(node.l)} ** ${visitIrNode(node.r)}`
         } else {
           return `${node.op}(${visitIrNode(node.l)}, ${visitIrNode(node.r)})`
         }

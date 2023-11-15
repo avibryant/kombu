@@ -25,13 +25,13 @@ describe("pseudocode", () => {
   test("simple case with one param", () => {
     const lossValue = k.pow(k.param("x"), 2)
     const mod = ir.module(loss(lossValue))
-    expect(ir.pseudocode(mod.loss)).toBe("pow(x, 2)")
+    expect(ir.pseudocode(mod.loss)).toBe("x ** 2")
   })
 
   test("mixture of binary expressions", () => {
     const lossValue = k.add(k.pow(k.param("x"), 2), k.mul(2, k.param("y")))
     const mod = ir.module(loss(lossValue))
-    expect(ir.pseudocode(mod.loss)).toBe("2 * y + pow(x, 2)")
+    expect(ir.pseudocode(mod.loss)).toBe("2 * y + x ** 2")
   })
 
   test("reused expressions", () => {
@@ -39,7 +39,7 @@ describe("pseudocode", () => {
     const lossValue = k.add(k.pow(k.abs(x), 2), k.mul(3, k.log(k.abs(x))))
     const mod = ir.module(loss(lossValue))
     expect(ir.pseudocode(mod.loss)).toBe(
-      "temp0 = abs(x)\n3 * log(temp0) + pow(temp0, 2)",
+      "temp0 = abs(x)\n3 * log(temp0) + temp0 ** 2",
     )
   })
 })
