@@ -79,6 +79,14 @@ export interface PowR {
     right: NotConstant
 }
 
+export function isConstant(num: Num): num is Constant {
+    return num.type == "constant"
+}
+
+export function isAdd(num: Num): num is Add {
+    return num.type == "add"
+}
+
 export function isAddK(add: Add): add is AddK {
     return add.left.type == "constant"
 }

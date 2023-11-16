@@ -18,13 +18,13 @@ function unreachable(): d.Num {
 }
 
 function add_lt(left: d.Num, right: d.Num): d.Num {
-    if(left.type == "constant") {
-        if(right.type == "constant")
+    if(d.isConstant(left)) {
+        if(d.isConstant(right))
             return d.constant(left.value + right.value)
         else
             return add_const(left, right)
     } else {
-        if(right.type == "constant")
+        if(d.isConstant(right))
             return unreachable()
         else
             return add_nonconst(left, right)            
@@ -32,23 +32,47 @@ function add_lt(left: d.Num, right: d.Num): d.Num {
 }
 
 function add_const(left: d.Constant, right: d.NotConstant): d.Num {
-    if(right.type == "add") {
-        if(d.isAddK(right)){
-
-        } else {
-            return add_k(left, right)
-        }
-    } else {
-        return add_k(left, right)
-    }
+    if(d.isAdd(right) && d.isAddK(right)) {
+        return addK(
+            d.constant(left.value + right.left.value),
+            right.right)
+    } else
+        return addK(left, right)
 }
 
-function add_k(left: d.Constant, right: d.NotAddK): d.Num {
-    return {
-        type: "add", left, right
-    }
-}
 
 function add_nonconst(left: d.NotConstant, right: d.NotConstant): d.Num {
-    
+    if(d.isAdd(left) {
+        return add(left.left, add(left.right, right))
+    } else if(d.isAdd(right)) {
+        return add_na_add(left, right)
+    } else {
+        return add_na_na(left, right)
+    }
+}
+
+function add_na_add(left: d.NotAdd, right: d.Add): d.Num {
+    if(d.isAddK(right)) {
+        return add(right.left, add(left, right.right))
+    } else {
+        const maybeMerged = add_na_na(left, right.left)
+        if(d.isAdd(maybeMerged)) {
+            //TODO
+        } else {
+            return add(maybeMerged, right.right)
+        }
+    }
+}
+
+function add_na_na(left: d.NotAdd, right: d.NotAdd): d.Num {
+
+}
+
+function addK(left: d.Constant, right: d.NotAddK): d.Num {
+    if(left.value == 0)
+        return right
+    else 
+        return {
+            type: "add", left, right
+        }
 }
