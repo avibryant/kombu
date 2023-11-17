@@ -116,8 +116,7 @@ export function f64_load(source: FragmentSource, offset: number): LoadInstr {
     type: WasmType.Load,
     source,
     valtype: "f64",
-    // TODO: What to do about source?
-    addr: i32_const(source, offset),
+    addr: i32_const(null, offset),
   }
 }
 
@@ -130,7 +129,7 @@ export function f64_store(
     type: WasmType.Store,
     source,
     valtype: "f64",
-    addr: i32_const(source, offset),
+    addr: i32_const("store addr", offset),
     expr,
   }
 }
