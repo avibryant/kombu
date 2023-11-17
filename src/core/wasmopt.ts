@@ -1,12 +1,12 @@
 import * as w from "@wasmgroundup/emit"
 
 import { assert, checkNotNull } from "./assert"
-import { callBuiltin, f64_const, f64_load, f64_store } from "./wasm/instr"
-import { instantiateModule } from "./wasm/mod"
-import * as t from "./types"
-import { Loss } from "./loss"
-import * as ir from "./ir"
 import { DEBUG_logIrModule } from "./debug"
+import * as ir from "./ir"
+import { Loss } from "./loss"
+import * as t from "./types"
+import * as i from "./wasm/instr"
+import { instantiateModule } from "./wasm/mod"
 
 export interface LBFGSOptions {
   method: "LBFGS"
@@ -77,25 +77,7 @@ class CodegenContext {
   }
 }
 
-function frag(dbg: string, ...fragment: w.BytecodeFragment) {
-  const arr = Array.from(fragment)
-  ;(arr as any).dbg = dbg
-  return arr
-}
-
-let count = 0
-// @ts-ignore 'debugPrint' is declared but its value is never read.
-function debugPrint(frag: any[], depth = 0) {
-  const log = (...args: any[]) =>
-    console.log(new Array(depth).join("  "), ...args)
-  if ((frag as any).dbg) log(`[${(frag as any).dbg}]`)
-  if (Array.isArray(frag)) frag.forEach((x) => debugPrint(x, depth + 1))
-  else log(`@${count++} ${frag} (0x${(frag as any).toString(16)})`)
-}
-
 export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
-  const { instr } = w
-
   // Reorder params — the generated code assumes free params come first.
   const params = [...loss.freeParams, ...loss.fixedParams]
 
@@ -108,11 +90,17 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     checkNotNull(mod.gradient.get(p)),
   )
 
-  const functions = [mod.loss, ...gradientNodes].map((node) => ({
-    name: "",
-    type: w.functype([], [w.valtype.f64]),
-    body: visitIrNode(node, ctx),
-  }))
+  const functions = [mod.loss, ...gradientNodes].map((node) => {
+    const body = visitIrNode(node, ctx)
+    console.log("------------")
+    console.log(i.prettyPrint(body))
+    console.log(i.toBytes(body))
+    return {
+      name: "",
+      type: w.functype([], [w.valtype.f64]),
+      body: i.toBytes(body),
+    }
+  })
 
   const cache = new OptimizerCache(ctx.cacheEntries)
 
@@ -156,29 +144,33 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     )
   }
 
-  function visitIrNode(node: ir.Expr, ctx: CodegenContext): w.BytecodeFragment {
+  function visitIrNode(
+    node: ir.Expr,
+    ctx: CodegenContext,
+  ): i.WasmFragment<string> {
     switch (node.type) {
       case ir.ExprType.Constant:
-        return frag("Constant", f64_const(node.value))
+        return i.f64_const("Constant", node.value)
       case ir.ExprType.Precomputed:
-        return frag("precomp", f64_load(ctx.cacheOffset(node.exp)))
+        return i.f64_load("precomp", ctx.cacheOffset(node.exp))
       case ir.ExprType.Param:
-        return frag("param", f64_load(ctx.cacheOffset(node.param)))
+        return i.f64_load("param", ctx.cacheOffset(node.param))
     }
 
     // Get the code that computes the result.
     let computeFrag =
       node.type === ir.ExprType.Unary
-        ? frag("unary", visitUnary(node, ctx))
-        : frag("binary", visitBinary(node, ctx))
+        ? visitUnary(node, ctx)
+        : visitBinary(node, ctx)
 
     // If its reused, do compute, store, load. Otherwise, just compute.
     if (node.reused) {
       const cacheOffset = ctx.allocateCache(node)
-      return [
-        frag("store", f64_store(cacheOffset, computeFrag)),
-        f64_load(cacheOffset),
-      ]
+      return i.seq(
+        "fixme",
+        i.f64_store("store", cacheOffset, computeFrag),
+        i.f64_load("load", cacheOffset),
+      )
     }
     return computeFrag
   }
@@ -186,26 +178,25 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
   function visitUnary(
     node: ir.UnaryExpr,
     ctx: CodegenContext,
-  ): w.BytecodeFragment {
-    return frag("Unary", visitIrNode(node.operand, ctx), callBuiltin(node.fn))
+  ): i.WasmFragment<string> {
+    return i.seq(
+      "fixme",
+      visitIrNode(node.operand, ctx),
+      i.callBuiltin("fixme", node.fn),
+    )
   }
 
   function visitBinary(
     node: ir.BinaryExpr,
     ctx: CodegenContext,
-  ): w.BytecodeFragment {
-    const opImpl =
-      node.op === "+"
-        ? instr.f64.add
-        : node.op === "*"
-        ? instr.f64.mul
-        : callBuiltin("pow")
-    return frag(
-      node.op,
-      frag("l", visitIrNode(node.l, ctx)),
-      frag("r", visitIrNode(node.r, ctx)),
-      opImpl,
-    )
+  ): i.WasmFragment<string> {
+    const lfrag = visitIrNode(node.l, ctx)
+    const rfrag = visitIrNode(node.r, ctx)
+    if (node.op === "pow") {
+      return i.seq("fixme", lfrag, rfrag, i.callBuiltin("fixme", "pow"))
+    }
+    const instr = node.op === "+" ? "add" : "mul"
+    return i.f64_binOp("fixme", instr, lfrag, rfrag)
   }
 
   return optimize
