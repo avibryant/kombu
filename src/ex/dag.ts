@@ -31,6 +31,7 @@ export type Add = AddR | AddK
 
 export type NotMul = UnaryP | Add | Pow
 export type NotMulK = NotMul | MulR
+export type NotMulKOrAdd = UnaryP | Pow | MulR
 export type Mul = MulK | MulR
 
 export type NotPow = UnaryP | Mul | Add
@@ -58,7 +59,7 @@ export interface AddR {
 export interface MulK {
     type: "mul"
     left: Constant
-    right: NotMulK
+    right: NotMulKOrAdd
 }
 
 export interface MulR {
@@ -89,4 +90,12 @@ export function isAdd(num: Num): num is Add {
 
 export function isAddK(add: Add): add is AddK {
     return add.left.type == "constant"
+}
+
+export function isMul(num: Num): num is Mul {
+    return num.type == "mul"
+}
+
+export function isMulK(mul: Mul): mul is MulK {
+    return mul.left.type == "constant"
 }
