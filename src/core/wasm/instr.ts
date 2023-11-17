@@ -2,6 +2,9 @@ import * as w from "@wasmgroundup/emit"
 
 import * as prebuilt from "../../../build/release.wasm_sections"
 import { builtins } from "./builtins"
+import { Expr as IrExpr, pseudocode } from "../ir"
+
+type FragmentSource = IrExpr | string | null
 
 export enum WasmType {
   Binary,
@@ -12,59 +15,59 @@ export enum WasmType {
   Seq,
 }
 
-export type WasmInstr<T> =
-  | BinaryInstr<T>
-  | ConstInstr<T>
-  | LoadInstr<T>
-  | StoreInstr<T>
-  | CallInstr<T>
-export type WasmFragment<T> = WasmInstr<T> | WasmInstrSeq<T>
+export type WasmInstr =
+  | BinaryInstr
+  | ConstInstr
+  | LoadInstr
+  | StoreInstr
+  | CallInstr
+export type WasmFragment = WasmInstr | WasmInstrSeq
 
-export interface WasmInstrSeq<T> {
+export interface WasmInstrSeq {
   type: WasmType.Seq
-  source: T
-  instrs: WasmFragment<T>[]
+  source: FragmentSource
+  instrs: WasmFragment[]
 }
 
-export interface BinaryInstr<T> {
+export interface BinaryInstr {
   type: WasmType.Binary
-  source: T
+  source: FragmentSource
   valtype: "i32" | "f64"
   op: "mul" | "add"
 
   // These must be WasmFragment, and not WasmInstr, in order to handle calls
   // that take arguments.
-  l: WasmFragment<T>
-  r: WasmFragment<T>
+  l: WasmFragment
+  r: WasmFragment
 }
 
-export interface ConstInstr<T> {
+export interface ConstInstr {
   type: WasmType.Const
-  source: T
+  source: FragmentSource
   valtype: "i32" | "f64"
   value: number
 }
 
-export interface LoadInstr<T> {
+export interface LoadInstr {
   type: WasmType.Load
-  source: T
+  source: FragmentSource
   valtype: "f64"
-  addr: WasmInstr<T>
+  addr: WasmInstr
 }
 
-export interface StoreInstr<T> {
+export interface StoreInstr {
   type: WasmType.Store
-  source: T
+  source: FragmentSource
   valtype: "f64"
-  addr: WasmInstr<T>
+  addr: WasmInstr
   // This must be WasmFragment, and not WasmInstr, in order to handle calls
   // that take arguments.
-  expr: WasmFragment<T>
+  expr: WasmFragment
 }
 
-export interface CallInstr<T> {
+export interface CallInstr {
   type: WasmType.Call
-  source: T
+  source: FragmentSource
   funcidx: number
   name: string
 }
@@ -72,7 +75,7 @@ export interface CallInstr<T> {
 // Required as an immediate arg for all loads/stores.
 const ALIGNMENT_AND_OFFSET: number[] = w.memarg(3 /* bits */, 0).flat(1)
 
-export function callBuiltin<T>(source: T, name: string): CallInstr<T> {
+export function callBuiltin(source: FragmentSource, name: string): CallInstr {
   const idx =
     builtins.findIndex((fn) => fn.name === name) + prebuilt.importsec.entryCount
   if (idx === -1) throw new Error(`builtin '${name}' not found`)
@@ -84,20 +87,20 @@ export function callBuiltin<T>(source: T, name: string): CallInstr<T> {
   }
 }
 
-export function i32_const<T>(source: T, v: number): ConstInstr<T> {
+export function i32_const(source: FragmentSource, v: number): ConstInstr {
   return { type: WasmType.Const, source, valtype: "i32", value: v }
 }
 
-export function f64_const<T>(source: T, v: number): ConstInstr<T> {
+export function f64_const(source: FragmentSource, v: number): ConstInstr {
   return { type: WasmType.Const, source, valtype: "f64", value: v }
 }
 
-export function f64_binOp<T>(
-  source: T,
-  op: BinaryInstr<T>["op"],
-  l: WasmFragment<T>,
-  r: WasmFragment<T>,
-): BinaryInstr<T> {
+export function f64_binOp(
+  source: FragmentSource,
+  op: BinaryInstr["op"],
+  l: WasmFragment,
+  r: WasmFragment,
+): BinaryInstr {
   return {
     type: WasmType.Binary,
     source,
@@ -108,34 +111,34 @@ export function f64_binOp<T>(
   }
 }
 
-export function f64_load<T>(source: T, offset: number): LoadInstr<T> {
+export function f64_load(source: FragmentSource, offset: number): LoadInstr {
   return {
     type: WasmType.Load,
     source,
     valtype: "f64",
     // TODO: What to do about source?
-    addr: i32_const<T>(source, offset),
+    addr: i32_const(source, offset),
   }
 }
 
-export function f64_store<T>(
-  source: T,
+export function f64_store(
+  source: FragmentSource,
   offset: number,
-  expr: WasmFragment<T>,
-): StoreInstr<T> {
+  expr: WasmFragment,
+): StoreInstr {
   return {
     type: WasmType.Store,
     source,
     valtype: "f64",
-    addr: i32_const<T>(source, offset),
+    addr: i32_const(source, offset),
     expr,
   }
 }
 
-export function seq<T>(
-  source: T,
-  ...instrs: WasmFragment<T>[]
-): WasmInstrSeq<T> {
+export function seq(
+  source: FragmentSource,
+  ...instrs: WasmFragment[]
+): WasmInstrSeq {
   return {
     type: WasmType.Seq,
     source,
@@ -143,35 +146,51 @@ export function seq<T>(
   }
 }
 
-export function prettyPrint<T>(frag: WasmFragment<T>): string {
+function prettySource(source: FragmentSource) {
+  if (source == null) return ""
+  const str = typeof source === "string" ? source : pseudocode(source)
+  return `(; ${str} ;)`
+}
+
+export function prettyPrint(frag: WasmFragment): string {
+  const srcInfo = prettySource(frag.source)
+
+  // Join lines, discard the first one if it's empty.
+  const joinLines = (info: string, ...rest: string[]) =>
+    (info === "" ? rest : [info, ...rest]).join("\n")
+
   switch (frag.type) {
     case WasmType.Const:
+      // Ignore srcInfo, as it's not useful for const.
       return `${frag.valtype}.const ${frag.value}`
     case WasmType.Binary:
-      return [
+      return joinLines(
+        srcInfo,
         prettyPrint(frag.l),
         prettyPrint(frag.r),
         `${frag.valtype}.${frag.op}`,
-      ].join("\n")
+      )
     case WasmType.Load:
-      return [
+      return joinLines(
+        srcInfo,
         prettyPrint(frag.addr),
         `${frag.valtype}.load {${ALIGNMENT_AND_OFFSET}}`,
-      ].join("\n")
+      )
     case WasmType.Store:
-      return [
+      return joinLines(
+        srcInfo,
         prettyPrint(frag.addr),
         prettyPrint(frag.expr),
         `${frag.valtype}.store {${ALIGNMENT_AND_OFFSET}}`,
-      ].join("\n")
+      )
     case WasmType.Call:
       return `call $${frag.funcidx} (${frag.name})`
     case WasmType.Seq:
-      return frag.instrs.flatMap(prettyPrint).join("\n")
+      return joinLines(srcInfo, ...frag.instrs.flatMap(prettyPrint))
   }
 }
 
-export function toBytes<T>(frag: WasmFragment<T>): number[] {
+export function toBytes(frag: WasmFragment): number[] {
   switch (frag.type) {
     case WasmType.Const:
       return frag.valtype === "f64"
