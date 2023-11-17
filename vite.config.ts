@@ -5,7 +5,6 @@ function useShims(): PluginOption {
     // Return stubs, rather than empty modules, to avoid errors from
     // `vite build`, e.g. '"writeFileSync" is not exported by "node:fs"'.
     "node:fs": "export function writeFileSync() {}",
-    "node:process": "export const env = {}",
   }
 
   return {
@@ -23,10 +22,16 @@ export default defineConfig(({ mode }) => {
         external: ["node:fs", "node:process"],
       },
     },
+    define: {
+      "process.env.KOMBU_DEBUG": JSON.stringify(process.env.KOMBU_DEBUG),
+    },
   }
 
   const prodConfig: UserConfig = {
     plugins: [useShims()],
+    define: {
+      "process.env.KOMBU_DEBUG": false,
+    },
   }
   return mode === "production" ? prodConfig : devConfig
 })
