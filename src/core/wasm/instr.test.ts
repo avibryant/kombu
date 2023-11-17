@@ -41,11 +41,12 @@ test("binary", () => {
 })
 
 test("load", () => {
-  expect(i.prettyPrint(i.f64_load(null, 99))).toEqual(dedent`
+  const load = i.f64_load(null, 99)
+  expect(i.prettyPrint(load)).toEqual(dedent`
     i32.const 99
     f64.load {3,0}
   `)
-  expect(i.toBytes(i.f64_load(null, 99))).toEqual(
+  expect(i.toBytes(load)).toEqual(
     [
       [w.instr.i32.const, w.i32(99)],
       [w.instr.f64.load, [3, 0]],
@@ -69,10 +70,26 @@ test("store", () => {
   )
 })
 
-test("prettyPrint: call", () => {
+test("call", () => {
   const call = i.callBuiltin(null, "pow")
   expect(i.prettyPrint(call)).toEqual(dedent`
     call $${powIdx} (pow)
   `)
   expect(i.toBytes(call)).toEqual([w.instr.call, ...w.funcidx(powIdx)])
+})
+
+test("prettyPrint - seq with source", () => {
+  const load = i.f64_load("load!", 99)
+  const store = i.f64_store("store!", 99, i.f64_const("y", 123.456))
+  const seq = i.seq("brrrr", load, store)
+  expect(i.prettyPrint(seq)).toEqual(dedent`
+    (; brrrr ;)
+    (; load! ;)
+    i32.const 99
+    f64.load {3,0}
+    (; store! ;)
+    i32.const 99
+    f64.const 123.456
+    f64.store {3,0}
+  `)
 })

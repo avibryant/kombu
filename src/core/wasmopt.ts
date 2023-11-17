@@ -96,10 +96,6 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     body: i.toBytes(visitIrNode(node, ctx)),
   }))
 
-  ;[mod.loss, ...gradientNodes].map((node) =>
-    console.log(i.prettyPrint(visitIrNode(node, ctx))),
-  )
-
   const cache = new OptimizerCache(ctx.cacheEntries)
 
   // Initialize the cache with values for the free params.
