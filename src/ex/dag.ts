@@ -99,3 +99,11 @@ export function isMul(num: Num): num is Mul {
 export function isMulK(mul: Mul): mul is MulK {
     return mul.left.type == "constant"
 }
+
+export function isPow(num: Num): num is Pow {
+    return num.type == "pow"
+}
+
+export function isPowK(pow: Pow): pow is PowK {
+    return pow.right.type == "constant"
+}
