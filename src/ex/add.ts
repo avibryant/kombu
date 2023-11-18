@@ -1,5 +1,5 @@
 import * as d from './dag'
-import {compare, equal} from './compare'
+import {compare} from './compare'
 import {mulK} from './mul'
 
 export function add(left: d.Num, right: d.Num): d.Num {
@@ -40,25 +40,33 @@ function add_na_add(left: d.NotAdd, right: d.Add): d.Num {
     if(d.isAddK(right)) {
         return add(right.left, add(left, right.right))
     } else {
-        const maybeMerged = add_na_na(left, right.left)
-        if(d.isAdd(maybeMerged)) {
-            //TODO
-        } else {
-            return add(maybeMerged, right.right)
-        }
+        return add_na_ar(left, right)
     }
 }
 
 function add_na_na(left: d.NotAdd, right: d.NotAdd): d.Num {
     const m1 = termCoeff(left)
     const m2 = termCoeff(right)
-    if(equal(m1.term, m2.term)) {
-        return mulK(d.constant(m1.coeff + m2.coeff), m1.term)
-    } else {
-        if(compare(left, right) == "lt")
+    switch(compare(m1.term, m2.term)) {
+        case "lt":
             return addR(left, right)
-        else
+        case "gt":
             return addR(right, left)
+        case "eq":
+            return merge(m1, m2)
+    }
+}
+
+function add_na_ar(left: d.NotAdd, right: d.AddR): d.Num {
+    const m1 = termCoeff(left)
+    const m2 = termCoeff(right.left)
+    switch(compare(m1.term, m2.term)) {
+        case "lt":
+            return addR(left, right)
+        case "gt":
+            return add(right.left, add(left, right.right))
+        case "eq":
+            return add(merge(m1, m2), right.right)
     }
 }
 
@@ -93,4 +101,8 @@ function termCoeff(n: d.NotAdd): TermCoeff {
             term: n,
             coeff: 1
         }
+}
+
+function merge(left: TermCoeff, right: TermCoeff): d.Num {
+    return mulK(d.constant(left.coeff + right.coeff), left.term)
 }

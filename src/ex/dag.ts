@@ -34,8 +34,9 @@ export type NotMulK = NotMul | MulR
 export type NotMulKOrAdd = UnaryP | Pow | MulR
 export type Mul = MulK | MulR
 
-export type NotPow = UnaryP | Mul | Add
+export type NotPow = Constant | UnaryP | Mul | Add
 export type NotPowK = NotPow | PowR
+export type NotPowKOrMul = UnaryP | Add | PowR
 export type Pow = PowK | PowR
 
 export interface Unary {
@@ -70,7 +71,7 @@ export interface MulR {
 
 export interface PowK {
     type: "pow"
-    left: NotPowK
+    left: NotPowKOrMul
     right: Constant
 }
 
