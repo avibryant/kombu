@@ -50,10 +50,17 @@ function checkBinary(exp: ir.Expr): ir.BinaryExpr {
 }
 
 test("simplification - plus", () => {
+  // x - 3
   let mod = ir.module(loss(k.sub(k.param("x"), 3)))
   expect(mod.loss.type).toBe(ir.ExprType.Binary)
   expect(checkBinary(mod.loss).op).toBe("-")
 
+  // -1x + y => y - x
+  mod = ir.module(loss(k.add(k.mul(-1, k.param("x")), k.param("y"))))
+  expect(mod.loss.type).toBe(ir.ExprType.Binary)
+  expect(checkBinary(mod.loss).op).toBe("-")
+
+  // 3 - x
   mod = ir.module(loss(k.sub(3, k.param("x"))))
   expect(mod.loss.type).toBe(ir.ExprType.Binary)
   expect(checkBinary(mod.loss).op).toBe("-")

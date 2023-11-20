@@ -87,6 +87,8 @@ function plus(lhs: Expr, rhs: Expr) {
     return binary("-", lhs, constant(rhs.value * -1))
   }
 
+  // Note: `-a + b => b - a` is handled construction-level simplification.
+
   // -ax + b => b - ax
   if (isBinary(lhs) && lhs.op === "*" && isConstant(lhs.l) && lhs.l.value < 0) {
     return binary("-", rhs, times(constant(lhs.l.value * -1), lhs.r))
