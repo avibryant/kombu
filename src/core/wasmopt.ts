@@ -183,8 +183,14 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     if (node.op === "pow") {
       return i.seq(node, lfrag, rfrag, i.callBuiltin(null, "pow"))
     }
-    const instr = node.op === "+" ? "add" : "mul"
-    return i.f64_binOp(node, instr, lfrag, rfrag)
+    switch (node.op) {
+      case "+":
+        return i.f64_binOp(node, "add", lfrag, rfrag)
+      case "-":
+        return i.f64_binOp(node, "sub", lfrag, rfrag)
+      case "*":
+        return i.f64_binOp(node, "mul", lfrag, rfrag)
+    }
   }
 
   return optimize

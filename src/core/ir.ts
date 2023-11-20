@@ -27,7 +27,7 @@ export interface ParamExpr {
   param: t.Param
 }
 
-type BinaryOp = "+" | "*" | "pow"
+type BinaryOp = "+" | "-" | "*" | "pow"
 
 export interface BinaryExpr {
   type: ExprType.Binary
@@ -66,23 +66,44 @@ export interface Module {
   gradient: Map<t.Param, Expr>
 }
 
-function isConstant(exp: Expr, value?: number) {
-  return (
-    exp.type === ExprType.Constant &&
-    (value === undefined || exp.value === value)
-  )
+function isConstant(exp: Expr): exp is ConstantExpr {
+  return exp.type === ExprType.Constant
 }
 
-function plus(a: Expr, b: Expr) {
-  if (isConstant(a, 0)) return b
-  if (isConstant(b, 0)) return a
-  return binary("+", a, b)
+function isBinary(exp: Expr): exp is BinaryExpr {
+  return exp.type === ExprType.Binary
+}
+
+function isConstVal(exp: Expr, value: number): boolean {
+  return isConstant(exp) && (value === undefined || exp.value === value)
+}
+
+function plus(lhs: Expr, rhs: Expr) {
+  if (isConstVal(lhs, 0)) return rhs
+  if (isConstVal(rhs, 0)) return lhs
+
+  // a + -b => a - b
+  if (isConstant(rhs) && rhs.value < 0) {
+    return binary("-", lhs, constant(rhs.value * -1))
+  }
+
+  // -ax + b => b - ax
+  if (isBinary(lhs) && lhs.op === "*" && isConstant(lhs.l) && lhs.l.value < 0) {
+    return binary("-", rhs, times(constant(lhs.l.value * -1), lhs.r))
+  }
+
+  // a + -xb => a - xb
+  if (isBinary(rhs) && rhs.op === "*" && isConstant(rhs.l) && rhs.l.value < 0) {
+    return binary("-", lhs, times(constant(rhs.l.value * -1), rhs.r))
+  }
+
+  return binary("+", lhs, rhs)
 }
 
 function times(a: Expr, b: Expr) {
-  if (isConstant(a, 1)) return b
-  if (isConstant(b, 1)) return a
-  if (isConstant(a, 0) || isConstant(b, 0)) return constant(0)
+  if (isConstVal(a, 1)) return b
+  if (isConstVal(b, 1)) return a
+  if (isConstVal(a, 0) || isConstVal(b, 0)) return constant(0)
   return binary("*", a, b)
 }
 

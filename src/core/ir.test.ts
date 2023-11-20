@@ -43,3 +43,27 @@ describe("pseudocode", () => {
     )
   })
 })
+
+function checkBinary(exp: ir.Expr): ir.BinaryExpr {
+  if (exp.type !== ir.ExprType.Binary) throw new Error()
+  return exp as ir.BinaryExpr
+}
+
+test("simplification - plus", () => {
+  let mod = ir.module(loss(k.sub(k.param("x"), 3)))
+  expect(mod.loss.type).toBe(ir.ExprType.Binary)
+  expect(checkBinary(mod.loss).op).toBe("-")
+
+  mod = ir.module(loss(k.sub(3, k.param("x"))))
+  expect(mod.loss.type).toBe(ir.ExprType.Binary)
+  expect(checkBinary(mod.loss).op).toBe("-")
+
+  // x + (-1y + 3) => (x - y) + 3
+  mod = ir.module(loss(k.add(k.param("x"), k.add(k.mul(-1, k.param("y")), 3))))
+
+  expect(mod.loss.type).toBe(ir.ExprType.Binary)
+  expect(checkBinary(mod.loss).op).toBe("+")
+  const lhs = checkBinary(mod.loss).l
+  expect(lhs.type).toBe(ir.ExprType.Binary)
+  expect(checkBinary(lhs).op).toBe("-")
+})

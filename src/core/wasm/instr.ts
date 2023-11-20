@@ -33,7 +33,7 @@ export interface BinaryInstr {
   type: WasmType.Binary
   source: FragmentSource
   valtype: "i32" | "f64"
-  op: "mul" | "add"
+  op: "mul" | "add" | "sub"
 
   // These must be WasmFragment, and not WasmInstr, in order to handle calls
   // that take arguments.
