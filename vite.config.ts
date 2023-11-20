@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => {
   const prodConfig: UserConfig = {
     plugins: [useShims()],
     define: {
-      "process.env.KOMBU_DEBUG": false,
+      "process.env.KOMBU_DEBUG": JSON.stringify(""),
     },
   }
   return mode === "production" ? prodConfig : devConfig

@@ -3,9 +3,10 @@
 import * as w from "@wasmgroundup/emit"
 
 import { checkNotNull } from "../assert"
+import { DEBUG_logWasm, DEBUG_writeFile } from "../debug"
 import { builtins } from "./builtins"
+import * as i from "./instr"
 import { traceImpl } from "./trace"
-import { DEBUG_writeFile } from "../debug"
 
 import * as prebuilt from "../../../build/release.wasm_sections"
 
@@ -21,7 +22,7 @@ const WASM_PAGE_SIZE = 65536
 interface WasmFunction {
   name: string
   type: w.BytecodeFragment
-  body: w.BytecodeFragment
+  body: i.WasmFragment
 }
 
 interface PrebuiltSection {
@@ -123,6 +124,12 @@ export function instantiateModule(
     entryCount: prebuilt.globalsec.entryCount,
   }
 
+  const codesec = functions.map(({ body }, idx) => {
+    DEBUG_logWasm(userFuncIdx(idx), body)
+    const bytecode = i.toBytes(body)
+    return w.code(w.func([], [...bytecode, w.instr.end]))
+  })
+
   const fragment = w.module([
     mergeSections(SECTION_ID_TYPE, prebuilt.typesec, functypes.typesec()),
     mergeSections(SECTION_ID_IMPORT, prebuilt.importsec, imports),
@@ -145,11 +152,7 @@ export function instantiateModule(
         functions.map((_, i) => w.funcidx(userFuncIdx(i))),
       ),
     ]),
-    mergeSections(
-      SECTION_ID_CODE,
-      prebuilt.codesec,
-      functions.map(({ body }) => w.code(w.func([], [...body, w.instr.end]))),
-    ),
+    mergeSections(SECTION_ID_CODE, prebuilt.codesec, codesec),
   ])
   //  debugPrint(bytes)
   // `(mod as any[])` to avoid compiler error about excessively deep

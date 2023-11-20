@@ -93,7 +93,7 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
   const functions = [mod.loss, ...gradientNodes].map((node) => ({
     name: "",
     type: w.functype([], [w.valtype.f64]),
-    body: i.toBytes(visitIrNode(node, ctx)),
+    body: visitIrNode(node, ctx),
   }))
 
   const cache = new OptimizerCache(ctx.cacheEntries)
