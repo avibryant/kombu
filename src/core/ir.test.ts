@@ -45,8 +45,13 @@ describe("pseudocode", () => {
 })
 
 function checkBinary(exp: ir.Expr): ir.BinaryExpr {
-  if (exp.type !== ir.ExprType.Binary) throw new Error()
+  if (exp.type !== ir.ExprType.Binary) throw new Error("not a Binary")
   return exp as ir.BinaryExpr
+}
+
+function checkConstant(exp: ir.Expr): ir.ConstantExpr {
+  if (exp.type !== ir.ExprType.Constant) throw new Error("not a Constant")
+  return exp as ir.ConstantExpr
 }
 
 test("simplification - plus", () => {
@@ -73,4 +78,32 @@ test("simplification - plus", () => {
   const lhs = checkBinary(mod.loss).l
   expect(lhs.type).toBe(ir.ExprType.Binary)
   expect(checkBinary(lhs).op).toBe("-")
+})
+
+test("simplification - neg exponents", () => {
+  const x = k.param("x")
+  const y = k.param("y")
+
+  const toIR = (num: k.Num) => ir.module(loss(num)).loss
+
+  // 2 * y^-1 + x = 2/y + x
+  let exp = toIR(k.add(k.mul(2, k.pow(y, -1)), x))
+  expect(exp).toEqual(toIR(k.add(k.div(2, y), x)))
+  expect(exp.type).toBe(ir.ExprType.Binary)
+  const lhs = checkBinary(exp)
+  expect(lhs.op).toBe("+")
+  expect(lhs.l.type).toBe(ir.ExprType.Binary)
+  const div = checkBinary(lhs.l)
+  expect(div.op).toBe("/")
+  expect(div.l.type).toBe(ir.ExprType.Constant)
+  expect(checkConstant(div.l).value).toBe(2)
+  expect(div.r.type).toBe(ir.ExprType.Param)
+
+  // 3 * x^-1 = 3/x
+  exp = toIR(k.mul(3, k.pow(x, -1)))
+  expect(exp).toEqual(toIR(k.div(3, x)))
+  expect(exp.type).toBe(ir.ExprType.Binary)
+  expect(checkBinary(exp).op).toBe("/")
+  expect(checkBinary(exp).l.type).toBe(ir.ExprType.Constant)
+  expect(checkConstant(checkBinary(exp).l).value).toBe(3)
 })

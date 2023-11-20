@@ -27,7 +27,7 @@ export interface ParamExpr {
   param: t.Param
 }
 
-type BinaryOp = "+" | "-" | "*" | "pow"
+type BinaryOp = "+" | "-" | "*" | "/" | "pow"
 
 export interface BinaryExpr {
   type: ExprType.Binary
@@ -102,15 +102,28 @@ function plus(lhs: Expr, rhs: Expr) {
   return binary("+", lhs, rhs)
 }
 
-function times(a: Expr, b: Expr) {
-  if (isConstVal(a, 1)) return b
-  if (isConstVal(b, 1)) return a
-  if (isConstVal(a, 0) || isConstVal(b, 0)) return constant(0)
-  return binary("*", a, b)
+function times(lhs: Expr, rhs: Expr) {
+  if (isConstVal(lhs, 1)) return rhs
+  if (isConstVal(rhs, 1)) return lhs
+  if (isConstVal(lhs, 0) || isConstVal(rhs, 0)) return constant(0)
+
+  // u * v^-c => u / v^c
+  if (
+    isBinary(rhs) &&
+    rhs.op === "pow" &&
+    isConstant(rhs.r) &&
+    rhs.r.value < 0
+  ) {
+    return binary("/", lhs, pow(rhs.l, rhs.r.value * -1))
+  }
+
+  return binary("*", lhs, rhs)
 }
 
 function pow(base: Expr, exponent: number) {
   switch (exponent) {
+    case -1:
+      return binary("/", constant(1), base)
     case 0:
       return constant(1)
     case 1:

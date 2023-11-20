@@ -190,6 +190,8 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
         return i.f64_binOp(node, "sub", lfrag, rfrag)
       case "*":
         return i.f64_binOp(node, "mul", lfrag, rfrag)
+      case "/":
+        return i.f64_binOp(node, "div", lfrag, rfrag)
     }
   }
 
