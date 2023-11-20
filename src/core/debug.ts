@@ -23,7 +23,7 @@ export function DEBUG_logIrModule(mod: Module, repr = pseudocode) {
   console.log("\n[L]")
   console.log(repr(mod.loss))
   mod.gradient.forEach((grad, p) => {
-    console.log(`[dL/d${p.name}]`)
+    console.log(`[∂L/∂${p.name}]`)
     console.log(repr(grad))
   })
 }
