@@ -53,8 +53,8 @@ export function someLength(
 }
 
 export function someAngle(m: Model, name: string): Angle {
-  const a = k.param(name)
-  const b = k.param(name)
+  const a = k.param(name + "_y")
+  const b = k.param(name + "_x")
   const n = k.sqrt(k.add(k.mul(a, a), k.mul(b, b)))
   const cos = k.div(a, n)
   const sin = k.div(b, n)
