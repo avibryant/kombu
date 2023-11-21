@@ -33,7 +33,7 @@ export interface BinaryInstr {
   type: WasmType.Binary
   source: FragmentSource
   valtype: "i32" | "f64"
-  op: "mul" | "div" | "add" | "sub"
+  op: "mul" | "add"
 
   // These must be WasmFragment, and not WasmInstr, in order to handle calls
   // that take arguments.
@@ -196,12 +196,11 @@ export function toBytes(frag: WasmFragment): number[] {
         ? [w.instr.f64.const, ...w.f64(frag.value)]
         : [w.instr.i32.const, ...w.i32(frag.value)]
     case WasmType.Binary:
-      if (frag.valtype === "f64" || frag.op !== "div") {
-        return [toBytes(frag.l), toBytes(frag.r), w.instr["f64"][frag.op]].flat(
-          3,
-        )
-      }
-      throw new Error(`unhandled: ${frag.valtype}.${frag.op}`)
+      return [
+        toBytes(frag.l),
+        toBytes(frag.r),
+        w.instr[frag.valtype][frag.op],
+      ].flat(3)
     case WasmType.Load:
       return [
         toBytes(frag.addr),
