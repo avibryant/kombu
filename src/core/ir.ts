@@ -18,13 +18,17 @@ export interface ConstantExpr {
   value: number
 }
 
-function constant(value: number): ConstantExpr {
+export function constant(value: number): ConstantExpr {
   return { type: ExprType.Constant, value }
 }
 
 export interface ParamExpr {
   type: ExprType.Param
   param: t.Param
+}
+
+export function param(p: t.Param): ParamExpr {
+  return { type: ExprType.Param, param: p }
 }
 
 type BinaryOp = "+" | "-" | "*" | "/" | "pow"
@@ -37,7 +41,7 @@ export interface BinaryExpr {
   reused: boolean
 }
 
-function binary(op: BinaryOp, l: Expr, r: Expr): BinaryExpr {
+export function binary(op: BinaryOp, l: Expr, r: Expr): BinaryExpr {
   return { type: ExprType.Binary, op, l, r, reused: false }
 }
 
@@ -122,8 +126,6 @@ function times(lhs: Expr, rhs: Expr) {
 
 function pow(base: Expr, exponent: number) {
   switch (exponent) {
-    case -1:
-      return binary("/", constant(1), base)
     case 0:
       return constant(1)
     case 1:
@@ -140,7 +142,7 @@ export function module(loss: Loss) {
     if (num.type === t.NumType.Constant) {
       return constant(num.value)
     } else if (num.type === t.NumType.Param) {
-      return { type: ExprType.Param, param: num }
+      return param(num)
     }
 
     if (cacheable.has(num)) {

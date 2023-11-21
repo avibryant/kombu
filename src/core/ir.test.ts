@@ -49,61 +49,44 @@ function checkBinary(exp: ir.Expr): ir.BinaryExpr {
   return exp as ir.BinaryExpr
 }
 
-function checkConstant(exp: ir.Expr): ir.ConstantExpr {
-  if (exp.type !== ir.ExprType.Constant) throw new Error("not a Constant")
-  return exp as ir.ConstantExpr
-}
+const toIR = (num: k.Num) => ir.module(loss(num)).loss
 
 test("simplification - plus", () => {
-  // x - 3
-  let mod = ir.module(loss(k.sub(k.param("x"), 3)))
-  expect(mod.loss.type).toBe(ir.ExprType.Binary)
-  expect(checkBinary(mod.loss).op).toBe("-")
+  const x = k.param("x")
+  const y = k.param("y")
 
-  // -1x + y => y - x
-  mod = ir.module(loss(k.add(k.mul(-1, k.param("x")), k.param("y"))))
-  expect(mod.loss.type).toBe(ir.ExprType.Binary)
-  expect(checkBinary(mod.loss).op).toBe("-")
+  // x - 3
+  let exp = toIR(k.sub(x, 3))
+  expect(exp.type).toBe(ir.ExprType.Binary)
+  expect(checkBinary(exp).op).toBe("-")
 
   // 3 - x
-  mod = ir.module(loss(k.sub(3, k.param("x"))))
-  expect(mod.loss.type).toBe(ir.ExprType.Binary)
-  expect(checkBinary(mod.loss).op).toBe("-")
+  exp = toIR(k.sub(3, k.param("x")))
+  expect(exp.type).toBe(ir.ExprType.Binary)
+  expect(checkBinary(exp).op).toBe("-")
+
+  // -1x + y => y - x
+  exp = toIR(k.add(k.mul(-1, x), y))
+  expect(exp).toEqual(ir.binary("-", ir.param(y), ir.param(x)))
 
   // x + (-1y + 3) => (x - y) + 3
-  mod = ir.module(loss(k.add(k.param("x"), k.add(k.mul(-1, k.param("y")), 3))))
-
-  expect(mod.loss.type).toBe(ir.ExprType.Binary)
-  expect(checkBinary(mod.loss).op).toBe("+")
-  const lhs = checkBinary(mod.loss).l
-  expect(lhs.type).toBe(ir.ExprType.Binary)
-  expect(checkBinary(lhs).op).toBe("-")
+  exp = toIR(k.add(x, k.add(k.mul(-1, y), 3)))
+  expect(exp).toEqual(
+    ir.binary("+", ir.binary("-", ir.param(x), ir.param(y)), ir.constant(3)),
+  )
 })
 
 test("simplification - neg exponents", () => {
   const x = k.param("x")
   const y = k.param("y")
 
-  const toIR = (num: k.Num) => ir.module(loss(num)).loss
-
   // 2 * y^-1 + x = 2/y + x
   let exp = toIR(k.add(k.mul(2, k.pow(y, -1)), x))
-  expect(exp).toEqual(toIR(k.add(k.div(2, y), x)))
-  expect(exp.type).toBe(ir.ExprType.Binary)
-  const lhs = checkBinary(exp)
-  expect(lhs.op).toBe("+")
-  expect(lhs.l.type).toBe(ir.ExprType.Binary)
-  const div = checkBinary(lhs.l)
-  expect(div.op).toBe("/")
-  expect(div.l.type).toBe(ir.ExprType.Constant)
-  expect(checkConstant(div.l).value).toBe(2)
-  expect(div.r.type).toBe(ir.ExprType.Param)
+  expect(exp).toEqual(
+    ir.binary("+", ir.binary("/", ir.constant(2), ir.param(y)), ir.param(x)),
+  )
 
   // 3 * x^-1 = 3/x
   exp = toIR(k.mul(3, k.pow(x, -1)))
-  expect(exp).toEqual(toIR(k.div(3, x)))
-  expect(exp.type).toBe(ir.ExprType.Binary)
-  expect(checkBinary(exp).op).toBe("/")
-  expect(checkBinary(exp).l.type).toBe(ir.ExprType.Constant)
-  expect(checkConstant(checkBinary(exp).l).value).toBe(3)
+  expect(exp).toEqual(ir.binary("/", ir.constant(3), ir.param(x)))
 })
