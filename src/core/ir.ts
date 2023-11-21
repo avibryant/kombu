@@ -18,7 +18,7 @@ export interface ConstantExpr {
   value: number
 }
 
-function constant(value: number): ConstantExpr {
+export function constant(value: number): ConstantExpr {
   return { type: ExprType.Constant, value }
 }
 
@@ -27,7 +27,11 @@ export interface ParamExpr {
   param: t.Param
 }
 
-type BinaryOp = "+" | "*" | "pow"
+export function param(p: t.Param): ParamExpr {
+  return { type: ExprType.Param, param: p }
+}
+
+type BinaryOp = "+" | "-" | "*" | "/" | "pow"
 
 export interface BinaryExpr {
   type: ExprType.Binary
@@ -37,7 +41,7 @@ export interface BinaryExpr {
   reused: boolean
 }
 
-function binary(op: BinaryOp, l: Expr, r: Expr): BinaryExpr {
+export function binary(op: BinaryOp, l: Expr, r: Expr): BinaryExpr {
   return { type: ExprType.Binary, op, l, r, reused: false }
 }
 
@@ -66,24 +70,58 @@ export interface Module {
   gradient: Map<t.Param, Expr>
 }
 
-function isConstant(exp: Expr, value?: number) {
-  return (
-    exp.type === ExprType.Constant &&
-    (value === undefined || exp.value === value)
-  )
+function isConstant(exp: Expr): exp is ConstantExpr {
+  return exp.type === ExprType.Constant
 }
 
-function plus(a: Expr, b: Expr) {
-  if (isConstant(a, 0)) return b
-  if (isConstant(b, 0)) return a
-  return binary("+", a, b)
+function isBinary(exp: Expr): exp is BinaryExpr {
+  return exp.type === ExprType.Binary
 }
 
-function times(a: Expr, b: Expr) {
-  if (isConstant(a, 1)) return b
-  if (isConstant(b, 1)) return a
-  if (isConstant(a, 0) || isConstant(b, 0)) return constant(0)
-  return binary("*", a, b)
+function isConstVal(exp: Expr, value: number): boolean {
+  return isConstant(exp) && (value === undefined || exp.value === value)
+}
+
+function plus(lhs: Expr, rhs: Expr) {
+  if (isConstVal(lhs, 0)) return rhs
+  if (isConstVal(rhs, 0)) return lhs
+
+  // a + -b => a - b
+  if (isConstant(rhs) && rhs.value < 0) {
+    return binary("-", lhs, constant(rhs.value * -1))
+  }
+
+  // Note: `-a + b => b - a` is handled in construction-level simplification.
+
+  // -ax + b => b - ax
+  if (isBinary(lhs) && lhs.op === "*" && isConstant(lhs.l) && lhs.l.value < 0) {
+    return binary("-", rhs, times(constant(lhs.l.value * -1), lhs.r))
+  }
+
+  // a + -xb => a - xb
+  if (isBinary(rhs) && rhs.op === "*" && isConstant(rhs.l) && rhs.l.value < 0) {
+    return binary("-", lhs, times(constant(rhs.l.value * -1), rhs.r))
+  }
+
+  return binary("+", lhs, rhs)
+}
+
+function times(lhs: Expr, rhs: Expr) {
+  if (isConstVal(lhs, 1)) return rhs
+  if (isConstVal(rhs, 1)) return lhs
+  if (isConstVal(lhs, 0) || isConstVal(rhs, 0)) return constant(0)
+
+  // u * v^-c => u / v^c
+  if (
+    isBinary(rhs) &&
+    rhs.op === "pow" &&
+    isConstant(rhs.r) &&
+    rhs.r.value < 0
+  ) {
+    return binary("/", lhs, pow(rhs.l, rhs.r.value * -1))
+  }
+
+  return binary("*", lhs, rhs)
 }
 
 function pow(base: Expr, exponent: number) {
@@ -104,7 +142,7 @@ export function module(loss: Loss) {
     if (num.type === t.NumType.Constant) {
       return constant(num.value)
     } else if (num.type === t.NumType.Param) {
-      return { type: ExprType.Param, param: num }
+      return param(num)
     }
 
     if (cacheable.has(num)) {
