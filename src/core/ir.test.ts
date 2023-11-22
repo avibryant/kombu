@@ -43,3 +43,50 @@ describe("pseudocode", () => {
     )
   })
 })
+
+function checkBinary(exp: ir.Expr): ir.BinaryExpr {
+  if (exp.type !== ir.ExprType.Binary) throw new Error("not a Binary")
+  return exp as ir.BinaryExpr
+}
+
+const toIR = (num: k.Num) => ir.module(loss(num)).loss
+
+test("simplification - plus", () => {
+  const x = k.param("x")
+  const y = k.param("y")
+
+  // x - 3
+  let exp = toIR(k.sub(x, 3))
+  expect(exp.type).toBe(ir.ExprType.Binary)
+  expect(checkBinary(exp).op).toBe("-")
+
+  // 3 - x
+  exp = toIR(k.sub(3, k.param("x")))
+  expect(exp.type).toBe(ir.ExprType.Binary)
+  expect(checkBinary(exp).op).toBe("-")
+
+  // -1x + y => y - x
+  exp = toIR(k.add(k.mul(-1, x), y))
+  expect(exp).toEqual(ir.binary("-", ir.param(y), ir.param(x)))
+
+  // x + (-1y + 3) => (x - y) + 3
+  exp = toIR(k.add(x, k.add(k.mul(-1, y), 3)))
+  expect(exp).toEqual(
+    ir.binary("+", ir.binary("-", ir.param(x), ir.param(y)), ir.constant(3)),
+  )
+})
+
+test("simplification - neg exponents", () => {
+  const x = k.param("x")
+  const y = k.param("y")
+
+  // 2 * y^-1 + x = 2/y + x
+  let exp = toIR(k.add(k.mul(2, k.pow(y, -1)), x))
+  expect(exp).toEqual(
+    ir.binary("+", ir.binary("/", ir.constant(2), ir.param(y)), ir.param(x)),
+  )
+
+  // 3 * x^-1 = 3/x
+  exp = toIR(k.mul(3, k.pow(x, -1)))
+  expect(exp).toEqual(ir.binary("/", ir.constant(3), ir.param(x)))
+})

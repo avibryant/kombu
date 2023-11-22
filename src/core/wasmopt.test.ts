@@ -95,3 +95,15 @@ test("loss function with abs()", () => {
   let ev = optimize(value, new Map([[a, 8]]), maxIterations)
   expect(ev.evaluate(a)).toBeCloseTo(0, 2)
 })
+
+test("div", () => {
+  const x = k.param("x")
+  const y = k.observation("y")
+  const loss = k.add(k.pow(x, 2), k.div(2, y))
+
+  const obs = new Map([[y, 1]])
+
+  // Start close to the solution (0) and run for only a few iterations.
+  const ev = optimize(loss, new Map([[x, 0.1]]), 100, obs)
+  expect(ev.evaluate(x)).toBeCloseTo(0, 2)
+})
