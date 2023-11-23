@@ -3,7 +3,6 @@ import { expect, test } from "vitest"
 import { checkNotNull } from "./assert"
 import * as k from "./api"
 import * as l from "./loss"
-import { tex } from "./tex"
 
 import { wasmOptimizer } from "./wasmopt"
 
