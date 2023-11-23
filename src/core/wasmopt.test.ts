@@ -2,7 +2,8 @@ import { expect, test } from "vitest"
 
 import { checkNotNull } from "./assert"
 import * as k from "./api"
-import { loss } from "./loss"
+import * as l from "./loss"
+import { tex } from "./tex"
 
 import { wasmOptimizer } from "./wasmopt"
 
@@ -12,8 +13,8 @@ function optimize(
   iterations: number,
   observations: Map<k.Param, number> = new Map(),
 ) {
-  const l = loss(lossNum)
-  const optimizeImpl = wasmOptimizer(l, init)
+  const loss = l.loss(lossNum)
+  const optimizeImpl = wasmOptimizer(loss, init)
   const params = optimizeImpl(iterations, observations)
   return {
     evaluate(p: k.Param) {
@@ -106,4 +107,12 @@ test("div", () => {
   // Start close to the solution (0) and run for only a few iterations.
   const ev = optimize(loss, new Map([[x, 0.1]]), 100, obs)
   expect(ev.evaluate(x)).toBeCloseTo(0, 2)
+})
+
+test("re-ordering of shared subexpressions", () => {
+  // The simplification `-ax + b => b - ax` can potentially change the order
+  const x = k.param("x")
+  const exp1 = k.sign(x)
+  const loss = l.loss(k.add(k.mul(-3, exp1), k.mul(-2, k.abs(exp1))))
+  expect(wasmOptimizer(loss, new Map([[x, 1]]))).not.toThrow()
 })

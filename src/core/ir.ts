@@ -93,9 +93,24 @@ function plus(lhs: Expr, rhs: Expr) {
 
   // Note: `-a + b => b - a` is handled in construction-level simplification.
 
-  // -ax + b => b - ax
-  if (isBinary(lhs) && lhs.op === "*" && isConstant(lhs.l) && lhs.l.value < 0) {
-    return binary("-", rhs, times(constant(lhs.l.value * -1), lhs.r))
+  // -x + b => b - x
+  if (
+    isBinary(lhs) &&
+    lhs.op === "*" &&
+    isConstVal(lhs.l, -1) &&
+    isConstant(rhs)
+  ) {
+    return binary("-", rhs, lhs.r)
+  }
+
+  // (0 - ax) + k => k - ax
+  if (
+    isBinary(lhs) &&
+    lhs.op === "-" &&
+    isConstVal(lhs.l, 0) &&
+    isConstant(rhs)
+  ) {
+    return binary("-", rhs, lhs.l)
   }
 
   // a + -xb => a - xb
@@ -135,6 +150,47 @@ function pow(base: Expr, exponent: number) {
   }
 }
 
+type BinaryCtor = (l: Expr, r: Expr) => Expr
+
+function termsToArray<T extends t.ProductTerm | t.SumTerm>(
+  firstTerm: t.TermNode<T> | null,
+) {
+  const terms: t.TermNode<T>[] = []
+  for (let term = firstTerm; term != null; term = term.nextTerm) {
+    terms.push(term)
+  }
+  return terms
+}
+
+function combineTerms<T extends t.ProductTerm | t.SumTerm>(
+  firstTerm: t.TermNode<T> | null,
+  toExpr: (num: t.Num) => Expr,
+  mul: BinaryCtor,
+  add: BinaryCtor,
+  sub: BinaryCtor,
+  zero: () => Expr,
+) {
+  // TODO: Consider processing terms as a tree, not a chain.
+  const terms = termsToArray(firstTerm)
+  if (terms.length === 0) return zero()
+
+  // If the first term is negative, try to avoid subtraction from 0.
+  if (terms[0].a === -1) {
+    const swapIdx = terms.findIndex((t) => t.a > 0)
+    if (swapIdx > 0) {
+      ;[terms[0], terms[swapIdx]] = [terms[swapIdx], terms[0]]
+    }
+  }
+  return terms.reduce((acc: Expr, t: t.TermNode<T>) => {
+    // Avoid a mul where possible.
+    if (t.a === -1) {
+      return sub(acc, toExpr(t.x))
+    } else {
+      return add(acc, mul(constant(t.a), toExpr(t.x)))
+    }
+  }, zero())
+}
+
 export function module(loss: Loss) {
   const cacheable = new Map<t.Num, CacheableExpr>()
 
@@ -170,9 +226,8 @@ export function module(loss: Loss) {
   }
 
   function visitSumTerm(node: t.TermNode<t.SumTerm>) {
-    let result = times(constant(node.a), visitNum(node.x))
-    if (node.nextTerm) result = plus(result, visitSumTerm(node.nextTerm))
-    return result
+    const minus = (l: Expr, r: Expr) => binary("-", l, r)
+    return combineTerms(node, visitNum, times, plus, minus, () => constant(0))
   }
 
   function visitProductTerm(node: t.TermNode<t.ProductTerm>) {

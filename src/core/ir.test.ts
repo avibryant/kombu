@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest"
 import * as k from "./api"
 import * as ir from "./ir"
 import { loss } from "./loss"
+import { DEBUG_logIrModule } from "./debug"
 
 describe("lisp", () => {
   test("simple case with one param", () => {
@@ -49,7 +50,11 @@ function checkBinary(exp: ir.Expr): ir.BinaryExpr {
   return exp as ir.BinaryExpr
 }
 
-const toIR = (num: k.Num) => ir.module(loss(num)).loss
+const toIR = (num: k.Num) => {
+  const mod = ir.module(loss(num))
+  DEBUG_logIrModule(mod)
+  return mod.loss
+}
 
 test("simplification - plus", () => {
   const x = k.param("x")
