@@ -1,14 +1,43 @@
-import { bench, run } from "mitata"
+import { baseline, bench, group, run } from "mitata"
+import * as fs from "node:fs"
+import { Session } from "node:inspector/promises"
 
+import * as k from "../src/core/api"
 import {
   Model,
   emptyModel,
-  someLength,
   someAngle,
+  someLength,
   totalLoss,
 } from "../src/model/model"
-import { forward, right, at, turtle, Turtle } from "../src/turtle/turtle"
-import * as k from "../src/core/api"
+import { Turtle, at, forward, right, turtle } from "../src/turtle/turtle"
+
+let inspector: Session
+if (process.argv[2] === "--prof") {
+  inspector = new Session()
+  inspector.connect()
+}
+
+let profileName: string = ""
+let profiles: string[] = []
+
+async function maybeStartProfiling(name: string) {
+  if (inspector && !profileName) {
+    await inspector.post("Profiler.enable")
+    await inspector.post("Profiler.start")
+    profileName = name
+  }
+}
+
+async function maybeStopProfiling() {
+  if (profileName) {
+    const { profile } = await inspector.post("Profiler.stop")
+    const basename = profileName.replace(/[^a-zA-Z0-9]/g, "-")
+    fs.writeFileSync(`${basename}.cpuprofile`, JSON.stringify(profile))
+    profiles.push(`${basename}.cpuprofile`)
+    profileName = ""
+  }
+}
 
 function square(t: Turtle, id: number) {
   const side = someLength(t.model, `A${id}`)
@@ -34,29 +63,55 @@ function draw(m: Model) {
   }
 }
 
-let model: Model = emptyModel()
-draw(model)
+function addBench<T>(
+  shortName: string,
+  fullName: string,
+  fn: () => T | Promise<T>,
+) {
+  bench(shortName, async () => {
+    await maybeStartProfiling(fullName)
+    await fn()
+  })
+  // Hack: mitata doesn't offer any way to do teardown after a bench.
+  if (inspector) bench("[save profile]", maybeStopProfiling)
+}
 
-let lossValue = totalLoss(model)
+;(async function main() {
+  let model: Model = emptyModel()
+  draw(model)
 
-let loss: k.Loss
-bench("k.loss()", () => {
-  loss = k.loss(lossValue)
-})
+  let lossValue = totalLoss(model)
 
-let optimizer: k.Optimizer
-const optimize = () => optimizer.optimize(20, new Map())
+  let loss: k.Loss
 
-bench("creating optimizer (Wasm)", () => {
-  optimizer = k.optimizer(loss, model.ev.params)
-})
-bench("optimizing (Wasm)", optimize)
+  addBench("k.loss()", "k.loss", async () => {
+    loss = k.loss(lossValue)
+  })
 
-bench("creating optimizer (JS)", () => {
-  optimizer = k.optimizer(loss, model.ev.params, false)
-})
-bench("optimizing (JS)", optimize)
+  let optimizer: k.Optimizer
 
-await run({
-  percentiles: false,
-})
+  function optimize() {
+    optimizer.optimize(20, new Map())
+  }
+
+  group("creating optimizer", () => {
+    addBench("Wasm", "creating-optimizer-wasm", () => {
+      optimizer = k.optimizer(loss, model.ev.params)
+    })
+    addBench("JS", "creating-optimizer-js", () => {
+      optimizer = k.optimizer(loss, model.ev.params, false)
+    })
+  })
+  group("optimizing", () => {
+    addBench("Wasm", "optizing-wasm", optimize)
+    addBench("JS", "optimizing-js", optimize)
+  })
+
+  await run({
+    percentiles: false,
+  })
+
+  profiles.forEach((name) => {
+    console.log(`Wrote ${name}`)
+  })
+})()

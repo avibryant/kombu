@@ -1,8 +1,4 @@
 {
-  "ts-node": {
-    "esm": true,
-    "experimentalSpecifierResolution": "node" // So we can omit .ts in imports.
-  },
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
