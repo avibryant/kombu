@@ -101,8 +101,7 @@ function termsEqual<T extends t.ProductTerm | t.SumTerm>(
   r: t.TermNode<T> | null,
 ): boolean {
   while (l != null && r != null) {
-    if (l.a !== r.a) return false
-    if (!equal(l.x, r.x)) return false
+    if (l.a !== r.a || l.x !== r.x) return false
     l = l.nextTerm
     r = r.nextTerm
   }
@@ -125,7 +124,7 @@ function equal(a: t.Num | null, b: t.Num | null): boolean {
   } else if (isParam(a) && isParam(b)) {
     return a.id === b.id
   } else if (isUnary(a) && isUnary(b)) {
-    return a.fn === b.fn && equal(a.term, b.term)
+    return a.fn === b.fn && a.term === b.term
   } else if (isProduct(a) && isProduct(b)) {
     return termsEqual(a.firstTerm, b.firstTerm)
   } else if (isSum(a) && isSum(b)) {
