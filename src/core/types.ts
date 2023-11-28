@@ -14,7 +14,6 @@ export interface Constant {
   type: NumType.Constant
   value: number
   bounds: Bounds
-  hashcode?: number
 }
 
 export interface Param {

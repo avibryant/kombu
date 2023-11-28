@@ -8,6 +8,13 @@ const map = new Map<number, t.Num>()
 const FNV_OFFSET_BASIS = 2166136261
 const FNV_PRIME = 16777619
 
+// Precomputed starting hash for each of the types.
+const INITIAL_HASH_CONSTANT = (FNV_OFFSET_BASIS ^ 0) * FNV_PRIME
+const INITIAL_HASH_PARAM = (FNV_OFFSET_BASIS ^ 1) * FNV_PRIME
+const INITIAL_HASH_SUM = (FNV_OFFSET_BASIS ^ 2) * FNV_PRIME
+const INITIAL_HASH_PRODUCT = (FNV_OFFSET_BASIS ^ 3) * FNV_PRIME
+const INITIAL_HASH_UNARY = (FNV_OFFSET_BASIS ^ 4) * FNV_PRIME
+
 export function cacheNum<T extends t.Num>(n: T): T {
   const key = hashcode(n)
   let res = map.get(key)
@@ -70,26 +77,28 @@ function hashTerms<T extends t.ProductTerm | t.SumTerm>(
 }
 
 function hashcode(n: t.Num): number {
+  // Don't cache the hashcode for Constants.
+  switch (n.type) {
+    case t.NumType.Constant:
+      return hashF64(INITIAL_HASH_CONSTANT, n.value)
+  }
+
   let hash = n.hashcode
   if (hash != null) return hash
 
-  hash = hashI32(FNV_OFFSET_BASIS, n.type)
   switch (n.type) {
-    case t.NumType.Constant:
-      hash = hashF64(hash, n.value)
-      break
     case t.NumType.Param:
-      hash = hashF64(hash, n.id)
+      hash = hashF64(INITIAL_HASH_PARAM, n.id)
       break
     case t.NumType.Unary:
-      hash = hashString(hash, n.fn)
+      hash = hashString(INITIAL_HASH_UNARY, n.fn)
       hash = hashI32(hash, hashcode(n.term))
       break
     case t.NumType.Product:
-      hash = hashTerms(hash, n.firstTerm)
+      hash = hashTerms(INITIAL_HASH_PRODUCT, n.firstTerm)
       break
     case t.NumType.Sum:
-      hash = hashTerms(hash, n.firstTerm)
+      hash = hashTerms(INITIAL_HASH_SUM, n.firstTerm)
       hash = hashF64(hash, n.k)
       break
   }
