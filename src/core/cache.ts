@@ -1,15 +1,14 @@
-import fnv1a from "@sindresorhus/fnv1a"
-
 import { assert } from "./assert"
 import * as t from "./types"
-
-const SIZEOF_F64 = 8
-const SIZEOF_I32 = 4
 
 const hashes = new WeakMap<t.Num, number>()
 
 //use WeakRef, GC op that deletes expired refs
 const map = new Map<number, t.Num>()
+
+// From http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-param
+const FNV_OFFSET_BASIS = 2166136261
+const FNV_PRIME = 16777619
 
 export function cacheNum<T extends t.Num>(n: T): T {
   const key = hashcode(n)
@@ -19,18 +18,6 @@ export function cacheNum<T extends t.Num>(n: T): T {
     res = n
   }
   return <T>res
-}
-
-const f64ToBytes = (n: number) => new Uint8Array(new Float64Array([n]).buffer)
-const i32ToBytes = (n: number) => new Uint8Array(new Uint32Array([n]).buffer)
-
-function asciiToBytes(s: string) {
-  const bytes = new Uint8Array(s.length)
-  for (let i = 0; i < s.length; i++) {
-    assert(s.charCodeAt(i) < 256, "not an ASCII char")
-    bytes[i] = s.charCodeAt(i)
-  }
-  return bytes
 }
 
 function termsToArray<T extends t.ProductTerm | t.SumTerm>(
@@ -43,61 +30,73 @@ function termsToArray<T extends t.ProductTerm | t.SumTerm>(
   return terms
 }
 
-function termsToBytes<T extends t.ProductTerm | t.SumTerm>(
-  node: t.TermNode<T> | null,
-) {
-  const terms = termsToArray(node)
-  const bytes = new Uint8Array(terms.length * (SIZEOF_F64 + SIZEOF_I32))
-  let offset = 0
-  for (let i = 0; i < terms.length; i++) {
-    bytes.set(f64ToBytes(terms[i].a), offset)
-    offset += SIZEOF_F64
-    bytes.set(i32ToBytes(hashcode(terms[i].x)), offset)
-    offset += SIZEOF_I32
-  }
-  return bytes
+const f64Array = new Float64Array(1)
+const i32View = new Uint32Array(f64Array.buffer)
+
+/*
+  FNV1a, from http://www.isthe.com/chongo/tech/comp/fnv/index.html —
+
+    hash = offset_basis
+    for each octet_of_data to be hashed
+      hash = hash xor octet_of_data
+      hash = hash * FNV_prime
+    return hash
+
+  */
+function hashI32(hash: number, data: number): number {
+  return (hash ^ data) * FNV_PRIME
 }
 
-// Compute a 32-bit hash using FNV-1a.
-function computeHash(type: number, ...arrs: ArrayLike<number>[]): number {
-  const totalLen = 1 + arrs.reduce((len, a) => a.length + len, 0)
-  const bytes = new Uint8Array(totalLen)
-  bytes[0] = type
-  let offset = 0
-  for (let i = 0; i < arrs.length; i++) {
-    bytes.set(arrs[i], offset)
-    offset += arrs[i].length
+function hashF64(hash: number, data: number): number {
+  f64Array[0] = data
+  hash = hashI32(hash, i32View[0])
+  return hashI32(hash, i32View[1])
+}
+
+function hashString(hash: number, data: string): number {
+  for (let i = 0, len = data.length; i < len; i++) {
+    hash = hashI32(hash, data.charCodeAt(i))
   }
-  return Number(fnv1a(bytes, { size: 32 }))
+  return hash
+}
+
+function hashTerms<T extends t.ProductTerm | t.SumTerm>(
+  hash: number,
+  node: t.TermNode<T> | null,
+): number {
+  for (let n = node; n != null; n = n.nextTerm) {
+    hash = hashI32(hash, n.a)
+    hash = hashI32(hash, hashcode(n.x))
+  }
+  return hash
 }
 
 function hashcode(n: t.Num): number {
-  let code = hashes.get(n)
-  if (code != null) return code
+  let hash = hashes.get(n)
+  if (hash != null) return hash
 
+  hash = hashI32(FNV_OFFSET_BASIS, n.type)
   switch (n.type) {
     case t.NumType.Constant:
-      code = computeHash(n.type, f64ToBytes(n.value))
+      hash = hashF64(hash, n.value)
       break
     case t.NumType.Param:
-      code = computeHash(n.type, f64ToBytes(n.id))
+      hash = hashF64(hash, n.id)
       break
     case t.NumType.Unary:
-      code = computeHash(
-        n.type,
-        asciiToBytes(n.fn),
-        i32ToBytes(hashcode(n.term)),
-      )
+      hash = hashString(hash, n.fn)
+      hash = hashI32(hash, hashcode(n.term))
       break
     case t.NumType.Product:
-      code = computeHash(n.type, termsToBytes(n.firstTerm))
+      hash = hashTerms(hash, n.firstTerm)
       break
     case t.NumType.Sum:
-      code = computeHash(n.type, termsToBytes(n.firstTerm), f64ToBytes(n.k))
+      hash = hashTerms(hash, n.firstTerm)
+      hash = hashF64(hash, n.k)
       break
   }
-  hashes.set(n, code)
-  return code
+  hashes.set(n, hash)
+  return hash
 }
 
 function termsEqual<T extends t.ProductTerm | t.SumTerm>(
