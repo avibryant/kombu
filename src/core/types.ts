@@ -14,6 +14,7 @@ export interface Constant {
   type: NumType.Constant
   value: number
   bounds: Bounds
+  hashcode?: number
 }
 
 export interface Param {
@@ -22,6 +23,7 @@ export interface Param {
   name: string
   bounds: Bounds
   fixed: boolean
+  hashcode?: number
 }
 
 export type SumTerm = Product | Unary | Param
@@ -40,6 +42,7 @@ export interface Sum {
   k: number
   firstTerm: TermNode<SumTerm>
   bounds: Bounds
+  hashcode?: number
 }
 
 //x1^a1 * x2^a2 * ... * xn^an
@@ -48,6 +51,7 @@ export interface Product {
   id: number
   firstTerm: TermNode<ProductTerm>
   bounds: Bounds
+  hashcode?: number
 }
 
 export type UnaryFn = "sign" | "abs" | "cos" | "sin" | "atan" | "exp" | "log"
@@ -58,4 +62,5 @@ export interface Unary {
   fn: UnaryFn
   term: Term
   bounds: Bounds
+  hashcode?: number
 }

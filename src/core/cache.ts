@@ -1,8 +1,6 @@
 import { assert } from "./assert"
 import * as t from "./types"
 
-const hashes = new WeakMap<t.Num, number>()
-
 //use WeakRef, GC op that deletes expired refs
 const map = new Map<number, t.Num>()
 
@@ -72,7 +70,7 @@ function hashTerms<T extends t.ProductTerm | t.SumTerm>(
 }
 
 function hashcode(n: t.Num): number {
-  let hash = hashes.get(n)
+  let hash = n.hashcode
   if (hash != null) return hash
 
   hash = hashI32(FNV_OFFSET_BASIS, n.type)
@@ -95,7 +93,7 @@ function hashcode(n: t.Num): number {
       hash = hashF64(hash, n.k)
       break
   }
-  hashes.set(n, hash)
+  n.hashcode = hash
   return hash
 }
 
