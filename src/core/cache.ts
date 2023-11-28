@@ -25,16 +25,6 @@ export function cacheNum<T extends t.Num>(n: T): T {
   return <T>res
 }
 
-function termsToArray<T extends t.ProductTerm | t.SumTerm>(
-  node: t.TermNode<T> | null,
-): t.TermNode<T>[] {
-  const terms: t.TermNode<T>[] = []
-  for (let n = node; n != null; n = n.nextTerm) {
-    terms.push(n)
-  }
-  return terms
-}
-
 const f64Array = new Float64Array(1)
 const i32View = new Uint32Array(f64Array.buffer)
 
@@ -70,7 +60,7 @@ function hashTerms<T extends t.ProductTerm | t.SumTerm>(
   node: t.TermNode<T> | null,
 ): number {
   for (let n = node; n != null; n = n.nextTerm) {
-    hash = hashI32(hash, n.a)
+    hash = hashF64(hash, n.a)
     hash = hashI32(hash, hashcode(n.x))
   }
   return hash
@@ -107,17 +97,14 @@ function hashcode(n: t.Num): number {
 }
 
 function termsEqual<T extends t.ProductTerm | t.SumTerm>(
-  a: t.TermNode<T> | null,
-  b: t.TermNode<T> | null,
+  l: t.TermNode<T> | null,
+  r: t.TermNode<T> | null,
 ): boolean {
-  const aTerms = termsToArray(a)
-  const bTerms = termsToArray(b)
-
-  if (aTerms.length !== bTerms.length) return false
-
-  for (let i = 0; i < aTerms.length; i++) {
-    if (aTerms[i].a !== bTerms[i].a) return false
-    if (!equal(aTerms[i].x, bTerms[i].x)) return false
+  while (l != null && r != null) {
+    if (l.a !== r.a) return false
+    if (!equal(l.x, r.x)) return false
+    l = l.nextTerm
+    r = r.nextTerm
   }
   return true
 }
@@ -128,10 +115,9 @@ const isUnary = (n: t.Num): n is t.Unary => n.type === t.NumType.Unary
 const isProduct = (n: t.Num): n is t.Product => n.type === t.NumType.Product
 const isSum = (n: t.Num): n is t.Sum => n.type === t.NumType.Sum
 
-function equal(a: t.Num | undefined, b: t.Num | undefined): boolean {
+function equal(a: t.Num | null, b: t.Num | null): boolean {
   if (a === b) return true
   if (a == null || b == null) return false
-  if (hashcode(a) !== hashcode(b)) return false
   if (a.type !== b.type) return false
 
   if (isConstant(a) && isConstant(b)) {
@@ -145,6 +131,7 @@ function equal(a: t.Num | undefined, b: t.Num | undefined): boolean {
   } else if (isSum(a) && isSum(b)) {
     return termsEqual(a.firstTerm, b.firstTerm) && a.k === b.k
   }
+
   assert(false, "unreachable")
   return false
 }

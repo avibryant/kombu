@@ -12,6 +12,6 @@ test("hashcode", () => {
   const x = c.param("x")
   let x2 = c.param("x")
   expect(hashcode(x)).not.toBe(hashcode(x2))
-  x2 = { ...x2, id: x.id }
+  x2 = { ...x2, id: x.id, hashcode: undefined }
   expect(hashcode(x)).toBe(hashcode(x2))
 })
