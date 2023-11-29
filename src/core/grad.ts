@@ -105,17 +105,20 @@ enum DiffType {
 interface ConstantDiff {
   type: DiffType.Constant
   const: t.Constant
+  asNum?: t.Num
 }
 
 interface CompoundDiff {
   type: DiffType.Compound
   parts: Array<Diff>
+  asNum?: t.Num
 }
 
 interface ProductDiff {
   type: DiffType.Product
   factor: number
   gradient: Diff
+  asNum?: t.Num
 }
 
 interface ExponentDiff {
@@ -124,15 +127,24 @@ interface ExponentDiff {
   exponent: number
   gradient: Diff
   num: t.Num
+  asNum?: t.Num
 }
 
 interface UnaryDiff {
   type: DiffType.Unary
   child: t.Unary
   gradient: Diff
+  asNum?: t.Num
 }
 
 function toNum(d: Diff): t.Num {
+  if (d.asNum == null) {
+    d.asNum = computeNum(d)
+  }
+  return d.asNum
+}
+
+function computeNum(d: Diff): t.Num {
   switch (d.type) {
     case DiffType.Constant:
       return d.const
