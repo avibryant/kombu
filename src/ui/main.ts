@@ -7,7 +7,7 @@ import { Canvas } from "./canvas"
 import * as r from "./render"
 import { checkNotNull } from "../core/assert"
 import { defaultOptions } from "../core/wasmopt"
-import { draw } from "../turtle/draw"
+import { drawSquare } from "../turtle/draw"
 import { Model, emptyModel, optimize, totalLoss } from "../model/model"
 import { renderView } from "../model/view"
 import { tex } from "../core/api"
@@ -27,7 +27,7 @@ preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
 
 let model: Model = emptyModel()
-draw(model)
+drawSquare(model)
 console.log(tex(totalLoss(model)))
 
 const ctx = canvas.getContext("2d")!

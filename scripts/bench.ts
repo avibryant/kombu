@@ -10,6 +10,7 @@ import {
   someLength,
   totalLoss,
 } from "../src/model/model"
+import { drawSierpinski } from "../src/turtle/draw"
 import { Turtle, at, forward, right, turtle } from "../src/turtle/turtle"
 
 let inspector: Session
@@ -55,7 +56,7 @@ function square(t: Turtle, id: number) {
   at(t, o)
 }
 
-function draw(m: Model) {
+function drawSquares(m: Model) {
   const t = turtle(m)
 
   for (let i = 0; i < 4; i++) {
@@ -63,48 +64,55 @@ function draw(m: Model) {
   }
 }
 
-function addBench<T>(
-  shortName: string,
-  fullName: string,
-  fn: () => T | Promise<T>,
-) {
-  bench(shortName, async () => {
-    await maybeStartProfiling(fullName)
+function addBench<T>(example: string, stage: string, fn: () => T | Promise<T>) {
+  bench(`[${example}] ${stage}`, async () => {
+    const cleanName = stage
+      .split(/[^a-zA-Z]+/)
+      .filter((x) => !!x)
+      .join("-")
+    const profName = `${example}-${cleanName}`
+    await maybeStartProfiling(profName)
     await fn()
   })
   // Hack: mitata doesn't offer any way to do teardown after a bench.
-  if (inspector) bench("[save profile]", maybeStopProfiling)
+  if (inspector) bench("…", maybeStopProfiling)
+}
+
+function example(drawFn: (m: Model) => void) {
+  let model: Model = emptyModel()
+  drawFn(model)
+  return {
+    model,
+    totalLoss: totalLoss(model),
+  }
 }
 
 ;(async function main() {
-  let model: Model = emptyModel()
-  draw(model)
-
-  let lossValue = totalLoss(model)
-
   let loss: k.Loss
-
-  addBench("k.loss()", "k.loss", async () => {
-    loss = k.loss(lossValue)
-  })
-
   let optimizer: k.Optimizer
+
+  const examples = {
+    squares: example(drawSquares),
+    sierp: example(drawSierpinski),
+  }
 
   function optimize() {
     optimizer.optimize(20, new Map())
   }
 
-  group("creating optimizer", () => {
-    addBench("Wasm", "creating-optimizer-wasm", () => {
+  ;["squares", "sierp"].forEach((name) => {
+    const { model, totalLoss } = examples[name]
+    addBench(name, "k.loss()", async () => {
+      loss = k.loss(totalLoss)
+    })
+    addBench(name, "creating Wasm optimizer", () => {
       optimizer = k.optimizer(loss, model.ev.params)
     })
-    addBench("JS", "creating-optimizer-js", () => {
+    addBench(name, "creating JS optimizer", () => {
       optimizer = k.optimizer(loss, model.ev.params, false)
     })
-  })
-  group("optimizing", () => {
-    addBench("Wasm", "optizing-wasm", optimize)
-    addBench("JS", "optimizing-js", optimize)
+    addBench(name, "optimize (Wasm)", optimize)
+    addBench(name, "optimize (JS)", optimize)
   })
 
   await run({
