@@ -59,7 +59,7 @@ function square(t: Turtle, id: number) {
 function drawSquares(m: Model) {
   const t = turtle(m)
 
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 40; i++) {
     square(t, i)
   }
 }
