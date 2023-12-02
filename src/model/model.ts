@@ -53,10 +53,10 @@ export function someLength(
 }
 
 export function someAngle(_: Model, name: string): Angle {
- const a = k.logistic(k.param(name))
+  const a = k.logistic(k.param(name))
   const cos = k.sub(k.mul(a, 2), 1)
   const sin = k.sqrt(k.sub(1, k.mul(cos, cos)))
-  return {cos, sin}
+  return { cos, sin }
 }
 
 export function constrain(m: Model, dist: Distribution, value: k.Num) {
