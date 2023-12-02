@@ -5,7 +5,7 @@ import { Constraint, constraint } from "./constraint"
 import { View } from "./view"
 import { Point } from "./point"
 import { Angle } from "./angle"
-import { Distribution, normal, laplace } from "./distribution"
+import { Distribution, normal } from "./distribution"
 
 export interface Model {
   constraints: Constraint[]
@@ -52,15 +52,11 @@ export function someLength(
   return value
 }
 
-export function someAngle(m: Model, name: string): Angle {
-  const a = k.param(name + "_y")
-  const b = k.param(name + "_x")
-  const n = k.sqrt(k.add(k.mul(a, a), k.mul(b, b)))
-  const cos = k.div(a, n)
-  const sin = k.div(b, n)
-  m.constraints.push(constraint(laplace(0, 2), a))
-  m.constraints.push(constraint(laplace(0, 2), b))
-  return { cos, sin }
+export function someAngle(_: Model, name: string): Angle {
+ const a = k.logistic(k.param(name))
+  const cos = k.sub(k.mul(a, 2), 1)
+  const sin = k.sqrt(k.sub(1, k.mul(cos, cos)))
+  return {cos, sin}
 }
 
 export function constrain(m: Model, dist: Distribution, value: k.Num) {
