@@ -54,7 +54,7 @@ export function someLength(
 
 export function someAngle(m: Model, name: string): Angle {
   const p = k.param(name)
-  m.constraints.push(constraint(normal(0, 2), p))  
+  m.constraints.push(constraint(normal(0, 2), p))
   const a = k.logistic(p)
   const cos = k.sub(k.mul(a, 2), 1)
   const sin = k.sqrt(k.sub(1, k.mul(cos, cos)))
