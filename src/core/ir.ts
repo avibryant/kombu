@@ -1,4 +1,4 @@
-import { checkNotNull } from "./assert"
+import { assert, assertUnreachable, checkNotNull } from "./assert"
 import { Loss } from "./loss"
 import * as t from "./types"
 
@@ -236,10 +236,48 @@ export function module(loss: Loss) {
     return result
   }
 
-  return {
+  return fixPrecomputedOrder({
     loss: visitNum(loss.value),
     gradient: new Map(
       Array.from(loss.gradient.elements).map(([p, num]) => [p, visitNum(num)]),
+    ),
+  })
+}
+
+// Ensure that for reused expressions, all of the Precomputed nodes come
+// after the original expression in the in-order traversal of the tree.
+function fixPrecomputedOrder(mod: Module): Module {
+  const reused = new Set<CacheableExpr>()
+
+  function visitExpr(exp: Expr): Expr {
+    if (exp.type === ExprType.Precomputed) {
+      exp = exp.exp
+    }
+
+    switch (exp.type) {
+      case ExprType.Constant:
+      case ExprType.Param:
+        return exp
+      case ExprType.Unary:
+        exp.operand = visitExpr(exp.operand)
+        break
+      case ExprType.Binary:
+        exp.l = visitExpr(exp.l)
+        exp.r = visitExpr(exp.r)
+        break
+      default:
+        assertUnreachable(exp)
+    }
+
+    if (reused.has(exp)) return precomputed(exp)
+    reused.add(exp)
+    return exp
+  }
+
+  return {
+    loss: visitExpr(mod.loss),
+    gradient: new Map(
+      Array.from(mod.gradient).map(([p, exp]) => [p, visitExpr(exp)]),
     ),
   }
 }
