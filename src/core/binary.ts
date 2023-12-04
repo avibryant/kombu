@@ -50,24 +50,24 @@ function addConstantConstant(u: t.Constant, v: t.Constant): t.Constant {
 }
 
 function addConstantVariable(u: t.Constant, v: t.SumTerm): t.Num {
-  return c.sum(u.value, c.sumNode(v))
+  return c.sum(u.value, c.sumTerms(v))
 }
 
 function addVariableVariable(u: t.SumTerm, v: t.SumTerm): t.Num {
-  return c.sum(0, mergeNodes(c.sumNode(u), c.sumNode(v)))
+  return c.sum(0, mergeNodes(c.sumTerms(u), c.sumTerms(v)))
 }
 
 function addConstantSum(u: t.Constant, v: t.Sum): t.Num {
-  return c.sum(u.value + v.k, v.firstTerm)
+  return c.sum(u.value + v.k, v.terms)
 }
 
 function addVariableSum(u: t.SumTerm, v: t.Sum): t.Num {
-  return c.sum(v.k, mergeNodes(c.sumNode(u), v.firstTerm))
+  return c.sum(v.k, mergeNodes(c.sumTerms(u), v.terms))
 }
 
 function addSumSum(u: t.Sum, v: t.Sum): t.Num {
   const k = u.k + v.k
-  const firstTerm = mergeNodes(u.firstTerm, v.firstTerm)
+  const firstTerm = mergeNodes(u.terms, v.terms)
   return c.sum(k, firstTerm)
 }
 
@@ -119,22 +119,22 @@ function mulConstantConstant(u: t.Constant, v: t.Constant): t.Constant {
 
 function mulConstantVariable(u: t.Constant, v: t.SumTerm | t.Sum): t.Num {
   if (v.type == t.NumType.Sum) {
-    return c.sum(v.k * u.value, mulA(v.firstTerm, u.value))
+    return c.sum(v.k * u.value, mulA(v.terms, u.value))
   } else {
     return c.sum(0, c.termNode(u.value, v, null))
   }
 }
 
 function mulVariableVariable(u: t.ProductTerm, v: t.ProductTerm): t.Num {
-  return c.product(mergeNodes(c.productNode(u), c.productNode(v)))
+  return c.product(mergeNodes(c.productTerms(u), c.productTerms(v)))
 }
 
 function mulVariableProduct(u: t.ProductTerm, v: t.Product): t.Num {
-  return c.product(mergeNodes(c.productNode(u), v.firstTerm))
+  return c.product(mergeNodes(c.productTerms(u), v.terms))
 }
 
 function mulProductProduct(u: t.Product, v: t.Product): t.Num {
-  return c.product(mergeNodes(u.firstTerm, v.firstTerm))
+  return c.product(mergeNodes(u.terms, v.terms))
 }
 
 export function powNum(x: t.Num, a: number): t.Num {
@@ -159,20 +159,23 @@ function powVariable(x: t.ProductTerm, a: number): t.Num {
 }
 
 function powProduct(u: t.Product, a: number): t.Num {
-  return c.product(mulProductA(u.firstTerm, a))
+  return c.product(mulProductA(u.terms, a))
 }
 
-function mulA<T extends t.Term>(node: t.TermNode<T>, a: number): c.OptNode<T> {
+function mulA<T extends t.Term>(terms: t.Terms<T>, a: number): t.Terms<T> {
+  /*
   const nextTerm = node.nextTerm ? mulA(node.nextTerm, a) : null
   const newA = node.a * a
   if (newA == 0) return nextTerm
   else return c.termNode(newA, node.x, nextTerm)
+  */
 }
 
 function mulProductA(
-  node: t.TermNode<t.ProductTerm>,
+  node: t.Terms<t.ProductTerm>,
   a: number,
-): c.OptNode<t.ProductTerm> {
+): t.Terms<t.ProductTerm> {
+  /*
   const nextTerm = node.nextTerm ? mulProductA(node.nextTerm, a) : null
   const newA = node.a * a
   let newX = node.x
@@ -181,18 +184,22 @@ function mulProductA(
 
   if (newA == 0) return nextTerm
   else return c.termNode(newA, newX, nextTerm)
+  */
 }
 
-function addA<T extends t.Term>(node: t.TermNode<T>, a: number): c.OptNode<T> {
+function addA<T extends t.Term>(node: t.Terms<T>, a: number): t.Terms<T> {
+  /*
   const newA = node.a + a
   if (newA == 0) return node.nextTerm
   else return c.termNode(newA, node.x, node.nextTerm)
+  */
 }
 
 function mergeNodes<T extends t.Term>(
-  u: c.OptNode<T>,
-  v: c.OptNode<T>,
-): c.OptNode<T> {
+  u: t.Terms<T>,
+  v: t.Terms<T>,
+): t.Terms<T> {
+  /*
   if (u == null) {
     return v
   } else if (v == null) {
@@ -211,4 +218,5 @@ function mergeNodes<T extends t.Term>(
       return c.termNode(v.a, v.x, newU)
     }
   }
+  */
 }

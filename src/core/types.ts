@@ -11,55 +11,48 @@ export enum NumType {
 }
 
 export interface Constant {
-  type: NumType.Constant
-  value: number
-  bounds: Bounds
+  readonly type: NumType.Constant
+  readonly value: number
+  readonly bounds: Bounds
 }
 
 export interface Param {
-  type: NumType.Param
-  id: number
-  name: string
-  bounds: Bounds
-  fixed: boolean
+  readonly type: NumType.Param
+  readonly id: number
+  readonly name: string
+  readonly bounds: Bounds
+  readonly fixed: boolean
   hashcode?: number
 }
 
 export type SumTerm = Product | Unary | Param
 export type ProductTerm = Sum | Unary | Param
 export type Term = SumTerm | ProductTerm
-export interface TermNode<T extends ProductTerm | SumTerm> {
-  a: number
-  x: T
-  nextTerm: TermNode<T> | null
-}
+export type Terms<A extends Term> = ReadonlyMap<A,number>
 
 //a1x1 + a2x2 + ... + k
 export interface Sum {
-  type: NumType.Sum
-  id: number
-  k: number
-  firstTerm: TermNode<SumTerm>
-  bounds: Bounds
+  readonly type: NumType.Sum
+  readonly k: number
+  readonly terms: Terms<SumTerm>
+  readonly bounds: Bounds
   hashcode?: number
 }
 
 //x1^a1 * x2^a2 * ... * xn^an
 export interface Product {
-  type: NumType.Product
-  id: number
-  firstTerm: TermNode<ProductTerm>
-  bounds: Bounds
+  readonly type: NumType.Product
+  readonly terms: Terms<ProductTerm>
+  readonly bounds: Bounds
   hashcode?: number
 }
 
 export type UnaryFn = "sign" | "abs" | "cos" | "sin" | "atan" | "exp" | "log"
 
 export interface Unary {
-  type: NumType.Unary
-  id: number
-  fn: UnaryFn
-  term: Term
-  bounds: Bounds
+  readonly type: NumType.Unary
+  readonly fn: UnaryFn
+  readonly term: Term
+  readonly bounds: Bounds
   hashcode?: number
 }

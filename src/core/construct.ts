@@ -41,33 +41,23 @@ export const one = constant(1)
 export const zero = constant(0)
 export const negOne = constant(-1)
 
-export type OptNode<T extends t.Term> = t.TermNode<T> | null
-
-export function termNode<T extends t.Term>(
-  a: number,
-  x: T,
-  nextTerm: OptNode<T>,
-): OptNode<T> {
-  if (a == 0) return nextTerm
-
-  return { x, a, nextTerm }
-}
-
-export function sumNode(x: t.SumTerm): t.TermNode<t.SumTerm> {
-  return { x, a: 1, nextTerm: null }
-}
-
-function sumTermBounds(firstTerm: t.TermNode<t.SumTerm>): o.Bounds {
+function sumTermBounds(terms: t.Terms<t.SumTerm>): o.Bounds {
   const bounds = o.mul(firstTerm.x.bounds, o.constantBounds(firstTerm.a))
   if (firstTerm.nextTerm == null) return bounds
   else return o.add(bounds, sumTermBounds(firstTerm.nextTerm))
 }
 
-function sumBounds(k: number, firstTerm: t.TermNode<t.SumTerm>): o.Bounds {
-  return o.add(o.constantBounds(k), sumTermBounds(firstTerm))
+function sumBounds(k: number, terms: t.Terms<t.SumTerm>): o.Bounds {
+  return o.add(o.constantBounds(k), sumTermBounds(terms))
 }
 
-export function sum(k: number, firstTerm: OptNode<t.SumTerm>): t.Num {
+export function sumTerms(x: t.SumTerm): Map<t.SumTerm, number> {
+  const terms = new Map<t.SumTerm, number>()
+  terms.set(x, 1)
+  return terms
+}
+
+export function sum(k: number, terms: t.Terms<t.SumTerm>): t.Num {
   if (firstTerm == null) return constant(k)
 
   if (k == 0) {
@@ -78,34 +68,35 @@ export function sum(k: number, firstTerm: OptNode<t.SumTerm>): t.Num {
 
   return cacheNum({
     type: t.NumType.Sum,
-    id: nextID(),
     k,
     firstTerm,
     bounds,
   })
 }
 
-export function productNode(x: t.ProductTerm): t.TermNode<t.ProductTerm> {
-  return { x, a: 1, nextTerm: null }
-}
-
-function productBounds(firstTerm: t.TermNode<t.ProductTerm>): o.Bounds {
+function productBounds(terms: t.Terms<t.ProductTerm>): o.Bounds {
   const bounds = o.pow(firstTerm.x.bounds, o.constantBounds(firstTerm.a))
   if (firstTerm.nextTerm == null) return bounds
   else return o.mul(bounds, productBounds(firstTerm.nextTerm))
 }
 
-export function product(firstTerm: OptNode<t.ProductTerm>): t.Num {
-  if (firstTerm == null) return constant(1)
+export function productTerms(x: t.ProductTerm): t.Terms<t.ProductTerm> {
+  const terms = new Map<t.ProductTerm, number>()
+  terms.set(x, 1)
+  return terms
+}
 
-  if (firstTerm.a == 1 && firstTerm.nextTerm == null) return firstTerm.x
+export function product(terms: t.Terms<t.ProductTerm>): t.Num {
+  if (terms.size == 0) return constant(1)
 
-  const bounds = productBounds(firstTerm)
+  //TODO
+  //if (firstTerm.a == 1 && firstTerm.nextTerm == null) return firstTerm.x
+
+  const bounds = productBounds(terms)
 
   return cacheNum({
     type: t.NumType.Product,
-    id: nextID(),
-    firstTerm,
+    terms,
     bounds,
   })
 }
@@ -113,7 +104,6 @@ export function product(firstTerm: OptNode<t.ProductTerm>): t.Num {
 export function unary(term: t.Term, fn: t.UnaryFn, bounds: o.Bounds): t.Unary {
   return cacheNum({
     type: t.NumType.Unary,
-    id: nextID(),
     term,
     bounds,
     fn,
