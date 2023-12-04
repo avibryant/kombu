@@ -1,4 +1,4 @@
-import { assert, assertUnreachable, checkNotNull } from "./assert"
+import { assertUnreachable, checkNotNull } from "./assert"
 import { Loss } from "./loss"
 import * as t from "./types"
 
@@ -250,14 +250,18 @@ function fixPrecomputedOrder(mod: Module): Module {
   const reused = new Set<CacheableExpr>()
 
   function visitExpr(exp: Expr): Expr {
-    if (exp.type === ExprType.Precomputed) {
-      exp = exp.exp
-    }
-
     switch (exp.type) {
       case ExprType.Constant:
       case ExprType.Param:
         return exp
+      case ExprType.Precomputed:
+        exp = exp.exp
+    }
+
+    if (reused.has(exp)) return precomputed(exp)
+    reused.add(exp)
+
+    switch (exp.type) {
       case ExprType.Unary:
         exp.operand = visitExpr(exp.operand)
         break
@@ -268,9 +272,6 @@ function fixPrecomputedOrder(mod: Module): Module {
       default:
         assertUnreachable(exp)
     }
-
-    if (reused.has(exp)) return precomputed(exp)
-    reused.add(exp)
     return exp
   }
 
