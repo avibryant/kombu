@@ -42,8 +42,10 @@ export function optimizeGradientDescent(
 ): void {
   for (let i: uint = 0; i < maxIterations; i++) {
     u.evaluateLoss()
-    for (let i: uint = 0; i < numFreeParams; i++) {
-      u.setParam(i, u.getParam(i) - learningRate * u.evaluateGradient(i))
+
+    for (let j: uint = 0; j < numFreeParams; j++) {
+      const g = u.evaluateGradient(j)
+      u.setParam(j, u.getParam(j) - learningRate * g)
     }
   }
 }
