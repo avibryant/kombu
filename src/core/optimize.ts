@@ -33,7 +33,7 @@ export function optimizer(
     if (!freeParams.has(p)) freeParams.set(p, standardNormalRandom())
   })
 
-  // The internal optimizer inteface is similar to the public API, but we
+  // The internal optimizer interface is similar to the public API, but we
   // assume that param values are fully specified.
   let optimizeImpl = (useWasm ? wasmOptimizer : jsOptimizer)(loss, freeParams)
 

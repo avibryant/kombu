@@ -2,7 +2,7 @@ import { init, apply } from "./lbfgs"
 import * as u from "./util"
 import { double, uint } from "./types"
 
-export function optimize(
+export function optimizeLBFGS(
   numFreeParams: uint,
   maxIterations: uint,
   m: uint,
@@ -31,6 +31,19 @@ export function optimize(
     // Copy params back out.
     for (let i: uint = 0; i < numFreeParams; i++) {
       u.setParam(i, x[i])
+    }
+  }
+}
+
+export function optimizeGradientDescent(
+  numFreeParams: uint,
+  maxIterations: uint,
+  learningRate: double,
+): void {
+  for (let i: uint = 0; i < maxIterations; i++) {
+    u.evaluateLoss()
+    for (let i: uint = 0; i < numFreeParams; i++) {
+      u.setParam(i, u.getParam(i) - learningRate * u.evaluateGradient(i))
     }
   }
 }

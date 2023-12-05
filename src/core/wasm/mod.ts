@@ -2,7 +2,7 @@
 
 import * as w from "@wasmgroundup/emit"
 
-import { checkNotNull } from "../assert"
+import { assert, checkNotNull } from "../assert"
 import { DEBUG_logWasm, DEBUG_writeFile } from "../debug"
 import { builtins } from "./builtins"
 import * as i from "./instr"
@@ -107,9 +107,10 @@ export function instantiateModule(
   functions.forEach(({ name }, i) => {
     if (name) exports.push(w.export_(name, w.exportdesc.func(userFuncIdx(i))))
   })
-  // Export the externally-defined `optimize` function.
-  // TODO: Look up the correct index in the prebuilt module.
-  exports.push(w.export_("optimize", w.exportdesc.func(userFuncIdx(-2))))
+  // Export the externally-defined `optimize` functions.
+  // TODO: Look up the correct indices in the prebuilt module.
+  exports.push(w.export_("optimizeLBFGS", w.exportdesc.func(userFuncIdx(-3))))
+  exports.push(w.export_("optimizeGradientDescent", w.exportdesc.func(userFuncIdx(-2))))
 
   // AssemblyScript's memory manager uses the __heap_base global as the
   // beginning of its heap. Rewrite that value to account for the memory
@@ -192,4 +193,17 @@ export function instantiateModule(
       ...traceImpl(true),
     },
   })
+}
+
+export function callSafely(
+  exports: WebAssembly.Exports,
+  name: string,
+  ...args: number[]
+) {
+  console.log(exports)
+  assert(
+    typeof exports[name] === "function",
+    `export '${name}' not found or not callable`,
+  )
+  ;(exports as any)[name].apply(null, args)
 }

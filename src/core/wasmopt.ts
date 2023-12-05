@@ -6,7 +6,9 @@ import * as ir from "./ir"
 import { Loss } from "./loss"
 import * as t from "./types"
 import * as i from "./wasm/instr"
-import { instantiateModule } from "./wasm/mod"
+import { callSafely, instantiateModule } from "./wasm/mod"
+
+const useLBFGS = true
 
 export interface LBFGSOptions {
   method: "LBFGS"
@@ -14,13 +16,23 @@ export interface LBFGSOptions {
   m: number
 }
 
-export const defaultOptions: LBFGSOptions = {
-  method: "LBFGS",
-  epsilon: 0.1,
-  m: 5,
+export interface GradientDescentOptions {
+  method: "GradientDescent"
+  learningRate: number
 }
 
-export type OptimizeOptions = LBFGSOptions
+export type OptimizeOptions = LBFGSOptions | GradientDescentOptions
+
+export const defaultOptions: OptimizeOptions = useLBFGS
+  ? {
+      method: "LBFGS",
+      epsilon: 0.1,
+      m: 5,
+    }
+  : {
+      method: "GradientDescent",
+      learningRate: 0.1,
+    }
 
 const SIZEOF_F64 = 8
 const WASM_PAGE_SIZE = 65536
@@ -123,14 +135,27 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
       ...(opts ?? {}),
     }
 
-    if (typeof exports.optimize !== "function")
-      throw new Error(`export 'optimize' not found or not callable`)
-    ;(exports as any)["optimize"](
-      loss.freeParams.length,
-      maxIterations,
-      options.m,
-      options.epsilon,
-    )
+    switch (options.method) {
+      case "LBFGS":
+        callSafely(
+          exports,
+          "optimizeLBFGS",
+          loss.freeParams.length,
+          maxIterations,
+          options.m,
+          options.epsilon,
+        )
+        break
+      case "GradientDescent":
+        callSafely(
+          exports,
+          "optimizeGradientDescent",
+          loss.freeParams.length,
+          maxIterations,
+          options.learningRate,
+        )
+        break
+    }
     return new Map(
       params.map((p, i) => {
         return [p, cache.getParam(i)]
