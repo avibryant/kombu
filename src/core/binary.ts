@@ -78,18 +78,18 @@ export function mulNumNum(u: t.Num, v: t.Num): t.Num {
         case t.NumType.Constant:
           return mulConstantConstant(u, v)
         case t.NumType.Param:
-        case t.NumType.Sum:
         case t.NumType.Product:
         case t.NumType.Unary:
-          return mulConstantVariable(u, v)
+          return mulConstantSumTerm(u, v)
+        case t.NumType.Sum:
+          return mulConstantSum(u, v)
       }
       break
     case t.NumType.Param:
-    case t.NumType.Sum:
     case t.NumType.Unary:
       switch (v.type) {
         case t.NumType.Constant:
-          return mulConstantVariable(v, u)
+          return mulConstantSumTerm(v, u)
         case t.NumType.Param:
         case t.NumType.Sum:
         case t.NumType.Unary:
@@ -98,10 +98,23 @@ export function mulNumNum(u: t.Num, v: t.Num): t.Num {
           return mulVariableProduct(u, v)
       }
       break
+    case t.NumType.Sum:
+      switch(v.type) {
+        case t.NumType.Constant:
+          return mulConstantSum(v, u)
+        case t.NumType.Param:
+        case t.NumType.Unary:
+          return mulVariableVariable(u, v)
+        case t.NumType.Sum:
+          return mulSumSum(u, v)
+        case t.NumType.Product:
+          return mulVariableProduct(u, v)
+      }
+      break
     case t.NumType.Product:
       switch (v.type) {
         case t.NumType.Constant:
-          return mulConstantVariable(v, u)
+          return mulConstantSumTerm(v, u)
         case t.NumType.Param:
         case t.NumType.Sum:
         case t.NumType.Unary:
@@ -117,12 +130,12 @@ function mulConstantConstant(u: t.Constant, v: t.Constant): t.Constant {
   return c.constant(u.value * v.value)
 }
 
-function mulConstantVariable(u: t.Constant, v: t.SumTerm | t.Sum): t.Num {
-  if (v.type == t.NumType.Sum) {
-    return c.sum(v.k * u.value, mulA(v.firstTerm, u.value))
-  } else {
+function mulConstantSumTerm(u: t.Constant, v: t.SumTerm): t.Num {
     return c.sum(0, c.termNode(u.value, v, null))
-  }
+}
+
+function mulConstantSum(u: t.Constant, v: t.Sum): t.Num {
+    return c.sum(v.k * u.value, mulA(v.firstTerm, u.value))
 }
 
 function mulVariableVariable(u: t.ProductTerm, v: t.ProductTerm): t.Num {
@@ -135,6 +148,16 @@ function mulVariableProduct(u: t.ProductTerm, v: t.Product): t.Num {
 
 function mulProductProduct(u: t.Product, v: t.Product): t.Num {
   return c.product(mergeNodes(u.firstTerm, v.firstTerm))
+}
+
+function mulSumSum(u: t.Sum, v: t.Sum): t.Num {
+  const first = u.k * v.k
+  const inside = mulA(u.firstTerm, v.k)
+  const outside = mulA(v.firstTerm, u.k)
+  const fio = c.sum(first, mergeNodes(inside, outside))
+
+  const last = mulNodes(u.firstTerm, v.firstTerm)
+  return addNumNum(fio, last)
 }
 
 export function powNum(x: t.Num, a: number): t.Num {
@@ -210,5 +233,26 @@ function mergeNodes<T extends t.Term>(
       const newU = mergeNodes(u, v.nextTerm)
       return c.termNode(v.a, v.x, newU)
     }
+  }
+}
+
+function mulNodes(u: c.OptNode<t.SumTerm>, v: t.TermNode<t.SumTerm>): t.Num {
+  if(u == null) {
+    return c.sum(0, v)
+  } else {
+    const n = mulAX(v, u.a, u.x)
+    return addNumNum(n, mulNodes(u.nextTerm, v))
+  }
+}
+
+function mulAX(node: t.TermNode<t.SumTerm>, a: number, x: t.SumTerm): t.Num {
+  const newA = c.constant(node.a * a)
+  const newX = mulNumNum(node.x, x)
+  const ax = mulNumNum(newA, newX)
+  if(node.nextTerm) {
+    const nextAX = mulAX(node.nextTerm, a, x)
+    return addNumNum(ax, nextAX)
+  } else {
+    return ax
   }
 }
