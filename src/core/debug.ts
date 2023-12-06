@@ -11,6 +11,7 @@ const channels: Set<string> = new Set(
 
 const DEBUG_WASM = channels.has("wasm")
 const DEBUG_IR = channels.has("ir")
+const DEBUG_RANDOM = channels.has("random")
 
 const now = () => new Date().getTime()
 
@@ -39,4 +40,8 @@ export function DEBUG_logWasm(funcidx: number, code: i.WasmFragment) {
   if (!DEBUG_WASM) return
   console.log(`\n[function #${funcidx}]`)
   console.log(i.prettyPrint(code))
+}
+
+export function DEBUG_useDeterministicRNG() {
+  return DEBUG_RANDOM
 }
