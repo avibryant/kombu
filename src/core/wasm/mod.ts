@@ -2,7 +2,7 @@
 
 import * as w from "@wasmgroundup/emit"
 
-import { checkNotNull } from "../assert"
+import { assert, checkNotNull } from "../assert"
 import { DEBUG_logWasm, DEBUG_writeFile } from "../debug"
 import { builtins } from "./builtins"
 import * as i from "./instr"
@@ -114,7 +114,9 @@ export function instantiateModule(
   // AssemblyScript's memory manager uses the __heap_base global as the
   // beginning of its heap. Rewrite that value to account for the memory
   // that we are manually managing (for the params and optimizer cache).
-  const heapBase = w.u32(cacheSizeBytes)
+  // Ensure it's >= 128 so that the encoded value is at two bytes.
+  const heapBase = w.u32(Math.max(128, cacheSizeBytes))
+  assert(heapBase.length === 2, "expected two bytes")
   const newGlobalsec = {
     contents: [
       ...prebuilt.globalsec.contents.slice(0, -3),
