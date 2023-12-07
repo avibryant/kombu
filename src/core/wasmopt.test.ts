@@ -13,7 +13,7 @@ function optimize(
   observations: Map<k.Param, number> = new Map(),
 ) {
   const loss = l.loss(lossNum)
-  const optimizeImpl = wasmOptimizer(loss, init)
+  const optimizeImpl = wasmOptimizer(loss, init).optimize
   const params = optimizeImpl(iterations, observations)
   return {
     evaluate(p: k.Param) {
