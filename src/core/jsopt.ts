@@ -2,7 +2,7 @@ import { OptimizeOptions, defaultOptions } from "./wasmopt"
 import * as t from "./types"
 import { Loss } from "./loss"
 
-import { optimize } from "../../build/asopt"
+import { optimizeLBFGS, optimizeGradientDescent } from "../../build/asopt"
 import { initEvaluatorState, getParamEntries } from "./asinterop"
 
 export function jsOptimizer(loss: Loss, params: Map<t.Param, number>) {
@@ -11,13 +11,29 @@ export function jsOptimizer(loss: Loss, params: Map<t.Param, number>) {
     observations: Map<t.Param, number>,
     opts?: OptimizeOptions,
   ): Map<t.Param, number> => {
+    const options = {
+      ...defaultOptions,
+      ...(opts ?? {}),
+    }
+
     initEvaluatorState(loss, params, observations)
-    optimize(
-      loss.freeParams.length,
-      maxIterations,
-      opts?.m ?? defaultOptions.m,
-      opts?.epsilon ?? defaultOptions.epsilon,
-    )
+    switch (options.method) {
+      case "LBFGS":
+        optimizeLBFGS(
+          loss.freeParams.length,
+          maxIterations,
+          options.m,
+          options.epsilon,
+        )
+        break
+      case "GradientDescent":
+        optimizeGradientDescent(
+          loss.freeParams.length,
+          maxIterations,
+          options.learningRate,
+        )
+        break
+    }
     return new Map(getParamEntries())
   }
 }
