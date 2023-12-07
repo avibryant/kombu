@@ -110,7 +110,7 @@ function plus(lhs: Expr, rhs: Expr) {
     isConstVal(lhs.l, 0) &&
     isConstant(rhs)
   ) {
-    return binary("-", rhs, lhs.l)
+    return binary("-", rhs, lhs.r)
   }
 
   // a + -xb => a - xb

@@ -79,6 +79,10 @@ test("simplification - plus", () => {
   expect(exp).toEqual(
     ir.binary("+", ir.binary("-", ir.param(x), ir.param(y)), ir.constant(3)),
   )
+
+  // (0 - x) + 1 => 1 - x
+  exp = toIR(k.add(k.sub(0, x), 1))
+  expect(exp).toEqual(ir.binary("-", ir.constant(1), ir.param(x)))
 })
 
 test("simplification - neg exponents", () => {
