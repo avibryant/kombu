@@ -113,5 +113,5 @@ test("re-ordering of shared subexpressions", () => {
   const x = k.param("x")
   const exp1 = k.sign(x)
   const loss = l.loss(k.add(k.mul(-3, exp1), k.mul(-2, k.abs(exp1))))
-  expect(wasmOptimizer(loss, new Map([[x, 1]]))).not.toThrow()
+  expect(() => wasmOptimizer(loss, new Map([[x, 1]]))).not.toThrow()
 })
