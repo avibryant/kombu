@@ -49,3 +49,7 @@ export function optimizeGradientDescent(
     }
   }
 }
+
+export function evaluateLossForTesting(): double {
+  return u.evaluateLoss()
+}

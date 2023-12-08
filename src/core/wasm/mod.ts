@@ -109,9 +109,12 @@ export function instantiateModule(
   })
   // Export the externally-defined `optimize` functions.
   // TODO: Look up the correct indices in the prebuilt module.
-  exports.push(w.export_("optimizeLBFGS", w.exportdesc.func(userFuncIdx(-3))))
+  exports.push(w.export_("optimizeLBFGS", w.exportdesc.func(userFuncIdx(-4))))
   exports.push(
-    w.export_("optimizeGradientDescent", w.exportdesc.func(userFuncIdx(-2))),
+    w.export_("optimizeGradientDescent", w.exportdesc.func(userFuncIdx(-3))),
+  )
+  exports.push(
+    w.export_("evaluateLossForTesting", w.exportdesc.func(userFuncIdx(-2))),
   )
 
   // AssemblyScript's memory manager uses the __heap_base global as the
@@ -208,5 +211,5 @@ export function callSafely(
     typeof exports[name] === "function",
     `export '${name}' not found or not callable`,
   )
-  ;(exports as any)[name].apply(null, args)
+  return (exports as any)[name].apply(null, args)
 }

@@ -6,11 +6,11 @@ import { optimizeLBFGS, optimizeGradientDescent } from "../../build/asopt"
 import { initEvaluatorState, getParamEntries } from "./asinterop"
 
 export function jsOptimizer(loss: Loss, params: Map<t.Param, number>) {
-  return (
+  function optimize(
     maxIterations: number,
     observations: Map<t.Param, number>,
     opts?: OptimizeOptions,
-  ): Map<t.Param, number> => {
+  ): Map<t.Param, number> {
     const options = {
       ...defaultOptions,
       ...(opts ?? {}),
@@ -36,4 +36,5 @@ export function jsOptimizer(loss: Loss, params: Map<t.Param, number>) {
     }
     return new Map(getParamEntries())
   }
+  return { optimize }
 }

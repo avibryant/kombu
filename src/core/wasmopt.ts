@@ -220,5 +220,8 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     }
   }
 
-  return optimize
+  return {
+    optimize,
+    evaluateLossForTesting: () => callSafely(exports, "evaluateLossForTesting"),
+  }
 }
