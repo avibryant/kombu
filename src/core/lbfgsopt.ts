@@ -24,9 +24,7 @@
   SOFTWARE.
 */
 
-import consola from "consola";
-import { zip2 } from "../utils/Util.js";
-import * as lbfgs from "./Lbfgs.js";
+import * as lbfgs from "./lbfgs";
 
 // see page 443 of Engineering Optimization, Fourth Edition
 /**
@@ -96,11 +94,29 @@ interface OptInfo {
   failed: boolean;
 }
 
-// NOTE: to view logs, change `level` below to `LogLevel.Info`, otherwise it should be `LogLevel.Warn`
-// const log = consola.create({ level: LogLevel.Info }).withScope("Optimizer");
-const log = (consola as any)
-  .create({ level: (consola as any).LogLevel.Warn })
-  .withScope("Optimizer");
+// From https://github.com/penrose/penrose/blob/97c8679a76b3dbcda9bec44bb3e81eee1f1ccb82/packages/core/src/utils/Util.ts#L109
+function zip2<T1, T2>(a1: T1[], a2: T2[]): [T1, T2][] {
+  const l = a1.length;
+  if (l !== a2.length) {
+    throw Error(
+      `can't zip2 vectors of different length: ${a1.length} vs ${a2.length}`,
+    );
+  }
+  const a: [T1, T2][] = [];
+  for (let i = 0; i < l; i++) {
+    a.push([a1[i], a2[i]]);
+  }
+  return a;
+};
+
+const log = {
+  info(...args: any[]) {
+    console.log(...args)
+  },
+  warn(...args: any[]) {
+    console.log(...args)
+  }
+}
 
 // Intial weight for constraints
 const initConstraintWeight = 1e3;
