@@ -37,7 +37,7 @@
  * point. The function should store the gradient in that output parameter and
  * then return the objective value.
  */
-export type Fn = (x: Float64Array, grad: Float64Array) => number;
+export type Fn = (x: Float64Array, grad: Float64Array) => number
 
 /** Configuration options for L-BFGS. */
 export interface Config {
@@ -45,22 +45,22 @@ export interface Config {
    * The number of vector pairs to store for L-BFGS. See page 224 of Nocedal and
    * Wright.
    */
-  m: number;
+  m: number
 
   /** Constant for the Armijo condition. See page 37 of Nocedal and Wright. */
-  armijo: number;
+  armijo: number
 
   /** Constant for the Wolfe condition. See page 39 of Nocedal and Wright. */
-  wolfe: number;
+  wolfe: number
 
   /** The minimum interval size for line search. */
-  minInterval: number;
+  minInterval: number
 
   /** The maximum number of steps for line search. */
-  maxSteps: number;
+  maxSteps: number
 
   /** A small positive constant to add to a denominator that might be zero. */
-  epsd: number;
+  epsd: number
 }
 
 /**
@@ -69,20 +69,20 @@ export interface Config {
  */
 export interface State {
   /** The previous point. */
-  x: Float64Array;
+  x: Float64Array
 
   /** The previous gradient. */
-  grad: Float64Array;
+  grad: Float64Array
 
   /** See page 224 of Nocedal and Wright. */
-  s_y: { s: Float64Array; y: Float64Array }[];
+  s_y: { s: Float64Array; y: Float64Array }[]
 }
 
 const dot = (u: Float64Array, v: Float64Array): number => {
-  let z = 0;
-  for (let i = 0; i < u.length; i++) z += u[i] * v[i];
-  return z;
-};
+  let z = 0
+  for (let i = 0; i < u.length; i++) z += u[i] * v[i]
+  return z
+}
 
 /**
  * Return the line search step size, having set `x` to the new point.
@@ -102,70 +102,70 @@ const lineSearch = (
   grad: Float64Array,
   x: Float64Array,
 ): number => {
-  const n = x.length;
+  const n = x.length
 
-  const dufAtx0 = -dot(r, grad);
+  const dufAtx0 = -dot(r, grad)
 
-  let a = 0;
-  let b = Infinity;
-  let t = 1;
-  let j = 0;
+  let a = 0
+  let b = Infinity
+  let t = 1
+  let j = 0
 
   for (;;) {
-    for (let i = 0; i < n; i++) x[i] = x0[i] - t * r[i];
+    for (let i = 0; i < n; i++) x[i] = x0[i] - t * r[i]
 
-    if (Math.abs(a - b) < cfg.minInterval || j > cfg.maxSteps) break;
+    if (Math.abs(a - b) < cfg.minInterval || j > cfg.maxSteps) break
 
-    const fx = f(x, grad);
-    const isArmijo = fx <= fx0 + cfg.armijo * t * dufAtx0;
-    const isWolfe = -dot(r, grad) >= cfg.wolfe * dufAtx0; // weak Wolfe condition
+    const fx = f(x, grad)
+    const isArmijo = fx <= fx0 + cfg.armijo * t * dufAtx0
+    const isWolfe = -dot(r, grad) >= cfg.wolfe * dufAtx0 // weak Wolfe condition
 
-    if (!isArmijo) b = t;
-    else if (!isWolfe) a = t;
-    else break; // found good interval
+    if (!isArmijo) b = t
+    else if (!isWolfe) a = t
+    else break // found good interval
 
-    if (b < Infinity) t = (a + b) / 2; // already found Armijo
-    else t = 2 * a; // did not find Armijo
+    if (b < Infinity) t = (a + b) / 2 // already found Armijo
+    else t = 2 * a // did not find Armijo
 
-    j++;
+    j++
   }
 
-  return t;
-};
+  return t
+}
 
 /**
  * Perform the first step of L-BFGS at point `x`, updating it and returning the
  * initial `State`.
  */
 export const firstStep = (cfg: Config, f: Fn, x: Float64Array): State => {
-  const n = x.length;
-  const x0 = new Float64Array(x);
+  const n = x.length
+  const x0 = new Float64Array(x)
 
-  const grad = new Float64Array(n);
-  const fx = f(x, grad);
+  const grad = new Float64Array(n)
+  const fx = f(x, grad)
 
-  const r = new Float64Array(grad);
-  lineSearch(cfg, f, x0, r, fx, grad, x);
+  const r = new Float64Array(grad)
+  lineSearch(cfg, f, x0, r, fx, grad, x)
 
-  return { x: x0, grad: r, s_y: [] };
-};
+  return { x: x0, grad: r, s_y: [] }
+}
 
 /** Information after a step of L-BFGS. */
 export interface Info {
   /** Data about previous steps. */
-  state: State;
+  state: State
 
   /** The objective value at the current point. */
-  fx: number;
+  fx: number
 
   /** The preconditioned descent direction. */
-  r: Float64Array;
+  r: Float64Array
 
   /** The current point. */
-  x: Float64Array;
+  x: Float64Array
 
   /** The line search step size. */
-  t: number;
+  t: number
 }
 
 /** Perform L-BFGS steps on `x`, giving `stop`'s first non-`undefined` value. */
@@ -176,64 +176,64 @@ export const stepUntil = <T>(
   state: State,
   stop: (info: Info) => T | undefined,
 ): T => {
-  const n = x.length;
-  const grad = new Float64Array(n);
+  const n = x.length
+  const grad = new Float64Array(n)
 
-  const rho = new Float64Array(cfg.m);
-  const alpha = new Float64Array(cfg.m);
-  const q = new Float64Array(n);
-  const r = new Float64Array(n);
+  const rho = new Float64Array(cfg.m)
+  const alpha = new Float64Array(cfg.m)
+  const q = new Float64Array(n)
+  const r = new Float64Array(n)
 
   for (;;) {
-    const fx = f(x, grad);
+    const fx = f(x, grad)
 
     if (state.s_y.length < cfg.m) {
-      const s = new Float64Array(n);
-      for (let i = 0; i < n; i++) s[i] = x[i] - state.x[i];
-      const y = new Float64Array(n);
-      for (let i = 0; i < n; i++) y[i] = grad[i] - state.grad[i];
-      state.s_y.push({ s, y });
+      const s = new Float64Array(n)
+      for (let i = 0; i < n; i++) s[i] = x[i] - state.x[i]
+      const y = new Float64Array(n)
+      for (let i = 0; i < n; i++) y[i] = grad[i] - state.grad[i]
+      state.s_y.push({ s, y })
     } else {
-      const { s, y } = state.s_y[state.s_y.length - 1];
+      const { s, y } = state.s_y[state.s_y.length - 1]
       for (let i = 0; i < n; i++) {
-        s[i] = x[i] - state.x[i];
-        y[i] = grad[i] - state.grad[i];
+        s[i] = x[i] - state.x[i]
+        y[i] = grad[i] - state.grad[i]
       }
     }
-    state.s_y.unshift(state.s_y.pop()!);
+    state.s_y.unshift(state.s_y.pop()!)
 
-    state.x.set(x);
-    state.grad.set(grad);
+    state.x.set(x)
+    state.grad.set(grad)
 
     for (let j = 0; j < state.s_y.length; j++) {
-      const { s: s_j, y: y_j } = state.s_y[j];
-      rho[j] = 1 / (dot(y_j, s_j) + cfg.epsd);
+      const { s: s_j, y: y_j } = state.s_y[j]
+      rho[j] = 1 / (dot(y_j, s_j) + cfg.epsd)
     }
 
-    q.set(grad);
+    q.set(grad)
 
     for (let j = 0; j < state.s_y.length; j++) {
-      const { s: s_j, y: y_j } = state.s_y[j];
-      const alpha_j = rho[j] * dot(s_j, q);
-      alpha[j] = alpha_j;
-      for (let i = 0; i < n; i++) q[i] -= alpha_j * y_j[i];
+      const { s: s_j, y: y_j } = state.s_y[j]
+      const alpha_j = rho[j] * dot(s_j, q)
+      alpha[j] = alpha_j
+      for (let i = 0; i < n; i++) q[i] -= alpha_j * y_j[i]
     }
 
     // see page 226 of Nocedal and Wright
-    const { s: s_k, y: y_k } = state.s_y[0];
-    const gamma = dot(s_k, y_k) / (dot(y_k, y_k) + cfg.epsd);
-    for (let i = 0; i < n; i++) r[i] = gamma * q[i];
+    const { s: s_k, y: y_k } = state.s_y[0]
+    const gamma = dot(s_k, y_k) / (dot(y_k, y_k) + cfg.epsd)
+    for (let i = 0; i < n; i++) r[i] = gamma * q[i]
 
     for (let j = state.s_y.length - 1; j >= 0; j--) {
-      const { s: s_j, y: y_j } = state.s_y[j];
-      const alpha_j = alpha[j];
-      const beta = rho[j] * dot(y_j, r);
-      for (let i = 0; i < n; i++) r[i] += s_j[i] * (alpha_j - beta);
+      const { s: s_j, y: y_j } = state.s_y[j]
+      const alpha_j = alpha[j]
+      const beta = rho[j] * dot(y_j, r)
+      for (let i = 0; i < n; i++) r[i] += s_j[i] * (alpha_j - beta)
     }
 
-    const t = lineSearch(cfg, f, state.x, r, fx, grad, x);
+    const t = lineSearch(cfg, f, state.x, r, fx, grad, x)
 
-    const msg = stop({ state, fx, r, t, x });
-    if (msg !== undefined) return msg;
+    const msg = stop({ state, fx, r, t, x })
+    if (msg !== undefined) return msg
   }
-};
+}
