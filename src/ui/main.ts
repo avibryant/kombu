@@ -5,7 +5,7 @@ import "./style.css"
 
 import { tex } from "../core/api"
 import { checkNotNull } from "../core/assert"
-import { defaultOptions } from "../core/wasmopt"
+import { defaultOptions, makeDefaults } from "../core/options"
 import { Model, emptyModel, optimize, totalLoss } from "../model/model"
 import { renderView } from "../model/view"
 import { drawSquare } from "../turtle/draw"
@@ -36,16 +36,16 @@ const ctx = canvas.getContext("2d")!
 const config = {
   bgColor: "#000",
   fgColor: "#fff",
-  optimization: {
-    ...defaultOptions,
-  },
+  method: defaultOptions.method,
+  optimizeOptions: makeDefaults(),
   maxIterations: 30,
 }
 
 const panel = createPanel(config)
 
 function render() {
-  model = optimize(model, config.maxIterations, config.optimization)
+  const opts = config.optimizeOptions[config.method]
+  model = optimize(model, config.maxIterations, opts)
 
   ctx.fillStyle = config.bgColor
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)

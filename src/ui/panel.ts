@@ -1,7 +1,24 @@
-import { Pane } from "tweakpane"
+import { Pane, TabPageApi } from "tweakpane"
 
 import * as k from "../core/api"
-import { checkNotNull } from "../core/assert"
+import { checkKeyOf, checkNotNull } from "../core/assert"
+import {
+  GradientDescentOptions,
+  LBFGSOptions,
+  defaultOptions,
+  makeDefaults,
+} from "../core/options"
+
+interface Config {
+  bgColor: string
+  fgColor: string
+  method: k.OptimizeOptions["method"]
+  optimizeOptions: {
+    LBFGS: LBFGSOptions
+    GradientDescent: GradientDescentOptions
+  }
+  maxIterations: number
+}
 
 interface Subpanel {
   dispose: () => void
@@ -18,12 +35,32 @@ interface DisplayState {
   data: VarInfo
 }
 
-function subpanel(pane: Pane, label: string, data: VarInfo) {
-  const sep = pane.addBlade({ view: "separator" })
+function safelyAssign<T, K extends keyof T>(obj: T, key: K, val: any): void {
+  // Only overwrite the field if the runtime types match.
+  if (typeof val === typeof obj[key]) {
+    obj[key] = val as T[K]
+  }
+}
+
+function deepAssign<T>(dest: T, src: any) {
+  if (src == null) return
+
+  for (const prop in dest) {
+    let k = checkKeyOf(dest, prop)
+    if (typeof dest[k] === "object") {
+      deepAssign(dest[k], src[k])
+    } else {
+      safelyAssign(dest, k, src[k])
+    }
+  }
+}
+
+function subpanel(parent: Pane | TabPageApi, label: string, data: VarInfo) {
+  const sep = parent.addBlade({ view: "separator" })
   const bindings = [
-    pane.addBinding(data, "value", { label }),
-    pane.addBinding(data, "loss"),
-    pane.addBinding(data, "loss", {
+    parent.addBinding(data, "value", { label }),
+    parent.addBinding(data, "loss"),
+    parent.addBinding(data, "loss", {
       readonly: true,
       view: "graph",
       min: 0,
@@ -43,20 +80,112 @@ function subpanel(pane: Pane, label: string, data: VarInfo) {
   }
 }
 
-function lossSubpanel(pane: Pane, data: { loss: number }) {
-  const binding = pane.addBinding(data, "loss", {
+function lossSubpanel(parent: Pane | TabPageApi, data: { loss: number }) {
+  return parent.addBinding(data, "loss", {
     label: "total loss",
     readonly: true,
     view: "graph",
     min: 0,
     max: data.loss,
   })
-  return binding
 }
 
-export function createPanel() {
-  let displayState: Map<v.Variable, DisplayState> = new Map()
+function configSubpanel(
+  parent: Pane | TabPageApi,
+  mutableConfig: Config,
+  onChange: () => void,
+) {
+  const methodList = parent.addBinding(mutableConfig, "method", {
+    view: "list",
+    options: [
+      { text: "L-BFGS", value: "LBFGS" },
+      { text: "Gradient descent", value: "GradientDescent" },
+    ],
+  })
+  const lbfgsControls = [
+    parent.addBinding(mutableConfig.optimizeOptions.LBFGS, "epsilon", {}),
+    parent.addBinding(mutableConfig.optimizeOptions.LBFGS, "m", { step: 1 }),
+  ]
+  const gradientDescentControls = [
+    parent.addBinding(
+      mutableConfig.optimizeOptions.GradientDescent,
+      "learningRate",
+      {
+        label: "learning rate",
+      },
+    ),
+  ]
+  const updateVisibility = () => {
+    lbfgsControls.forEach((c) => (c.hidden = mutableConfig.method !== "LBFGS"))
+    gradientDescentControls.forEach(
+      (c) => (c.hidden = mutableConfig.method !== "GradientDescent"),
+    )
+  }
+  methodList.on("change", updateVisibility)
+  updateVisibility()
+
+  const iter = parent.addBinding(mutableConfig, "maxIterations", {
+    label: "max iter",
+    step: 10,
+    min: 10,
+    max: 1000,
+  })
+
+  ;[methodList, ...lbfgsControls, ...gradientDescentControls, iter].forEach(
+    (binding) => {
+      binding.on("change", onChange)
+    },
+  )
+
+  const btn = parent.addButton({ title: "Restore defaults" })
+  btn.on("click", () => {
+    mutableConfig.method = defaultOptions.method
+    mutableConfig.bgColor = "#000"
+    mutableConfig.fgColor = "#fff"
+    deepAssign(mutableConfig.optimizeOptions, makeDefaults())
+    mutableConfig.maxIterations = 30
+    parent.refresh()
+  })
+}
+
+function colorsSubpanel(
+  parent: Pane | TabPageApi,
+  mutableConfig: Config,
+  onChange: () => void,
+) {
+  ;[
+    parent.addBinding(mutableConfig, "bgColor", { view: "color" }),
+    parent.addBinding(mutableConfig, "fgColor", { view: "color" }),
+  ].forEach((b) => b.on("change", onChange))
+}
+
+function saveConfig(config: Config) {
+  localStorage.setItem("config", JSON.stringify(config))
+}
+
+function maybeRestoreConfig(mutableConfig: Config) {
+  deepAssign(
+    mutableConfig,
+    JSON.parse(localStorage.getItem("config") ?? "null"),
+  )
+}
+
+export function createPanel(mutableConfig: Config) {
+  let displayState: Map<any, DisplayState> = new Map()
   let pane = new Pane()
+  const tab = pane.addTab({
+    pages: [{ title: "Parameters" }, { title: "Config" }],
+  })
+  const paramsPage = tab.pages[0]
+  const configPage = tab.pages[1]
+
+  maybeRestoreConfig(mutableConfig)
+  configPage.refresh()
+
+  const handleChange = () => saveConfig(mutableConfig)
+  configSubpanel(tab.pages[1], mutableConfig, handleChange)
+  tab.pages[1].addBlade({ view: "separator" })
+  colorsSubpanel(tab.pages[1], mutableConfig, handleChange)
 
   let lossp: ReturnType<Pane["addBinding"]>
   const lossData = { loss: 0 }
@@ -68,7 +197,7 @@ export function createPanel() {
       if (lossp) {
         lossp.refresh()
       } else {
-        lossp = lossSubpanel(pane, lossData)
+        lossp = lossSubpanel(paramsPage, lossData)
       }
 
       // Create or update subpanels for each variable.
@@ -89,7 +218,7 @@ export function createPanel() {
           value: ev.evaluate(v.value),
           loss: ev.evaluate(v.loss),
         }
-        const ui = subpanel(pane, v.param.name, data)
+        const ui = subpanel(paramsPage, v.param.name, data)
         displayState.set(v, {
           ui,
           data,
