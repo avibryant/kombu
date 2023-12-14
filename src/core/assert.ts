@@ -12,3 +12,10 @@ export function checkNotNull<T>(x: T): NonNullable<T> {
   }
   return x
 }
+
+export function checkKeyOf<T, K extends keyof T>(x: T, k: string): K {
+  if (Object.prototype.hasOwnProperty.call(x, k)) {
+    return k as K
+  }
+  throw new Error(`object has no '${k}' property: ${x}`)
+}

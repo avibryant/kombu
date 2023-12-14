@@ -1,4 +1,4 @@
-import { OptimizeOptions, defaultOptions } from "./wasmopt"
+import { OptimizeOptions, defaultOptions } from "./options"
 import * as t from "./types"
 import { Loss } from "./loss"
 
@@ -33,6 +33,8 @@ export function jsOptimizer(loss: Loss, params: Map<t.Param, number>) {
           options.learningRate,
         )
         break
+      default:
+        throw new Error("unrecognized optimization method")
     }
     return new Map(getParamEntries())
   }

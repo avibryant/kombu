@@ -1,6 +1,7 @@
 export type { Evaluator } from "./eval"
 export type { AnyNum } from "./num"
-export type { Optimizer, OptimizeOptions } from "./optimize"
+export type { Optimizer } from "./optimize"
+export type { OptimizeOptions } from "./options"
 export type { Num, Param } from "./types"
 export type { Loss } from "./loss"
 export type { Gradient } from "./grad"

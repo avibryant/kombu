@@ -2,11 +2,10 @@ import { assert } from "./assert"
 import * as e from "./eval"
 import { jsOptimizer } from "./jsopt"
 import { Loss } from "./loss"
+import { OptimizeOptions } from "./options"
 import { standardNormalRandom } from "./random"
 import * as t from "./types"
-import { OptimizeOptions, wasmOptimizer } from "./wasmopt"
-
-export type { OptimizeOptions } from "./wasmopt"
+import { wasmOptimizer } from "./wasmopt"
 
 export interface Optimizer {
   optimize(

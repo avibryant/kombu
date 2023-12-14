@@ -4,35 +4,10 @@ import { assert, checkNotNull } from "./assert"
 import { DEBUG_logIrModule } from "./debug"
 import * as ir from "./ir"
 import { Loss } from "./loss"
+import { defaultOptions, OptimizeOptions } from "./options"
 import * as t from "./types"
 import * as i from "./wasm/instr"
 import { callSafely, instantiateModule } from "./wasm/mod"
-
-const useLBFGS = true
-
-export interface LBFGSOptions {
-  method: "LBFGS"
-  epsilon: number
-  m: number
-}
-
-export interface GradientDescentOptions {
-  method: "GradientDescent"
-  learningRate: number
-}
-
-export type OptimizeOptions = LBFGSOptions | GradientDescentOptions
-
-export const defaultOptions: OptimizeOptions = useLBFGS
-  ? {
-      method: "LBFGS",
-      epsilon: 0.1,
-      m: 5,
-    }
-  : {
-      method: "GradientDescent",
-      learningRate: 0.1,
-    }
 
 const SIZEOF_F64 = 8
 const WASM_PAGE_SIZE = 65536
@@ -155,6 +130,8 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
           options.learningRate,
         )
         break
+      default:
+        throw new Error(`unreachable`)
     }
     return new Map(
       params.map((p, i) => {
