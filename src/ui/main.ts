@@ -3,14 +3,15 @@ import { h, render as preactRender } from "preact"
 
 import "./style.css"
 
-import { Canvas } from "./canvas"
-import * as r from "./render"
+import { tex } from "../core/api"
 import { checkNotNull } from "../core/assert"
 import { defaultOptions } from "../core/wasmopt"
-import { drawSquare } from "../turtle/draw"
 import { Model, emptyModel, optimize, totalLoss } from "../model/model"
 import { renderView } from "../model/view"
-import { tex } from "../core/api"
+import { drawSquare } from "../turtle/draw"
+import { Canvas } from "./canvas"
+import { createPanel } from "./panel"
+import * as r from "./render"
 
 const html = htm.bind(h)
 
@@ -41,6 +42,8 @@ const config = {
   maxIterations: 30,
 }
 
+const panel = createPanel(config)
+
 function render() {
   model = optimize(model, config.maxIterations, config.optimization)
 
@@ -53,6 +56,7 @@ function render() {
   model.nodes.forEach((n) => {
     r.renderNode(n, model.ev, ctx, config)
   })
+  panel.render(totalLoss(model), [], model.ev)
 
   requestAnimationFrame(render)
 }
