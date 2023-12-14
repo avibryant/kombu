@@ -3,15 +3,15 @@ import { h, render as preactRender } from "preact"
 
 import "./style.css"
 
-import { tex } from "../core/api"
-import { checkNotNull } from "../core/assert"
-import { defaultOptions, makeDefaults } from "../core/options"
-import { Model, emptyModel, optimize, totalLoss } from "../model/model"
-import { renderView } from "../model/view"
-import { drawSquare } from "../turtle/draw"
 import { Canvas } from "./canvas"
 import { createPanel } from "./panel"
 import * as r from "./render"
+import { checkNotNull } from "../core/assert"
+import { defaultOptions, makeDefaults } from "../core/options"
+import { drawSquare } from "../turtle/draw"
+import { Model, emptyModel, optimize, totalLoss } from "../model/model"
+import { renderView } from "../model/view"
+import { tex } from "../core/api"
 
 const html = htm.bind(h)
 
