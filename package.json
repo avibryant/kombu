@@ -26,9 +26,7 @@
     "tsx": "^4.6.2",
     "typescript": "^5.0.2",
     "vite": "^5.0.0",
-    "vitest": "^0.34.6"
-  },
-  "dependencies": {
+    "vitest": "^0.34.6",
     "@tweakpane/core": "^2.0.1",
     "@wasmgroundup/emit": "^0.2.18",
     "htm": "^3.1.1",
@@ -36,5 +34,6 @@
     "preact": "^10.18.1",
     "serve": "^14.2.1",
     "tweakpane": "^4.0.1"
-  }
+  },
+  "dependencies": {}
 }
