@@ -8,6 +8,8 @@ import { Node } from "../model/node"
 import { normal } from "../model/distribution"
 import { distance } from "../model/point"
 
+let nextAtId = 1
+
 export interface Turtle {
   position: Node
   direction: a.Angle
@@ -42,5 +44,5 @@ export function right(t: Turtle, angle: a.Angle) {
 
 export function at(t: Turtle, node: Node) {
   const d = distance(t.position.point, node.point)
-  constrain(t.model, normal(0, 1), d)
+  constrain(`at${nextAtId++}`, t.model, normal(0, 1), d)
 }

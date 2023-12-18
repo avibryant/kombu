@@ -56,7 +56,7 @@ function render() {
   model.nodes.forEach((n) => {
     r.renderNode(n, model.ev, ctx, config)
   })
-  panel.render(totalLoss(model), [], model.ev)
+  panel.render(model)
 
   requestAnimationFrame(render)
 }

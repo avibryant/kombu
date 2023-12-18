@@ -48,21 +48,26 @@ export function someLength(
 ): k.Num {
   const param = k.param(name)
   const value = k.mul(hint, k.abs(param))
-  m.constraints.push(constraint(normal(hint, 20), value))
+  m.constraints.push(constraint(name, normal(hint, 20), value))
   return value
 }
 
 export function someAngle(m: Model, name: string): Angle {
   const p = k.param(name)
-  m.constraints.push(constraint(normal(0, 2), p))
+  m.constraints.push(constraint(name, normal(0, 2), p))
   const a = k.logistic(p)
   const cos = k.sub(k.mul(a, 2), 1)
   const sin = k.sqrt(k.sub(1, k.mul(cos, cos)))
   return { cos, sin }
 }
 
-export function constrain(m: Model, dist: Distribution, value: k.Num) {
-  const c = constraint(dist, value)
+export function constrain(
+  name: string,
+  m: Model,
+  dist: Distribution,
+  value: k.Num,
+) {
+  const c = constraint(name, dist, value)
   m.constraints.push(c)
 }
 

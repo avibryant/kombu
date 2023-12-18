@@ -8,6 +8,8 @@ import {
   defaultOptions,
   makeDefaults,
 } from "../core/options"
+import { Constraint } from "../model/constraint"
+import { totalLoss, Model } from "../model/model"
 
 interface Config {
   bgColor: string
@@ -171,12 +173,12 @@ function maybeRestoreConfig(mutableConfig: Config) {
 }
 
 export function createPanel(mutableConfig: Config) {
-  let displayState: Map<any, DisplayState> = new Map()
+  let displayState: Map<Constraint, DisplayState> = new Map()
   let pane = new Pane()
   const tab = pane.addTab({
-    pages: [{ title: "Parameters" }, { title: "Config" }],
+    pages: [{ title: "Model" }, { title: "Config" }],
   })
-  const paramsPage = tab.pages[0]
+  const modelPage = tab.pages[0]
   const configPage = tab.pages[1]
 
   maybeRestoreConfig(mutableConfig)
@@ -191,43 +193,47 @@ export function createPanel(mutableConfig: Config) {
   const lossData = { loss: 0 }
 
   return {
-    render(totalLoss: k.Num, varList: any[], ev: k.Evaluator) {
+    render(model: Model) {
+      const { ev } = model
+      const lossValue = totalLoss(model)
       // Lazily create the subpanel showing total loss.
-      lossData.loss = ev.evaluate(totalLoss)
+      lossData.loss = ev.evaluate(lossValue)
       if (lossp) {
         lossp.refresh()
       } else {
-        lossp = lossSubpanel(paramsPage, lossData)
+        lossp = lossSubpanel(modelPage, lossData)
       }
 
       // Create or update subpanels for each variable.
-      const vars = new Set(varList)
+      const constraints = new Set(model.constraints)
       const removed = Array.from(displayState.keys()).filter(
-        (v) => !vars.has(v),
+        (c) => !constraints.has(c),
       )
-      const added = Array.from(vars.keys()).filter((v) => !displayState.has(v))
+      const added = Array.from(constraints.keys()).filter(
+        (v) => !displayState.has(v),
+      )
 
-      removed.forEach((v) => {
-        const { ui } = checkNotNull(displayState.get(v))
+      removed.forEach((c) => {
+        const { ui } = checkNotNull(displayState.get(c))
         ui.dispose()
-        displayState.delete(v)
+        displayState.delete(c)
       })
 
-      added.forEach((v) => {
+      added.forEach((c) => {
         const data = {
-          value: ev.evaluate(v.value),
-          loss: ev.evaluate(v.loss),
+          value: ev.evaluate(c.value),
+          loss: ev.evaluate(c.logP),
         }
-        const ui = subpanel(paramsPage, v.param.name, data)
-        displayState.set(v, {
+        const ui = subpanel(modelPage, c.name, data)
+        displayState.set(c, {
           ui,
           data,
         })
       })
 
-      displayState.forEach(({ ui, data }, v) => {
-        data.value = ev.evaluate(v.value)
-        data.loss = ev.evaluate(v.loss)
+      displayState.forEach(({ ui, data }, c) => {
+        data.value = ev.evaluate(c.value)
+        data.loss = ev.evaluate(c.logP)
         ui.refresh()
       })
     },
