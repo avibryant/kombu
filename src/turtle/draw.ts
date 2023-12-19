@@ -9,15 +9,16 @@ export function drawSquare(m: Model) {
   const a = someAngle(m, "a")
 
   const o = t.position
-  forward(t, side)
+  forward(t, someLength(m, "A"))
   right(t, a)
-  forward(t, side)
+  forward(t, someLength(m, "A", 150))
   right(t, a)
-  forward(t, side)
+  forward(t, someLength(m, "A", 200))
   right(t, a)
-  forward(t, side)
+  forward(t, someLength(m, "A", 200))
+  right(t, a)
 
-  at(t, o)
+  //  at(t, o)
 }
 
 export function drawSierpinski(m: Model, nesting = 2) {

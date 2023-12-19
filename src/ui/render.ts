@@ -1,7 +1,12 @@
-import { Rect, rect, rectContains } from "./rect"
+import * as k from "../core/api"
 import { checkNotNull } from "../core/assert"
 import { Evaluator } from "../core/eval"
+import { normal } from "../model/distribution"
+import { Model, constrain } from "../model/model"
 import { Node } from "../model/node"
+import { distance } from "../model/point"
+import { Rect, rect, rectContains } from "./rect"
+import * as sel from "./selection"
 
 type DragHandler = (x: number, y: number) => any
 
@@ -13,7 +18,39 @@ let draggingPointerId: number | undefined
 
 let pinPos: { x: number; y: number } | undefined
 
+let pressedKeys = new Set<string>()
+const currentChord = () => Array.from(pressedKeys).join("+")
+
+let selState = sel.selectionState()
+
+function hexToRgba(color: string) {
+  return [
+    ...[color.slice(1, 3), color.slice(3, 5), color.slice(5, 7)].map((s) =>
+      parseInt(s, 16),
+    ),
+    255,
+  ]
+}
+
+let nextDistId = 1
+
+function renderDrag(
+  x: number,
+  y: number,
+  ctx: CanvasRenderingContext2D,
+  config: { fgColor: string; bgColor: string },
+) {
+  ctx.beginPath()
+  const r = 16
+  ctx.ellipse(x, y, r, r, 0, 0, Math.PI * 2)
+  const rgba = hexToRgba(config.fgColor)
+  rgba[3] = 0.3
+  ctx.fillStyle = `rgba(${rgba.join(",")})`
+  ctx.fill()
+}
+
 export function renderNode(
+  model: Model,
   node: Node,
   ev: Evaluator,
   ctx: CanvasRenderingContext2D,
@@ -29,8 +66,14 @@ export function renderNode(
   })
 
   ctx.save()
-  ctx.fillStyle = draggedNode === node ? "#7DEF4A" : config.fgColor
+  if (selState.selectedNodes.has(node)) {
+    const centerX = r.x + r.w / 2
+    const centerY = r.y + r.h / 2
+    renderDrag(centerX, centerY, ctx, config)
+  }
+  ctx.fillStyle = config.fgColor
   ctx.fillRect(r.x, r.y, r.w, r.h)
+  ctx.strokeRect(r.x, r.y, r.w, r.h)
 
   if (pinPos) {
     ctx.strokeStyle = config.fgColor
@@ -57,14 +100,25 @@ function elementFromEvent(
   return target as Element
 }
 
-export function handlePointerDown(e: PointerEvent) {
+export function handlePointerDown(model: Model, e: PointerEvent) {
   nodeRects.forEach((r, node) => {
     if (rectContains(r, e.offsetX, e.offsetY)) {
       draggedNode = node
+      sel.setSelected(selState, node)
       draggingPointerId = e.pointerId
       elementFromEvent(e, "target").setPointerCapture(e.pointerId)
     }
   })
+
+  if (currentChord() === "c" && selState.selectedNodes.size === 2) {
+    const [a, b] = Array.from(selState.selectedNodes)
+    sel.clearSelection(selState)
+
+    const d = distance(a.point, b.point)
+    const param = k.observation(`dist${nextDistId++}`)
+    constrain(model, "dist", normal(param, 20), d)
+    model.observations.set(param, model.ev.evaluate(d))
+  }
 }
 
 export function handlePointerMove(e: PointerEvent) {
@@ -82,4 +136,34 @@ export function handlePointerUp(e: PointerEvent) {
   draggedNode = undefined
   draggingPointerId = undefined
   pinPos = undefined
+}
+
+function updateSelectionMode() {
+  const mode = currentChord() === "c" ? "multi" : "single"
+  sel.setMode(selState, mode)
+}
+
+export function handleKeyDown(model: Model, e: KeyboardEvent) {
+  const param: k.Param = Array.from(model.observations.keys())[0]
+  if (param) {
+    const currVal = checkNotNull(model.observations.get(param))
+    console.log({ currVal })
+    switch (e.key) {
+      case "w":
+        model.observations.set(param, currVal + 1)
+        break
+      case "s":
+        model.observations.set(param, currVal - 1)
+        break
+    }
+  }
+
+  if (e.repeat) return // Ignore repeats
+  pressedKeys.add(e.key)
+  updateSelectionMode()
+}
+
+export function handleKeyUp(e: KeyboardEvent) {
+  pressedKeys.delete(e.key)
+  updateSelectionMode()
 }

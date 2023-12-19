@@ -17,7 +17,7 @@ const html = htm.bind(h)
 
 function App() {
   return html`<${Canvas}
-    onPointerDown=${r.handlePointerDown}
+    onPointerDown=${(e: PointerEvent) => r.handlePointerDown(model, e)}
     onPointerMove=${r.handlePointerMove}
     onPointerUp=${r.handlePointerUp}
   />`
@@ -26,6 +26,11 @@ function App() {
 preactRender(html`<${App} />`, checkNotNull(document.getElementById("app")))
 
 const canvas = document.querySelector<HTMLCanvasElement>("#canvas")!
+
+window.addEventListener("keydown", (e: KeyboardEvent) =>
+  r.handleKeyDown(model, e),
+)
+window.addEventListener("keyup", r.handleKeyUp)
 
 let model: Model = emptyModel()
 drawSquare(model)
@@ -54,7 +59,7 @@ function render() {
     renderView(v, model.ev, ctx, config.fgColor)
   })
   model.nodes.forEach((n) => {
-    r.renderNode(n, model.ev, ctx, config)
+    r.renderNode(model, n, model.ev, ctx, config)
   })
   panel.render(model)
 

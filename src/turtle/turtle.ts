@@ -44,5 +44,5 @@ export function right(t: Turtle, angle: a.Angle) {
 
 export function at(t: Turtle, node: Node) {
   const d = distance(t.position.point, node.point)
-  constrain(`at${nextAtId++}`, t.model, normal(0, 1), d)
+  constrain(t.model, `at${nextAtId++}`, normal(0, 1), d)
 }

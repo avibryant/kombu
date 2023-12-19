@@ -11,6 +11,7 @@ export interface Model {
   constraints: Constraint[]
   nodes: Node[]
   views: View[]
+  observations: Map<k.Param, number>
   ev: k.Evaluator
 }
 
@@ -20,6 +21,7 @@ export function emptyModel() {
     constraints: [],
     nodes: [],
     views: [],
+    observations: new Map(),
     ev: k.evaluator(new Map()),
   }
 }
@@ -29,6 +31,7 @@ export function cloneModel(m: Model): Model {
     constraints: m.constraints.slice(),
     nodes: m.nodes.slice(),
     views: m.views.slice(),
+    observations: new Map(m.observations),
     ev: k.evaluator(m.ev.params),
   }
 }
@@ -62,8 +65,8 @@ export function someAngle(m: Model, name: string): Angle {
 }
 
 export function constrain(
-  name: string,
   m: Model,
+  name: string,
   dist: Distribution,
   value: k.Num,
 ) {
@@ -82,11 +85,12 @@ export function optimize(
   const lossValue = totalLoss(m)
   if (!optimizer || lossValue !== oldLoss) {
     const loss = k.loss(lossValue)
+    console.log({ loss })
     optimizer = k.optimizer(loss, m.ev.params)
     oldLoss = lossValue
   }
 
-  const ev = optimizer.optimize(iterations, new Map(), opts)
+  const ev = optimizer.optimize(iterations, m.observations, opts)
   const newModel = cloneModel(m)
   newModel.ev = ev
   return newModel
