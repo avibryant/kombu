@@ -172,7 +172,7 @@ function maybeRestoreConfig(mutableConfig: Config) {
   )
 }
 
-export function createPanel(mutableConfig: Config) {
+export function createPanel(mutableConfig: Config, onChange: () => void) {
   let displayState: Map<Constraint, DisplayState> = new Map()
   let pane = new Pane()
   const tab = pane.addTab({
@@ -184,7 +184,10 @@ export function createPanel(mutableConfig: Config) {
   maybeRestoreConfig(mutableConfig)
   configPage.refresh()
 
-  const handleChange = () => saveConfig(mutableConfig)
+  const handleChange = () => {
+    saveConfig(mutableConfig)
+    onChange()
+  }
   configSubpanel(tab.pages[1], mutableConfig, handleChange)
   tab.pages[1].addBlade({ view: "separator" })
   colorsSubpanel(tab.pages[1], mutableConfig, handleChange)
