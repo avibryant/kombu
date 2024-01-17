@@ -1,3 +1,4 @@
+import { resolve } from "path"
 import { defineConfig, PluginOption, UserConfig } from "vite"
 
 function useShims(): PluginOption {
@@ -16,6 +17,7 @@ function useShims(): PluginOption {
 }
 
 export default defineConfig(({ mode }) => {
+  // The dev config is used for testing the full app.
   const devConfig: UserConfig = {
     build: {
       rollupOptions: {
@@ -27,7 +29,14 @@ export default defineConfig(({ mode }) => {
     },
   }
 
+  // The prod config just builds the library.
   const prodConfig: UserConfig = {
+    build: {
+      lib: {
+        entry: resolve(__dirname, "src/core/api.ts"),
+        name: "kombu",
+      },
+    },
     plugins: [useShims()],
     define: {
       "process.env.KOMBU_DEBUG": JSON.stringify(""),

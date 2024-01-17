@@ -2,6 +2,17 @@
   "name": "kombu",
   "version": "0.0.0",
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/kombu.umd.cjs",
+  "module": "./dist/kombu.js",
+  "exports": {
+    ".": {
+      "import": "./dist/kombu.js",
+      "require": "./dist/kombu.umd.cjs"
+    }
+  },
   "scripts": {
     "dev": "make prebuilt-wasm && vite",
     "bench": "make bench",
@@ -14,7 +25,7 @@
     "test": "make prebuilt-wasm && vitest run",
     "test:watch": "make prebuilt-wasm && vitest",
     "test:debug": "make prebuilt-wasm && vitest --inspect-brk --single-thread",
-    "prepare": "husky install"
+    "prepare": "husky install && make"
   },
   "devDependencies": {
     "@thi.ng/leb128": "^3.0.37",
