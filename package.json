@@ -5,6 +5,7 @@
   "files": [
     "dist"
   ],
+  "types": "./dist/kombu.d.ts",
   "main": "./dist/kombu.umd.cjs",
   "module": "./dist/kombu.js",
   "exports": {
@@ -31,6 +32,7 @@
     "@thi.ng/leb128": "^3.0.37",
     "assemblyscript": "^0.27.11",
     "assemblyscript-prettier": "^3.0.1",
+    "dts-bundle-generator": "^9.2.4",
     "husky": "^8.0.3",
     "ts-dedent": "^2.2.0",
     "tsx": "^4.6.2",

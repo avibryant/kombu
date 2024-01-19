@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    "declaration": true,
+
+    /* Vite defaults */
     "target": "ES2020",
     "useDefineForClassFields": true,
     "module": "ESNext",

@@ -1,20 +1,24 @@
 as_files := $(wildcard assembly/*.ts)
 scripts := $(wildcard scripts/*.ts)
+bundles := dist/kombu.js dist/kombu.umd.cjs
+ts_sources := $(shell find src -name '*.ts')
 
-.PHONY: bundle
-bundle: prebuilt-wasm
+.PHONY: all
+all: $(bundles) dist/kombu.d.ts
+
+.PHONY: bench
+bench: build/release.wasm_sections.ts
+	npx tsx scripts/bench.ts
+
+$(bundles): build/release.wasm_sections.ts $(ts_sources)
 	npx tsc
 	npx vite build
 
-.PHONY: prebuilt-wasm
-prebuilt-wasm: build/release.wasm_sections.ts
+dist/kombu.d.ts:
+	npx dts-bundle-generator ./src/core/api.ts -o dist/kombu.d.ts
+
+build/release.wasm_sections.ts: $(scripts) build/release.wasm
 	npx tsx scripts/as2ts.ts
-
-.PHONY: bench
-bench: prebuilt-wasm
-	npx tsx scripts/bench.ts
-
-build/release.wasm_sections.ts: build/release.wasm $(scripts)
 	npx tsx scripts/bundlewasm.ts
 
 build/release.wasm: $(as_files)
