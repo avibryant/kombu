@@ -7,10 +7,13 @@ ts_sources := $(shell find src -name '*.ts')
 all: $(bundles) dist/kombu.d.ts
 
 .PHONY: bench
-bench: build/release.wasm_sections.ts
+bench: prebuilt-wasm
 	npx tsx scripts/bench.ts
 
-$(bundles): build/release.wasm_sections.ts $(ts_sources)
+.PHONY: prebuilt-wasm
+prebuilt-wasm: build/release.wasm_sections.ts
+
+$(bundles): prebuilt-wasm $(ts_sources)
 	npx tsc
 	npx vite build
 
