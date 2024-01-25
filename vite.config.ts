@@ -35,7 +35,9 @@ export default defineConfig(({ mode }) => {
       lib: {
         entry: resolve(__dirname, "src/core/api.ts"),
         name: "kombu",
+        formats: ["es"],
       },
+      sourcemap: true,
     },
     plugins: [useShims()],
     define: {

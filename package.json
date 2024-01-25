@@ -6,12 +6,10 @@
     "dist"
   ],
   "types": "./dist/kombu.d.ts",
-  "main": "./dist/kombu.umd.cjs",
   "module": "./dist/kombu.js",
   "exports": {
     ".": {
-      "import": "./dist/kombu.js",
-      "require": "./dist/kombu.umd.cjs"
+      "import": "./dist/kombu.js"
     }
   },
   "scripts": {
