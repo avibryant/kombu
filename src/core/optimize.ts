@@ -43,8 +43,9 @@ export function optimizer(
       loss.fixedParams.forEach((p) => {
         assert(
           !!observations.get(p),
-          `missing value for observation '${p.name}'`,
+          `missing value for observation '${p.name}' (${p.id})`,
         )
+        assert(!Number.isNaN(observations.get(p)!), "NaN observation")
       })
 
       const newParams = optimizeImpl(iterations, observations, opts)

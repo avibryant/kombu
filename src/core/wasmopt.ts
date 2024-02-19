@@ -100,7 +100,7 @@ export function wasmOptimizer(loss: Loss, init: Map<t.Param, number>) {
     opts?: OptimizeOptions,
   ): Map<t.Param, number> {
     loss.fixedParams.forEach((p, i) => {
-      assert(observations.has(p), `Missing observation '${p.name}'`)
+      assert(observations.has(p), `Missing observation '${p.name}' (${p.id})`)
       const idx = loss.freeParams.length + i
       cache.setParam(idx, checkNotNull(observations.get(p)))
     })

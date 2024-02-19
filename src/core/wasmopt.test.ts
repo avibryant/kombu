@@ -53,7 +53,7 @@ test("free and fixed params", () => {
   expect(ev.evaluate(x)).toBeCloseTo(min, 2)
 
   expect(() => optimize(loss, new Map([[x, 0.1]]), 100)).toThrowError(
-    /Missing observation 'h'/,
+    /Missing observation 'h' \(9\)/,
   )
 })
 
