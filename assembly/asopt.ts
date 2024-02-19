@@ -23,10 +23,12 @@ export function optimizeLBFGS(
   for (let i: uint = 0; i < maxIterations && !complete; i++) {
     const loss = u.evaluateLoss()
 
+    let nonZero = false
     for (let i: uint = 0; i < numFreeParams; i++) {
       g[i] = u.evaluateGradient(i)
+      if (g[i] !== 0) nonZero = true
     }
-    complete = apply(loss, g)
+    if (nonZero) complete = apply(loss, g)
 
     // Copy params back out.
     for (let i: uint = 0; i < numFreeParams; i++) {
